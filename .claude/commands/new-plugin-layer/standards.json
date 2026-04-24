@@ -1,0 +1,53 @@
+{
+  "standards": [
+    {
+      "name": "base",
+      "description": "General-purpose plugins",
+      "type": "standard",
+      "repo": "claude-anthropic-base-plugins-container",
+      "image": "ghcr.io/sun2admin/claude-anthropic-base-plugins-container"
+    },
+    {
+      "name": "coding",
+      "description": "Base + software development",
+      "type": "standard",
+      "repo": "claude-anthropic-coding-plugins-container",
+      "image": "ghcr.io/sun2admin/claude-anthropic-coding-plugins-container"
+    },
+    {
+      "name": "ext",
+      "description": "Base + external/third-party",
+      "type": "standard",
+      "repo": "claude-anthropic-ext-plugins-container",
+      "image": "ghcr.io/sun2admin/claude-anthropic-ext-plugins-container"
+    },
+    {
+      "name": "all",
+      "description": "Base + coding + external",
+      "type": "standard",
+      "repo": "claude-anthropic-all-plugins-container",
+      "image": "ghcr.io/sun2admin/claude-anthropic-all-plugins-container"
+    },
+    {
+      "name": "base-ext-skills",
+      "description": "Base + ext + document-skills",
+      "type": "custom-build",
+      "repo": "claude-plugins-34e199d2",
+      "image": "ghcr.io/sun2admin/claude-plugins-34e199d2"
+    },
+    {
+      "name": "base-plus-general-skills",
+      "description": "Base + general skills (no coding LSPs)",
+      "type": "prebuilt-list",
+      "repo": "claude-plugins-54ca621f",
+      "image": "ghcr.io/sun2admin/claude-plugins-54ca621f"
+    },
+    {
+      "name": "build-repo-plugins",
+      "description": "base + skills supporting repo creation",
+      "type": "custom-build",
+      "repo": "claude-plugins-a7f3d2e8",
+      "image": "ghcr.io/sun2admin/claude-plugins-a7f3d2e8"
+    }
+  ]
+}

@@ -1,0 +1,422 @@
+{
+  "version": "1.0",
+  "description": "Prebuilt plugin lists with marketplace origins for proper state tracking",
+  "prebuilts": {
+    "base": {
+      "name": "base",
+      "description": "General-purpose plugins",
+      "type": "standard",
+      "total": 10,
+      "plugins": [
+        {
+          "name": "claude-code-setup",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "claude-md-management",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "explanatory-output-style",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "hookify",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "learning-output-style",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "math-olympiad",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "playground",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "ralph-loop",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "session-report",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "skill-creator",
+          "marketplace": "claude-plugins-official"
+        }
+      ],
+      "distribution": {
+        "claude-plugins-official": 10,
+        "anthropics/skills": 0,
+        "anthropics/knowledge-work-plugins": 0,
+        "anthropics/financial-services-plugins": 0,
+        "claude-plugins-community": 0
+      }
+    },
+    "coding": {
+      "name": "coding",
+      "description": "Base + software development",
+      "type": "standard",
+      "total": 32,
+      "includes": [
+        "base"
+      ],
+      "additions": [
+        {
+          "name": "code-review",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "code-simplifier",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "commit-commands",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "feature-dev",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "pr-review-toolkit",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "security-guidance",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "agent-sdk-dev",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "frontend-design",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "mcp-server-dev",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "plugin-dev",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "clangd-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "csharp-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "gopls-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "jdtls-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "kotlin-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "lua-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "php-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "pyright-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "ruby-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "rust-analyzer-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "swift-lsp",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "typescript-lsp",
+          "marketplace": "claude-plugins-official"
+        }
+      ],
+      "distribution": {
+        "claude-plugins-official": 32,
+        "anthropics/skills": 0,
+        "anthropics/knowledge-work-plugins": 0,
+        "anthropics/financial-services-plugins": 0,
+        "claude-plugins-community": 0
+      }
+    },
+    "ext": {
+      "name": "ext",
+      "description": "Base + external/third-party",
+      "type": "standard",
+      "total": 25,
+      "includes": [
+        "base"
+      ],
+      "additions": [
+        {
+          "name": "asana",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "context7",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "discord",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "fakechat",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "firebase",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "github",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "gitlab",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "greptile",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "imessage",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "laravel-boost",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "linear",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "playwright",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "serena",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "telegram",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "terraform",
+          "marketplace": "claude-plugins-official"
+        }
+      ],
+      "distribution": {
+        "claude-plugins-official": 25,
+        "anthropics/skills": 0,
+        "anthropics/knowledge-work-plugins": 0,
+        "anthropics/financial-services-plugins": 0,
+        "claude-plugins-community": 0
+      }
+    },
+    "all": {
+      "name": "all",
+      "description": "Base + coding + external",
+      "type": "standard",
+      "total": 47,
+      "includes": [
+        "base",
+        "coding",
+        "ext"
+      ],
+      "distribution": {
+        "claude-plugins-official": 47,
+        "anthropics/skills": 0,
+        "anthropics/knowledge-work-plugins": 0,
+        "anthropics/financial-services-plugins": 0,
+        "claude-plugins-community": 0
+      }
+    },
+    "base-ext-skills": {
+      "name": "base-ext-skills",
+      "description": "Base + ext + document-skills",
+      "type": "custom-build",
+      "total": 26,
+      "includes": [
+        "base",
+        "ext"
+      ],
+      "additions": [
+        {
+          "name": "document-skills",
+          "marketplace": "anthropics/skills"
+        }
+      ],
+      "distribution": {
+        "claude-plugins-official": 25,
+        "anthropics/skills": 1,
+        "anthropics/knowledge-work-plugins": 0,
+        "anthropics/financial-services-plugins": 0,
+        "claude-plugins-community": 0
+      }
+    },
+    "base-plus-general-skills": {
+      "name": "base-plus-general-skills",
+      "description": "Base + general-purpose skills (no coding LSPs)",
+      "type": "prebuilt-list",
+      "total": 26,
+      "includes": [
+        "base"
+      ],
+      "additions": [
+        {
+          "name": "code-review",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "code-simplifier",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "commit-commands",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "feature-dev",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "pr-review-toolkit",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "security-guidance",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "frontend-design",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "github",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "playwright",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "serena",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "agent-sdk-dev",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "document-skills",
+          "marketplace": "anthropics/skills"
+        },
+        {
+          "name": "mcp-server-dev",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "plugin-dev",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "asana",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "linear",
+          "marketplace": "claude-plugins-official"
+        }
+      ],
+      "distribution": {
+        "claude-plugins-official": 25,
+        "anthropics/skills": 1,
+        "anthropics/knowledge-work-plugins": 0,
+        "anthropics/financial-services-plugins": 0,
+        "claude-plugins-community": 0
+      }
+    },
+    "build-repo-plugins": {
+      "name": "build-repo-plugins",
+      "description": "Base + skills that support repo builds",
+      "type": "prebuilt-list",
+      "total": 19,
+      "includes": [
+        "base"
+      ],
+      "additions": [
+        {
+          "name": "code-review",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "code-simplifier",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "pr-review-toolkit",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "feature-dev",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "commit-commands",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "security-guidance",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "skill-creator",
+          "marketplace": "claude-plugins-official"
+        },
+        {
+          "name": "document-skills",
+          "marketplace": "anthropics/skills"
+        },
+        {
+          "name": "postman",
+          "marketplace": "claude-plugins-official"
+        }
+      ],
+      "distribution": {
+        "claude-plugins-official": 18,
+        "anthropics/skills": 1,
+        "anthropics/knowledge-work-plugins": 0,
+        "anthropics/financial-services-plugins": 0,
+        "claude-plugins-community": 0
+      }
+    }
+  }
+}
