@@ -31,24 +31,24 @@ For each valid Claude project found at `/workspace/claude/project-X/`:
 ### 1. Copy Entire .claude Directory Structure
 ```
 /workspace/claude/project-X/.claude/
-├── settings.json              → ~/.claude/projects/<path>/.claude/settings.json
-├── settings.local.json        → ~/.claude/projects/<path>/.claude/settings.local.json
+├── settings.json → ~/.claude/projects/<path>/.claude/settings.json
+├── settings.local.json → ~/.claude/projects/<path>/.claude/settings.local.json
 ├── rules/
-│   └── *.md                   → ~/.claude/projects/<path>/.claude/rules/*.md (all)
+│ └── *.md → ~/.claude/projects/<path>/.claude/rules/*.md (all)
 ├── commands/
-│   └── (all files/dirs)       → ~/.claude/projects/<path>/.claude/commands/ (entire tree)
+│ └── (all files/dirs) → ~/.claude/projects/<path>/.claude/commands/ (entire tree)
 ├── skills/
-│   └── (all subdirs)          → ~/.claude/projects/<path>/.claude/skills/ (entire tree)
+│ └── (all subdirs) → ~/.claude/projects/<path>/.claude/skills/ (entire tree)
 ├── agents/
-│   └── *.md                   → ~/.claude/projects/<path>/.claude/agents/*.md (all)
+│ └── *.md → ~/.claude/projects/<path>/.claude/agents/*.md (all)
 └── memory/
-    └── *.md                   → ~/.claude/projects/<path>/memory/*.md (all)
+ └── *.md → ~/.claude/projects/<path>/memory/*.md (all)
 ```
 
 ### 2. Copy Root-Level Project Files
 ```
-/workspace/claude/project-X/CLAUDE.md          → ~/.claude/projects/<path>/CLAUDE.md
-/workspace/claude/project-X/.mcp.json          → ~/.claude/projects/<path>/.mcp.json
+/workspace/claude/project-X/CLAUDE.md → ~/.claude/projects/<path>/CLAUDE.md
+/workspace/claude/project-X/.mcp.json → ~/.claude/projects/<path>/.mcp.json
 ```
 
 ### 3. Create Memory Directory Structure
@@ -93,17 +93,17 @@ After copying each project, verify:
 
 **Current init-memory.sh (single project):**
 ```bash
-cp -n /workspace/claude/.claude/memory/*.md ~/.claude/projects/-workspace/memory/
+cp -n /workspace/claude/.claude/memory/MEMORY.md /workspace/claude/.claude/memory/ai-install-layer-implementation.md /workspace/claude/.claude/memory/architecture-four-layer-stack.md /workspace/claude/.claude/memory/base-ai-layer-implementation.md /workspace/claude/.claude/memory/build-project-design-decisions.md /workspace/claude/.claude/memory/build-project-skill-clarifications.md /workspace/claude/.claude/memory/claude-code-config-loading-precedence.md /workspace/claude/.claude/memory/claude-code-memory-portability-architecture.md /workspace/claude/.claude/memory/claude-code-multi-project-architecture.md /workspace/claude/.claude/memory/claude-code-project-config.md /workspace/claude/.claude/memory/claude-code-project-discovery-sessions.md /workspace/claude/.claude/memory/devcontainer-claude-code-auth.md /workspace/claude/.claude/memory/devcontainer-credential-files.md /workspace/claude/.claude/memory/devcontainer-implicit-behavior.md /workspace/claude/.claude/memory/devcontainer-persistence-strategy.md /workspace/claude/.claude/memory/devcontainer-playwright.md /workspace/claude/.claude/memory/devcontainer-ssh-and-keys.md /workspace/claude/.claude/memory/devcontainer-volumes-and-mounts.md /workspace/claude/.claude/memory/feedback-auto-commit-on-success.md /workspace/claude/.claude/memory/feedback-bash-over-zsh.md /workspace/claude/.claude/memory/feedback-check-mounts-first.md /workspace/claude/.claude/memory/feedback-credentials-shell-env.md /workspace/claude/.claude/memory/feedback-ghcr-always-private.md /workspace/claude/.claude/memory/feedback-init-scripts-not-in-image.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-output.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-repo-verification.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-vs-build-separation.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-search-bug.md /workspace/claude/.claude/memory/feedback-plugins-first-approach.md /workspace/claude/.claude/memory/feedback-use-skill-tool.md /workspace/claude/.claude/memory/init-projects-sync-pattern.md /workspace/claude/.claude/memory/plugin-layer-ai-install-migration.md /workspace/claude/.claude/memory/project-claude-code-actions-placement.md /workspace/claude/.claude/memory/project-plugin-lists.md /workspace/claude/.claude/memory/project-plugin-seed-approach.md /workspace/claude/.claude/memory/reference-plugins-vs-skills.md /workspace/claude/.claude/memory/user.md ~/.claude/projects/-workspace/memory/
 ```
 
 **New init-projects.sh (multi-project):**
 ```bash
 for each /workspace/claude/project-X/:
-  cp -r /workspace/claude/project-X/.claude/ ~/.claude/projects/<cwd-path>/.claude/
-  cp /workspace/claude/project-X/CLAUDE.md ~/.claude/projects/<cwd-path>/CLAUDE.md
-  cp /workspace/claude/project-X/.mcp.json ~/.claude/projects/<cwd-path>/.mcp.json
-  mkdir -p ~/.claude/projects/<cwd-path>/memory/
-  cp -n /workspace/claude/project-X/.claude/memory/*.md ~/.claude/projects/<cwd-path>/memory/
+ cp -r /workspace/claude/project-X/.claude/ ~/.claude/projects/<cwd-path>/.claude/
+ cp /workspace/claude/project-X/CLAUDE.md ~/.claude/projects/<cwd-path>/CLAUDE.md
+ cp /workspace/claude/project-X/.mcp.json ~/.claude/projects/<cwd-path>/.mcp.json
+ mkdir -p ~/.claude/projects/<cwd-path>/memory/
+ cp -n /workspace/claude/project-X/.claude/memory/*.md ~/.claude/projects/<cwd-path>/memory/
 ```
 
 ## Key Insight

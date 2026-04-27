@@ -20,4 +20,3 @@ Only skip commits if:
 - Tests failed
 - The work is incomplete/blocked
 - Explicitly told not to commit
-

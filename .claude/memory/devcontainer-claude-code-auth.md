@@ -3,8 +3,8 @@
 ## Claude Code Authentication in Containers
 
 - Claude Code uses two files for auth state:
-  - `~/.claude/.credentials.json` — OAuth access/refresh tokens
-  - `~/.claude/.claude.json` — session state including `hasCompletedOnboarding`, `oauthAccount`, `userID`
+ - `~/.claude/.credentials.json` — OAuth access/refresh tokens
+ - `~/.claude/.claude.json` — session state including `hasCompletedOnboarding`, `oauthAccount`, `userID`
 - Both files must be present for Claude Code to skip the sign-in flow
 - `hasCompletedOnboarding: true` is only written by Claude Code itself after the user completes onboarding — it cannot be pre-seeded externally because Claude Code overwrites `.claude.json` on first run (generating a new `userID`, `firstStartTime`, etc.)
 - OAuth tokens auto-refresh but can sometimes fail, requiring manual re-authentication

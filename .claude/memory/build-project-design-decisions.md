@@ -70,32 +70,32 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 ## Open Questions for /build-project Design
 
 1. **Should memory persistence be mandatory or optional?**
-   - Current thinking: standard for all project types, but can skip for minimal
-   - Alternative: optional addon (Memory/Knowledge addon)
+ - Current thinking: standard for all project types, but can skip for minimal
+ - Alternative: optional addon (Memory/Knowledge addon)
 
 2. **What project types should /build-project support?**
-   - Minimal (no extra features)
-   - Standard (GitHub MCP, basic setup)
-   - Full (all addons: test suite, CI/CD, memory, credentials, etc.)
-   - Custom (user picks addons)
+ - Minimal (no extra features)
+ - Standard (GitHub MCP, basic setup)
+ - Full (all addons: test suite, CI/CD, memory, credentials, etc.)
+ - Custom (user picks addons)
 
 3. **What addons should be available?**
-   - Browser (Playwright)
-   - GitHub MCP
-   - SSH/Credentials
-   - Test Suite
-   - CI/CD Pipeline
-   - Memory/Knowledge
-   - Documentation
-   - Custom Skills
+ - Browser (Playwright)
+ - GitHub MCP
+ - SSH/Credentials
+ - Test Suite
+ - CI/CD Pipeline
+ - Memory/Knowledge
+ - Documentation
+ - Custom Skills
 
 4. **Should /build-project create one project or support scaffolding multiple projects under /workspace/?**
-   - Current assumption: one project per scaffold (like /workspace/claude)
-   - Alternative: multi-project workspace support (/workspace/project-a, /workspace/project-b)
+ - Current assumption: one project per scaffold (like /workspace/claude)
+ - Alternative: multi-project workspace support (/workspace/project-a, /workspace/project-b)
 
 5. **How should the sync skill be named and implemented?**
-   - build-with-claude uses: /update-build-with-claude
-   - /build-project could: /update-<project-name> or generic /sync-memory
+ - build-with-claude uses: /update-build-with-claude
+ - /build-project could: /update-<project-name> or generic /sync-memory
 
 ## Relationship to Container Layers
 

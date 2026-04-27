@@ -91,7 +91,7 @@ When Claude starts with cwd=/workspace/claude:
 
 **Critical Pattern:** init-memory.sh bridges the gap:
 ```bash
-cp -n /workspace/claude/.claude/memory/*.md ~/.claude/projects/-workspace-claude/memory/
+cp -n /workspace/claude/.claude/memory/MEMORY.md /workspace/claude/.claude/memory/ai-install-layer-implementation.md /workspace/claude/.claude/memory/architecture-four-layer-stack.md /workspace/claude/.claude/memory/base-ai-layer-implementation.md /workspace/claude/.claude/memory/build-project-design-decisions.md /workspace/claude/.claude/memory/build-project-skill-clarifications.md /workspace/claude/.claude/memory/claude-code-config-loading-precedence.md /workspace/claude/.claude/memory/claude-code-memory-portability-architecture.md /workspace/claude/.claude/memory/claude-code-multi-project-architecture.md /workspace/claude/.claude/memory/claude-code-project-config.md /workspace/claude/.claude/memory/claude-code-project-discovery-sessions.md /workspace/claude/.claude/memory/devcontainer-claude-code-auth.md /workspace/claude/.claude/memory/devcontainer-credential-files.md /workspace/claude/.claude/memory/devcontainer-implicit-behavior.md /workspace/claude/.claude/memory/devcontainer-persistence-strategy.md /workspace/claude/.claude/memory/devcontainer-playwright.md /workspace/claude/.claude/memory/devcontainer-ssh-and-keys.md /workspace/claude/.claude/memory/devcontainer-volumes-and-mounts.md /workspace/claude/.claude/memory/feedback-auto-commit-on-success.md /workspace/claude/.claude/memory/feedback-bash-over-zsh.md /workspace/claude/.claude/memory/feedback-check-mounts-first.md /workspace/claude/.claude/memory/feedback-credentials-shell-env.md /workspace/claude/.claude/memory/feedback-ghcr-always-private.md /workspace/claude/.claude/memory/feedback-init-scripts-not-in-image.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-output.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-repo-verification.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-vs-build-separation.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-search-bug.md /workspace/claude/.claude/memory/feedback-plugins-first-approach.md /workspace/claude/.claude/memory/feedback-use-skill-tool.md /workspace/claude/.claude/memory/init-projects-sync-pattern.md /workspace/claude/.claude/memory/plugin-layer-ai-install-migration.md /workspace/claude/.claude/memory/project-claude-code-actions-placement.md /workspace/claude/.claude/memory/project-plugin-lists.md /workspace/claude/.claude/memory/project-plugin-seed-approach.md /workspace/claude/.claude/memory/reference-plugins-vs-skills.md /workspace/claude/.claude/memory/user.md ~/.claude/projects/-workspace-claude/memory/
 ```
 
 This copies project memory from git-committed location into the fresh named volume. The `cp -n` (no-overwrite) ensures in-session updates aren't blown away on restart.
@@ -100,17 +100,17 @@ This copies project memory from git-committed location into the fresh named volu
 
 ```
 ~/.claude/projects/
-├── -workspace/                          # Project: /workspace (if cwd set there)
-│   └── memory/                          # Auto-memory for /workspace
+├── -workspace/ # Project: /workspace (if cwd set there)
+│ └── memory/ # Auto-memory for /workspace
 │
-├── -workspace-claude/                   # Project: /workspace/claude (actual working project)
-│   ├── memory/                          # Auto-memory (persisted in named volume)
-│   ├── 5521fc77-xxxx.jsonl             # Session transcript file
-│   ├── a924aeb1-xxxx.jsonl             # Another session transcript
-│   └── [more session data]
+├── -workspace-claude/ # Project: /workspace/claude (actual working project)
+│ ├── memory/ # Auto-memory (persisted in named volume)
+│ ├── 5521fc77-xxxx.jsonl # Session transcript file
+│ ├── a924aeb1-xxxx.jsonl # Another session transcript
+│ └── [more session data]
 │
-└── <other-project-path>/                # Would exist if Claude ran with different cwd
-    └── memory/
+└── <other-project-path>/ # Would exist if Claude ran with different cwd
+ └── memory/
 ```
 
 **Why `-workspace/` exists with minimal content:**

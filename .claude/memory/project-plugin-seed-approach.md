@@ -14,8 +14,8 @@ In the Dockerfile (run as the `claude` user):
 ENV CLAUDE_CODE_PLUGIN_CACHE_DIR=/opt/claude-plugins
 
 RUN claude plugin marketplace add anthropics/claude-plugins-official && \
-    claude plugin install claude-code-setup && \
-    claude plugin install hookify
+ claude plugin install claude-code-setup && \
+ claude plugin install hookify
 ```
 
 Only requires `GH_TOKEN` for GitHub access (not Anthropic auth). The `claude plugin` CLI commands are pure git operations.

@@ -9,24 +9,24 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 When Claude starts with cwd=/workspace/claude (a git repository):
 
 1. **Derives project identifier from git repository**
-   - Git repo URL or path is canonicalized
-   - `/workspace/claude` → `-workspace-claude`
-   - This becomes the subdirectory name
+ - Git repo URL or path is canonicalized
+ - `/workspace/claude` → `-workspace-claude`
+ - This becomes the subdirectory name
 
 2. **Creates project state directory**
-   - `~/.claude/projects/-workspace-claude/` is created
-   - This directory is NOT in the project repo
-   - This directory is NOT under /workspace/
+ - `~/.claude/projects/-workspace-claude/` is created
+ - This directory is NOT in the project repo
+ - This directory is NOT under /workspace/
 
 3. **Project state directory contains:**
-   - `memory/` — auto-memory files written by Claude during sessions
-   - `<session-1>.jsonl`, `<session-2>.jsonl` — conversation transcripts
-   - Session metadata and state
+ - `memory/` — auto-memory files written by Claude during sessions
+ - `<session-1>.jsonl`, `<session-2>.jsonl` — conversation transcripts
+ - Session metadata and state
 
 4. **When project exists outside ~/.claude**
-   - Project source code: `/workspace/claude/` (on disk, in git)
-   - Project state: `~/.claude/projects/-workspace-claude/` (separate location)
-   - These are **two completely independent directory trees**
+ - Project source code: `/workspace/claude/` (on disk, in git)
+ - Project state: `~/.claude/projects/-workspace-claude/` (separate location)
+ - These are **two completely independent directory trees**
 
 ## Critical Drawback: Memory NOT Portable
 
@@ -47,15 +47,15 @@ This path is **outside the project directory** and **outside version control**.
 
 ```
 Machine A:
-  /workspace/claude/                   (source code)
-  ~/.claude/projects/-workspace-claude/memory/   (memory)
+ /workspace/claude/ (source code)
+ ~/.claude/projects/-workspace-claude/memory/ (memory)
 
 Delete /workspace/claude/ → memory still exists but orphaned
 
 Switch to Machine B:
-  /workspace/claude/                   (cloned from git)
-  ~/.claude/projects/-workspace-claude/memory/   (EMPTY on new machine)
-  
+ /workspace/claude/ (cloned from git)
+ ~/.claude/projects/-workspace-claude/memory/ (EMPTY on new machine)
+ 
 Claude has NO memory of previous work
 ```
 
@@ -77,26 +77,26 @@ This breaks in:
 build-with-claude solves this by:
 
 1. **Committing memory to git**
-   ```
-   /workspace/claude/.claude/memory/MEMORY.md
-   /workspace/claude/.claude/memory/*.md
-   ```
+ ```
+ /workspace/claude/.claude/memory/MEMORY.md
+ /workspace/claude/.claude/memory/*.md
+ ```
 
 2. **Seeding on startup**
-   ```bash
-   # init-memory.sh
-   cp -n /workspace/claude/.claude/memory/*.md \
-         ~/.claude/projects/-workspace-claude/memory/
-   ```
+ ```bash
+ # init-memory.sh
+ cp -n /workspace/claude/.claude/memory/MEMORY.md /workspace/claude/.claude/memory/ai-install-layer-implementation.md /workspace/claude/.claude/memory/architecture-four-layer-stack.md /workspace/claude/.claude/memory/base-ai-layer-implementation.md /workspace/claude/.claude/memory/build-project-design-decisions.md /workspace/claude/.claude/memory/build-project-skill-clarifications.md /workspace/claude/.claude/memory/claude-code-config-loading-precedence.md /workspace/claude/.claude/memory/claude-code-memory-portability-architecture.md /workspace/claude/.claude/memory/claude-code-multi-project-architecture.md /workspace/claude/.claude/memory/claude-code-project-config.md /workspace/claude/.claude/memory/claude-code-project-discovery-sessions.md /workspace/claude/.claude/memory/devcontainer-claude-code-auth.md /workspace/claude/.claude/memory/devcontainer-credential-files.md /workspace/claude/.claude/memory/devcontainer-implicit-behavior.md /workspace/claude/.claude/memory/devcontainer-persistence-strategy.md /workspace/claude/.claude/memory/devcontainer-playwright.md /workspace/claude/.claude/memory/devcontainer-ssh-and-keys.md /workspace/claude/.claude/memory/devcontainer-volumes-and-mounts.md /workspace/claude/.claude/memory/feedback-auto-commit-on-success.md /workspace/claude/.claude/memory/feedback-bash-over-zsh.md /workspace/claude/.claude/memory/feedback-check-mounts-first.md /workspace/claude/.claude/memory/feedback-credentials-shell-env.md /workspace/claude/.claude/memory/feedback-ghcr-always-private.md /workspace/claude/.claude/memory/feedback-init-scripts-not-in-image.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-output.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-repo-verification.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-vs-build-separation.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-search-bug.md /workspace/claude/.claude/memory/feedback-plugins-first-approach.md /workspace/claude/.claude/memory/feedback-use-skill-tool.md /workspace/claude/.claude/memory/init-projects-sync-pattern.md /workspace/claude/.claude/memory/plugin-layer-ai-install-migration.md /workspace/claude/.claude/memory/project-claude-code-actions-placement.md /workspace/claude/.claude/memory/project-plugin-lists.md /workspace/claude/.claude/memory/project-plugin-seed-approach.md /workspace/claude/.claude/memory/reference-plugins-vs-skills.md /workspace/claude/.claude/memory/user.md \
+ ~/.claude/projects/-workspace-claude/memory/
+ ```
 
 3. **Syncing back on completion**
-   ```bash
-   # /update-build-with-claude skill
-   cp ~/.claude/projects/-workspace-claude/memory/*.md \
-       /workspace/claude/.claude/memory/
-   git add .claude/memory/
-   git commit
-   ```
+ ```bash
+ # /update-build-with-claude skill
+ cp ~/.claude/projects/-workspace-claude/memory/*.md \
+ /workspace/claude/.claude/memory/
+ git add .claude/memory/
+ git commit
+ ```
 
 This workaround:
 - ✓ Makes memory portable (in git)
@@ -111,7 +111,7 @@ This workaround:
 
 ```
 $ rm -rf /workspace/claude/
-$ cd /tmp && claude      # Start Claude elsewhere
+$ cd /tmp && claude # Start Claude elsewhere
 
 Result:
 - ~/.claude/projects/-workspace-claude/memory/ still exists
@@ -134,7 +134,7 @@ $ cd /workspace/claude && claude
 
 Result:
 - ~/.claude/projects/-workspace-claude/memory/ is fresh (empty)
-- init-memory.sh runs: cp /workspace/claude/.claude/memory/* ~/.claude/...
+- init-memory.sh runs: cp /workspace/claude/.claude/memory/MEMORY.md /workspace/claude/.claude/memory/ai-install-layer-implementation.md /workspace/claude/.claude/memory/architecture-four-layer-stack.md /workspace/claude/.claude/memory/base-ai-layer-implementation.md /workspace/claude/.claude/memory/build-project-design-decisions.md /workspace/claude/.claude/memory/build-project-skill-clarifications.md /workspace/claude/.claude/memory/claude-code-config-loading-precedence.md /workspace/claude/.claude/memory/claude-code-memory-portability-architecture.md /workspace/claude/.claude/memory/claude-code-multi-project-architecture.md /workspace/claude/.claude/memory/claude-code-project-config.md /workspace/claude/.claude/memory/claude-code-project-discovery-sessions.md /workspace/claude/.claude/memory/devcontainer-claude-code-auth.md /workspace/claude/.claude/memory/devcontainer-credential-files.md /workspace/claude/.claude/memory/devcontainer-implicit-behavior.md /workspace/claude/.claude/memory/devcontainer-persistence-strategy.md /workspace/claude/.claude/memory/devcontainer-playwright.md /workspace/claude/.claude/memory/devcontainer-ssh-and-keys.md /workspace/claude/.claude/memory/devcontainer-volumes-and-mounts.md /workspace/claude/.claude/memory/feedback-auto-commit-on-success.md /workspace/claude/.claude/memory/feedback-bash-over-zsh.md /workspace/claude/.claude/memory/feedback-check-mounts-first.md /workspace/claude/.claude/memory/feedback-credentials-shell-env.md /workspace/claude/.claude/memory/feedback-ghcr-always-private.md /workspace/claude/.claude/memory/feedback-init-scripts-not-in-image.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-output.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-repo-verification.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-vs-build-separation.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-search-bug.md /workspace/claude/.claude/memory/feedback-plugins-first-approach.md /workspace/claude/.claude/memory/feedback-use-skill-tool.md /workspace/claude/.claude/memory/init-projects-sync-pattern.md /workspace/claude/.claude/memory/plugin-layer-ai-install-migration.md /workspace/claude/.claude/memory/project-claude-code-actions-placement.md /workspace/claude/.claude/memory/project-plugin-lists.md /workspace/claude/.claude/memory/project-plugin-seed-approach.md /workspace/claude/.claude/memory/reference-plugins-vs-skills.md /workspace/claude/.claude/memory/user.md ~/.claude/...
 - Memory is restored from git
 - Claude has full context
 ```
@@ -143,37 +143,37 @@ Result:
 
 ### For Single-Machine Projects
 1. **Rely on auto-memory only**
-   - Memory stored in ~/.claude/projects/ is fine
-   - Use CLAUDE.md for permanent instructions
-   - Use auto-memory for learned patterns
+ - Memory stored in ~/.claude/projects/ is fine
+ - Use CLAUDE.md for permanent instructions
+ - Use auto-memory for learned patterns
 
 ### For Multi-Machine / Container / Team Projects
 1. **Commit memory to git** (what build-with-claude does)
-   ```
-   /workspace/claude/.claude/memory/     (committed to git)
-   ```
+ ```
+ /workspace/claude/.claude/memory/ (committed to git)
+ ```
 
 2. **Set autoMemoryDirectory to project-local** (if supported)
-   ```json
-   {
-     "autoMemoryDirectory": ".claude/memory"
-   }
-   ```
-   ⚠️ NOTE: This cannot be set in .claude/settings.json (project scope) for security
-   Set in: `~/.claude/settings.local.json` (user scope)
+ ```json
+ {
+ "autoMemoryDirectory": ".claude/memory"
+ }
+ ```
+ ⚠️ NOTE: This cannot be set in .claude/settings.json (project scope) for security
+ Set in: `~/.claude/settings.local.json` (user scope)
 
 3. **Use init-memory.sh pattern**
-   ```bash
-   mkdir -p ~/.claude/projects/<project>/memory
-   cp -n /workspace/<project>/.claude/memory/*.md ~/.claude/projects/<project>/memory/
-   ```
+ ```bash
+ mkdir -p ~/.claude/projects/<project>/memory
+ cp -n /workspace/<project>/.claude/memory/*.md ~/.claude/projects/<project>/memory/
+ ```
 
 4. **Use sync skill** (like /update-build-with-claude)
-   ```bash
-   cp ~/.claude/projects/<project>/memory/*.md /workspace/<project>/.claude/memory/
-   git add .claude/memory/
-   git commit "Update memory from session"
-   ```
+ ```bash
+ cp ~/.claude/projects/<project>/memory/*.md /workspace/<project>/.claude/memory/
+ git add .claude/memory/
+ git commit "Update memory from session"
+ ```
 
 ### For Shared Teams
 1. Use .claude/CLAUDE.md for permanent team instructions
@@ -190,12 +190,12 @@ Result:
 ## Relationship Between Two Memory Systems
 
 ```
-.claude/memory/             (Git-committed, portable, team-shared)
-   ↓ init-memory.sh (seeds)
-~/.claude/projects/<path>/memory/  (Named volume, transient, session-specific)
-   ↓ Claude writes auto-memory
-   ↑ /sync-memory skill (copies back to git)
-.claude/memory/             (Committed again)
+.claude/memory/ (Git-committed, portable, team-shared)
+ ↓ init-memory.sh (seeds)
+~/.claude/projects/<path>/memory/ (Named volume, transient, session-specific)
+ ↓ Claude writes auto-memory
+ ↑ /sync-memory skill (copies back to git)
+.claude/memory/ (Committed again)
 ```
 
 ## Why This Matters for /build-project Skill
@@ -203,25 +203,25 @@ Result:
 Every project scaffold must include:
 
 1. **Directory structure**
-   ```
-   /workspace/<project>/.claude/memory/
-   ```
+ ```
+ /workspace/<project>/.claude/memory/
+ ```
 
 2. **init-memory.sh in postStartCommand**
-   ```bash
-   #!/bin/bash
-   MEMORY_SRC="/workspace/<project>/.claude/memory"
-   MEMORY_DEST="~/.claude/projects/<project-id>/memory"
-   mkdir -p "$MEMORY_DEST"
-   cp -n "$MEMORY_SRC"/*.md "$MEMORY_DEST/" 2>/dev/null || true
-   ```
+ ```bash
+ #!/bin/bash
+ MEMORY_SRC="/workspace/<project>/.claude/memory"
+ MEMORY_DEST="~/.claude/projects/<project-id>/memory"
+ mkdir -p "$MEMORY_DEST"
+ cp -n "$MEMORY_SRC"/*.md "$MEMORY_DEST/" 2>/dev/null || true
+ ```
 
 3. **A sync skill**
-   - Copy memory back to git after sessions
-   - Commit to preserve knowledge
+ - Copy memory back to git after sessions
+ - Commit to preserve knowledge
 
 4. **Initial .claude/memory/MEMORY.md**
-   - Even if empty, provides seeding target
-   - Gives structure for future memory
+ - Even if empty, provides seeding target
+ - Gives structure for future memory
 
 Without this: Memory is lost on rebuild or doesn't survive container lifecycle.

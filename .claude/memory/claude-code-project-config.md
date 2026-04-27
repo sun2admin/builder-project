@@ -12,31 +12,31 @@ Claude Code discovers project-level config by walking up the directory tree from
 
 ```
 project-repo/
-├── CLAUDE.md                        # team instructions, loaded every session
-├── CLAUDE.local.md                  # personal overrides, gitignored
-├── .mcp.json                        # project MCP servers, team-shared
+├── CLAUDE.md # team instructions, loaded every session
+├── CLAUDE.local.md # personal overrides, gitignored
+├── .mcp.json # project MCP servers, team-shared
 └── .claude/
-    ├── settings.json                # permissions, hooks, env vars
-    ├── settings.local.json          # personal overrides, gitignored
-    ├── commands/                    # project skills (legacy flat .md files)
-    ├── skills/<name>/SKILL.md       # project skills (newer format)
-    ├── agents/                      # subagent persona definitions
-    ├── rules/                       # modular instruction files
-    └── hooks/                       # event-driven automation
+ ├── settings.json # permissions, hooks, env vars
+ ├── settings.local.json # personal overrides, gitignored
+ ├── commands/ # project skills (legacy flat .md files)
+ ├── skills/<name>/SKILL.md # project skills (newer format)
+ ├── agents/ # subagent persona definitions
+ ├── rules/ # modular instruction files
+ └── hooks/ # event-driven automation
 ```
 
 ## User-Level Config (named volume, never committed)
 
 ```
 ~/.claude/
-├── CLAUDE.md                        # personal instructions, all projects
-├── settings.json                    # global permissions, model config
-├── skills/                          # personal skills, all projects
-├── agents/                          # personal subagents
-├── plugins/                         # installed plugins
+├── CLAUDE.md # personal instructions, all projects
+├── settings.json # global permissions, model config
+├── skills/ # personal skills, all projects
+├── agents/ # personal subagents
+├── plugins/ # installed plugins
 └── projects/<repo-path>/
-    └── memory/                      # auto-memory written by Claude (NOT project-scoped)
-~/.claude.json                       # OAuth tokens, user/local MCP, per-project trust
+ └── memory/ # auto-memory written by Claude (NOT project-scoped)
+~/.claude.json # OAuth tokens, user/local MCP, per-project trust
 ```
 
 ## Important: Auto-Memory Location

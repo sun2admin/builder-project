@@ -27,7 +27,7 @@ ARG AI_TYPE=claude
 ARG AI_PACKAGE=@anthropic-ai/claude-code
 
 RUN if [ "$AI_TYPE" = "gemini" ]; then \
-    AI_PACKAGE="@google/gemini-cli"; \
+ AI_PACKAGE="@google/gemini-cli"; \
 fi && \
 npm install -g ${AI_PACKAGE} && \
 npm cache clean --force
@@ -36,10 +36,10 @@ npm cache clean --force
 ARG USERNAME=${AI_TYPE}
 
 RUN useradd -m -s /bin/bash ${USERNAME} && \
-    mkdir -p /commandhistory && \
-    chown -R ${USERNAME} /commandhistory && \
-    mkdir -p /home/${USERNAME}/.claude /home/${USERNAME}/.ssh && \
-    chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.claude ... (etc.)
+ mkdir -p /commandhistory && \
+ chown -R ${USERNAME} /commandhistory && \
+ mkdir -p /home/${USERNAME}/.claude /home/${USERNAME}/.ssh && \
+ chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.claude ... (etc.)
 
 USER ${USERNAME}
 ```
@@ -76,14 +76,14 @@ USER ${USERNAME}
 
 Matrix strategy with two jobs:
 1. `:claude` variant
-   - AI_TYPE=claude
-   - AI_PACKAGE=@anthropic-ai/claude-code
-   - Tag: `ghcr.io/sun2admin/ai-install-layer:claude`
+ - AI_TYPE=claude
+ - AI_PACKAGE=@anthropic-ai/claude-code
+ - Tag: `ghcr.io/sun2admin/ai-install-layer:claude`
 
 2. `:gemini` variant
-   - AI_TYPE=gemini
-   - AI_PACKAGE=@google/gemini-cli
-   - Tag: `ghcr.io/sun2admin/ai-install-layer:gemini`
+ - AI_TYPE=gemini
+ - AI_PACKAGE=@google/gemini-cli
+ - Tag: `ghcr.io/sun2admin/ai-install-layer:gemini`
 
 Both build in parallel; cache via GitHub Actions.
 
@@ -93,14 +93,14 @@ Both build in parallel; cache via GitHub Actions.
 
 ```json
 {
-  "image": "ghcr.io/sun2admin/ai-install-layer:claude"
+ "image": "ghcr.io/sun2admin/ai-install-layer:claude"
 }
 ```
 
 Or for Gemini:
 ```json
 {
-  "image": "ghcr.io/sun2admin/ai-install-layer:gemini"
+ "image": "ghcr.io/sun2admin/ai-install-layer:gemini"
 }
 ```
 

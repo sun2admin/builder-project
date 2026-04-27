@@ -16,15 +16,15 @@ Browser binaries (Chromium, Firefox, WebKit) are large (~300-500MB each) and req
 FROM node:20 AS playwright-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-pip && \
-    apt-get clean && rm -rf /var/lib/apt/lists*
+ python3-pip && \
+ apt-get clean && rm -rf /var/lib/apt/lists*
 
 RUN python3 -m pip install --no-cache-dir --break-system-packages playwright
 
 ARG BROWSERS=chromium
 RUN mkdir -p /root/.cache/ms-playwright && \
-    for browser in $BROWSERS; do \
-    python3 -m playwright install "$browser"; \
+ for browser in $BROWSERS; do \
+ python3 -m playwright install "$browser"; \
 done
 ```
 
@@ -42,12 +42,12 @@ ARG INCLUDE_PLAYWRIGHT=false
 COPY --from=playwright-builder /root/.cache/ms-playwright /tmp/playwright-cache
 
 RUN if [ "$INCLUDE_PLAYWRIGHT" = "true" ]; then \
-    mkdir -p /home/node/.cache/ms-playwright && \
-    cp -r /tmp/playwright-cache/* /home/node/.cache/ms-playwright/ && \
-    /opt/venv/bin/pip install --no-cache-dir playwright && \
-    for browser in $BROWSERS; do \
-      /opt/venv/bin/playwright install-deps "$browser"; \
-    done; \
+ mkdir -p /home/node/.cache/ms-playwright && \
+ cp -r /tmp/playwright-cache/* /home/node/.cache/ms-playwright/ && \
+ /opt/venv/bin/pip install --no-cache-dir playwright && \
+ for browser in $BROWSERS; do \
+ /opt/venv/bin/playwright install-deps "$browser"; \
+ done; \
 fi
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
@@ -76,7 +76,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 Just reference the appropriate tag in your devcontainer:
 ```json
 {
-  "image": "ghcr.io/sun2admin/base-ai-layer:playwright_with_chromium"
+ "image": "ghcr.io/sun2admin/base-ai-layer:playwright_with_chromium"
 }
 ```
 

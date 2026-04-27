@@ -25,18 +25,18 @@ cwd=/workspace/project-b → reads from ~/.claude/projects/-workspace-project-b/
 Users don't specify "which project is active" upfront. Instead:
 
 1. **User types `/resume`**
-   - Opens interactive session picker
-   - Shows ALL available sessions from ALL projects
-   - Lists projects with their paths
+ - Opens interactive session picker
+ - Shows ALL available sessions from ALL projects
+ - Lists projects with their paths
 
 2. **User selects a project**
-   - Claude switches to that project's cwd
-   - Loads that project's CLAUDE.md and .claude/ config
-   - Accesses that project's memory and session history
+ - Claude switches to that project's cwd
+ - Loads that project's CLAUDE.md and .claude/ config
+ - Accesses that project's memory and session history
 
 3. **Work on selected project**
-   - Claude now operates in that project context
-   - Can use /resume again anytime to switch
+ - Claude now operates in that project context
+ - Can use /resume again anytime to switch
 
 **Key behavior:**
 - /resume can browse sessions across different project directories (though with recent regressions in v2.1.98+)
@@ -55,7 +55,7 @@ When Claude starts without an explicit project cwd:
 
 **Example use case:**
 ```
-$ cd ~  (or /workspace without project-specific config)
+$ cd ~ (or /workspace without project-specific config)
 $ claude
 → Claude starts in "global" mode using ~/.claude/ context
 → No project-specific CLAUDE.md, but global settings applied
@@ -67,16 +67,16 @@ $ claude
 **The approach:**
 ```
 Source (in git repo):
-  /workspace/claude/
-    ├── project-a/.claude/
-    ├── project-b/.claude/
-    └── project-c/.claude/
+ /workspace/claude/
+ ├── project-a/.claude/
+ ├── project-b/.claude/
+ └── project-c/.claude/
 
 Copied to named volume:
-  ~/.claude/projects/
-    ├── -workspace-project-a/.claude/
-    ├── -workspace-project-b/.claude/
-    └── -workspace-project-c/.claude/
+ ~/.claude/projects/
+ ├── -workspace-project-a/.claude/
+ ├── -workspace-project-b/.claude/
+ └── -workspace-project-c/.claude/
 ```
 
 **How it works:**
@@ -108,21 +108,21 @@ Copied to named volume:
 
 **Structure:**
 ```
-/workspace/                        ✓ git repo (.git exists)
-  ├── .devcontainer/
-  │   └── devcontainer.json       (workspaceFolder=/workspace, postAttach: claude)
-  ├── .claude/                    (optional global config)
-  ├── CLAUDE.md                   (optional global instructions)
-  └── claude/
-      ├── project-a/
-      │   ├── .claude/            (project-specific)
-      │   └── CLAUDE.md
-      ├── project-b/
-      │   ├── .claude/
-      │   └── CLAUDE.md
-      └── project-c/
-          ├── .claude/
-          └── CLAUDE.md
+/workspace/ ✓ git repo (.git exists)
+ ├── .devcontainer/
+ │ └── devcontainer.json (workspaceFolder=/workspace, postAttach: claude)
+ ├── .claude/ (optional global config)
+ ├── CLAUDE.md (optional global instructions)
+ └── claude/
+ ├── project-a/
+ │ ├── .claude/ (project-specific)
+ │ └── CLAUDE.md
+ ├── project-b/
+ │ ├── .claude/
+ │ └── CLAUDE.md
+ └── project-c/
+ ├── .claude/
+ └── CLAUDE.md
 ```
 
 **On container start:**

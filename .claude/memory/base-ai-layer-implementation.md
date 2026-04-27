@@ -22,8 +22,8 @@ FROM node:20 AS playwright-builder
 RUN apt-get install python3-pip
 RUN python3 -m pip install --no-cache-dir --break-system-packages playwright
 RUN mkdir -p /root/.cache/ms-playwright && \
-    for browser in $BROWSERS; do \
-    python3 -m playwright install "$browser"; \
+ for browser in $BROWSERS; do \
+ python3 -m playwright install "$browser"; \
 done
 ```
 
@@ -36,9 +36,9 @@ done
 ```dockerfile
 FROM node:20-slim AS base
 RUN apt-get install -y --no-install-recommends \
-    wget curl less git procps sudo fzf man-db unzip gnupg2 gh \
-    iptables ipset iproute2 dnsutils aggregate \
-    jq nano vim passwd openssh-client
+ wget curl less git procps sudo fzf man-db unzip gnupg2 gh \
+ iptables ipset iproute2 dnsutils aggregate \
+ jq nano vim passwd openssh-client
 ```
 
 These are Anthropic-recommended minimal packages (git, gh, jq, fzf, etc.).
@@ -47,16 +47,16 @@ These are Anthropic-recommended minimal packages (git, gh, jq, fzf, etc.).
 ```dockerfile
 ARG INCLUDE_EXTRAS=false
 RUN if [ "$INCLUDE_EXTRAS" = "true" ]; then \
-    apt-get install -y --no-install-recommends \
-    ripgrep fd-find tree bat shellcheck sqlite3 htop \
-    python3 python3-pip python3-venv \
-    poppler-utils pandoc \
-    libcairo2 libpango-1.0-0 libpangocairo-1.0-0 \
-    libgdk-pixbuf-2.0-0 libffi8 shared-mime-info fonts-liberation && \
-    python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install --no-cache-dir \
-    jupyterlab ipykernel pdfplumber pymupdf pypdf \
-    reportlab weasyprint pandas numpy; \
+ apt-get install -y --no-install-recommends \
+ ripgrep fd-find tree bat shellcheck sqlite3 htop \
+ python3 python3-pip python3-venv \
+ poppler-utils pandoc \
+ libcairo2 libpango-1.0-0 libpangocairo-1.0-0 \
+ libgdk-pixbuf-2.0-0 libffi8 shared-mime-info fonts-liberation && \
+ python3 -m venv /opt/venv && \
+ /opt/venv/bin/pip install --no-cache-dir \
+ jupyterlab ipykernel pdfplumber pymupdf pypdf \
+ reportlab weasyprint pandas numpy; \
 fi
 ```
 
@@ -68,12 +68,12 @@ FROM base AS final
 ARG INCLUDE_PLAYWRIGHT=false
 COPY --from=playwright-builder /root/.cache/ms-playwright /tmp/playwright-cache
 RUN if [ "$INCLUDE_PLAYWRIGHT" = "true" ]; then \
-    mkdir -p /home/node/.cache/ms-playwright && \
-    cp -r /tmp/playwright-cache/* /home/node/.cache/ms-playwright/ && \
-    /opt/venv/bin/pip install --no-cache-dir playwright && \
-    for browser in $BROWSERS; do \
-      /opt/venv/bin/playwright install-deps "$browser"; \
-    done; \
+ mkdir -p /home/node/.cache/ms-playwright && \
+ cp -r /tmp/playwright-cache/* /home/node/.cache/ms-playwright/ && \
+ /opt/venv/bin/pip install --no-cache-dir playwright && \
+ for browser in $BROWSERS; do \
+ /opt/venv/bin/playwright install-deps "$browser"; \
+ done; \
 fi
 ```
 

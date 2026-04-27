@@ -8,26 +8,26 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Layer 4: Project Repos                                  │
-│ (.devcontainer/devcontainer.json references plugins)    │
+│ Layer 4: Project Repos │
+│ (.devcontainer/devcontainer.json references plugins) │
 └─────────────────────────────────────────────────────────┘
-                          ↓
+ ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Layer 3: AI-Plugins Container                           │
-│ (e.g., claude-plugins-a7f3d2e8, claude-plugins-coding)  │
-│ Contains: pre-baked plugins via CLAUDE_CODE_PLUGIN_*    │
+│ Layer 3: AI-Plugins Container │
+│ (e.g., claude-plugins-a7f3d2e8, claude-plugins-coding) │
+│ Contains: pre-baked plugins via CLAUDE_CODE_PLUGIN_* │
 └─────────────────────────────────────────────────────────┘
-                          ↓
+ ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Layer 2: AI-Install Container (ai-install-layer)        │
-│ (:claude and :gemini variants)                          │
-│ Installs: Claude Code/Gemini CLI, user setup, init      │
+│ Layer 2: AI-Install Container (ai-install-layer) │
+│ (:claude and :gemini variants) │
+│ Installs: Claude Code/Gemini CLI, user setup, init │
 └─────────────────────────────────────────────────────────┘
-                          ↓
+ ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Layer 1: base-ai-layer (Base Image)                     │
-│ Tag Variants: :light, :latest, :playwright_with_*       │
-│ Contains: system packages (Node, Python, git, etc.)     │
+│ Layer 1: base-ai-layer (Base Image) │
+│ Tag Variants: :light, :latest, :playwright_with_* │
+│ Contains: system packages (Node, Python, git, etc.) │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -119,7 +119,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 **Example**: `/workspace/.devcontainer/devcontainer.json`
 ```json
 {
-  "image": "ghcr.io/sun2admin/claude-plugins-a7f3d2e8:latest"
+ "image": "ghcr.io/sun2admin/claude-plugins-a7f3d2e8:latest"
 }
 ```
 

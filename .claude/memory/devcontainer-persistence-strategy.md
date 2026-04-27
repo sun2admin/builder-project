@@ -89,19 +89,19 @@ Without `-n`:
 All new projects (Minimal, Standard, Full) should use this exact pattern:
 
 1. **devcontainer.json**
-   - Named volume: `claude-code-config-${devcontainerId}` → `/home/claude/.claude`
-   - `CLAUDE_CONFIG_DIR` env var pointing to `/home/claude/.claude`
-   - `postStartCommand` that runs init-memory.sh
+ - Named volume: `claude-code-config-${devcontainerId}` → `/home/claude/.claude`
+ - `CLAUDE_CONFIG_DIR` env var pointing to `/home/claude/.claude`
+ - `postStartCommand` that runs init-memory.sh
 
 2. **init-memory.sh**
-   - Copy structure: `cp -n` from `/workspace/<project>/.claude/memory/` → `/home/claude/.claude/projects/-workspace/memory/`
-   - Graceful error handling
+ - Copy structure: `cp -n` from `/workspace/<project>/.claude/memory/` → `/home/claude/.claude/projects/-workspace/memory/`
+ - Graceful error handling
 
 3. **Project Config Directories**
-   - `.claude/memory/` (even if empty initially)
-   - `.claude/commands/`
-   - `.claude/agents/`
-   - `.claude/rules/`
-   - `.claude/settings.json`
+ - `.claude/memory/` (even if empty initially)
+ - `.claude/commands/`
+ - `.claude/agents/`
+ - `.claude/rules/`
+ - `.claude/settings.json`
 
 This is the foundation for all projects, regardless of type or addons.
