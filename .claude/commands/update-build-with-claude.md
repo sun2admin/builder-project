@@ -18,11 +18,11 @@ Update the build-with-claude repo with any changes made during the current sessi
 
 ### 1. Sync memory files
 - [ ] Copy ALL files from live memory to repo (overwrite, not just newer):
-  - `cp ~/.claude/projects/-workspace/memory/*.md /workspace/claude/.claude/memory/`
+  - `cp ~/.claude/projects/workspace-claude/memory/*.md /workspace/claude/.claude/memory/`
 - [ ] Identify and remove stale files from repo that don't exist in live:
-  - For each file in `/workspace/claude/.claude/memory/`, check if it exists in `~/.claude/projects/-workspace/memory/`
+  - For each file in `/workspace/claude/.claude/memory/`, check if it exists in `~/.claude/projects/workspace-claude/memory/`
   - Delete any repo files that have no corresponding live file
-- [ ] Verify file counts match: `ls -1 ~/.claude/projects/-workspace/memory/*.md | wc -l` should equal `ls -1 /workspace/claude/.claude/memory/*.md | wc -l`
+- [ ] Verify file counts match: `ls -1 ~/.claude/projects/workspace-claude/memory/*.md | wc -l` should equal `ls -1 /workspace/claude/.claude/memory/*.md | wc -l`
 
 ### 2. Review all changes
 - [ ] Run `git status` to identify all modified, deleted, and untracked files
