@@ -1,1 +1,27 @@
-{}
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(mkdir *)",
+      "Bash(rm -f *)",
+      "Bash(wc *)",
+      "Bash(cat *)",
+      "Bash(sed *)",
+      "Bash(jq *)",
+      "Bash(curl *)",
+      "Bash(chmod 600 *)",
+      "Bash(ssh-add *)",
+      "Bash(claude *)",
+      "Bash(python3 *)",
+      "mcp__github__*"
+    ],
+    "deny": [
+      "Bash(rm -rf *)"
+    ]
+  }
+}
