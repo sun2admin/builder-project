@@ -59,24 +59,21 @@ The existing `/update-build-with-claude` command does:
  - Copy skills to `~/.claude/skills/`
  - All downstream layers inherit the skills
 
-4. **Execution context**: Automatic (required)
- - Runs automatically before container exit/rebuild
- - Ensures session changes are always persisted to git
- - Explicit manual invocation also possible: `/sync-prj-repos-memory`
+4. **Execution context**: Manual or automatic
+ - Explicit invocation: `/sync-prj-repos-memory`
+ - Automatic before container exit is ideal but not required to preserve skills/commands (those write to repo directly)
+ - Auto-memory in named volume is the only thing at risk if not synced before rebuild
+ - ⚠️ REVISED: Wipe-and-reseed (`rm -rf ~/.claude/projects/`) is NOT needed or recommended — `cp -n` on load correctly handles the restart vs rebuild distinction
 
-5. **Scope**: All projects + ALL configuration
+5. **Scope**: All projects + correct sync targets
  - Discover all projects in ~/.claude/projects/
- - Sync EVERYTHING from `~/.claude/projects/<path>/.claude/` back to repo:
- - `memory/*.md` (auto-memory files)
- - `skills/` (newly created/modified skills)
- - `commands/` (newly created/modified commands)
- - `rules/` (newly created/modified rules)
- - `agents/` (newly created/modified agents)
- - `settings.json` (project settings)
- - `settings.local.json` (user-specific overrides, committed to git)
- - `.mcp.json` (MCP server config)
- - Use rsync with `--delete` to capture deletions
- - Deletions only persist if synced to git (ephemeral otherwise)
+ - ⚠️ REVISED: Do NOT rsync `~/.claude/projects/<path>/.claude/` back to repo — that copy is stale seeded data
+ - Claude writes skills, commands, agents, rules, settings.json directly to the repo (bind mount) during sessions — they are already in the right place
+ - Only two sync operations needed:
+   1. Copy `~/.claude/projects/<path>/memory/*.md` → `<repo>/.claude/memory/` (memory is the only thing written outside the repo)
+   2. `git add -A && git commit && git push` (captures memory + any new skills/commands/etc Claude wrote to repo)
+ - `settings.local.json` lives in repo `.claude/` (auto-gitignored) — do not commit it
+ - Deletions of skills/commands: handled naturally since Claude deletes from repo directly; git status shows them
 
 6. **Implementation**: Executable skill (shell script)
  - Full script implementation in sync-prj-repos-memory.sh

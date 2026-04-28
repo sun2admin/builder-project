@@ -8,10 +8,11 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 
 When Claude starts with cwd=/workspace/claude (a git repository):
 
-1. **Derives project identifier from git repository**
- - Git repo URL or path is canonicalized
- - `/workspace/claude` → `-workspace-claude`
+1. **Derives project identifier from git repository root**
+ - Path is canonicalized: strip leading `/`, replace `/` with `-`
+ - `/workspace/claude/builder-project` → `workspace-claude-builder-project`
  - This becomes the subdirectory name
+ - **Note**: No leading dash. All subdirectories within the same git repo share one memory directory.
 
 2. **Creates project state directory**
  - `~/.claude/projects/-workspace-claude/` is created
@@ -139,53 +140,64 @@ Result:
 - Claude has full context
 ```
 
-## Best Practices
+## Best Practices (Confirmed Against Official Anthropic Docs)
+
+### Official Statement on Portability
+> *"Auto memory is machine-local. All worktrees and subdirectories within the same git repository share one auto memory directory. Files are not shared across machines or cloud environments."*
 
 ### For Single-Machine Projects
-1. **Rely on auto-memory only**
- - Memory stored in ~/.claude/projects/ is fine
- - Use CLAUDE.md for permanent instructions
- - Use auto-memory for learned patterns
+1. **Rely on auto-memory only** — `~/.claude/projects/` is fine
+2. Use `CLAUDE.md` for permanent instructions
+3. Skills, commands, agents, rules: commit to git (already portable)
 
 ### For Multi-Machine / Container / Team Projects
-1. **Commit memory to git** (what build-with-claude does)
+
+**The correct pattern (confirmed):**
+
+1. **Commit memory to git**
  ```
- /workspace/claude/.claude/memory/ (committed to git)
+ <project>/.claude/memory/*.md  (committed to git)
  ```
 
-2. **Set autoMemoryDirectory to project-local** (if supported)
- ```json
- {
- "autoMemoryDirectory": ".claude/memory"
- }
- ```
- ⚠️ NOTE: This cannot be set in .claude/settings.json (project scope) for security
- Set in: `~/.claude/settings.local.json` (user scope)
-
-3. **Use init-memory.sh pattern**
+2. **Seed on container start (memory only)**
  ```bash
- mkdir -p ~/.claude/projects/<project>/memory
- cp -n /workspace/<project>/.claude/memory/*.md ~/.claude/projects/<project>/memory/
+ mkdir -p ~/.claude/projects/<canonical-id>/memory
+ cp -n <project>/.claude/memory/*.md ~/.claude/projects/<canonical-id>/memory/
+ # Use cp -n to preserve in-session writes on restart
  ```
 
-4. **Use sync skill** (like /update-build-with-claude)
+3. **Sync back at session end (memory + commit repo changes)**
  ```bash
- cp ~/.claude/projects/<project>/memory/*.md /workspace/<project>/.claude/memory/
- git add .claude/memory/
- git commit "Update memory from session"
+ # Bring memory into repo
+ cp ~/.claude/projects/<canonical-id>/memory/*.md <project>/.claude/memory/
+ # Commit everything (skills/commands/etc already in repo from Claude's writes)
+ git -C <project> add -A && git commit && git push
  ```
+
+4. **Do NOT bulk-copy `.claude/` config into `~/.claude/projects/`**
+ Claude reads skills, commands, agents, rules, settings.json directly from the repo.
+ Seeding them into `~/.claude/projects/.claude/` is unnecessary and risks stale data.
+
+### autoMemoryDirectory Option
+```json
+{
+  "autoMemoryDirectory": "<project>/.claude/memory"
+}
+```
+⚠️ Cannot be set in `.claude/settings.json` (project scope) — security restriction.
+Set in `~/.claude/settings.json` (user scope) or `settings.local.json`.
+If set, Claude writes memory directly to the repo path — no seeding needed.
 
 ### For Shared Teams
-1. Use .claude/CLAUDE.md for permanent team instructions
-2. Commit .claude/memory/ with team-learned patterns
-3. Use .claude/settings.json for team-shared permissions
-4. Each developer has .claude/settings.local.json (gitignored)
+1. Commit `.claude/memory/` with session-learned patterns
+2. Use `.claude/settings.json` for team-shared permissions
+3. `.claude/settings.local.json` is auto-gitignored — machine-local overrides only
+4. Skills, commands, agents, rules: committed to git, portable by default
 
 ### For CI/CD / Automation
 1. Commit memory to git (required for reproducibility)
-2. Use init-memory.sh to seed on container start
-3. Don't rely on ~/.claude/projects/ (will be fresh)
-4. Always assume memory is ephemeral unless seeded from git
+2. Seed with `cp -n` on container start (memory only)
+3. Don't rely on `~/.claude/projects/` for config — Claude reads from repo directly
 
 ## Relationship Between Two Memory Systems
 

@@ -24,13 +24,15 @@ Containers are ephemeral by design. On rebuild, the filesystem is lost entirely.
 ### Layer 2: Git-Committed Project Config
 `/workspace/claude/.claude/` (checked into repo)
 
-- Contains: memory/, commands/, agents/, rules/, settings.json
+- Contains: memory/, commands/, agents/, skills/, rules/, settings.json
 - Team-shared, version-controlled, reproducible
-- Seeded into named volume on `postStartCommand` via `init-memory.sh`
+- **Only memory/ needs seeding** into named volume — all other config is read directly from the repo by Claude (cwd walk-up discovery)
 
-### Layer 3: Seed-on-Start with No-Overwrite
-`init-memory.sh`: `cp -n "$MEMORY_SRC"/*.md "$MEMORY_DEST/"`
+### Layer 3: Seed-on-Start with No-Overwrite (memory only)
+`load-projects.sh`: `cp -n "$SOURCE/.claude/memory"/*.md "$TARGET/memory/"`
 
+- **Seeds**: ONLY `memory/*.md` into `~/.claude/projects/<canonical-path>/memory/`
+- **Does NOT seed**: skills/, commands/, agents/, rules/, settings.json (Claude reads those from repo directly)
 - **First start**: copies all project memory from repo → named volume (empty volume)
 - **On restart**: preserves any memories Claude wrote in-session (no-overwrite flag `-n`)
 - **Elegant approach**: no complex merge logic, just simple copy-if-not-exists

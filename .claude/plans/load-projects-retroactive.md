@@ -53,10 +53,10 @@ Without project seeding on container startup:
 - Returns array of discovered project paths
 
 **seed_project_config()**
-- Copies `.claude/` directory structure from source to `~/.claude/projects/<canonical-path>/`
-- Uses `cp -r` to preserve all subdirectories (settings, memory, skills, commands, rules, agents)
-- Optionally copies `CLAUDE.md` and `.mcp.json` root files if present
-- Returns 0 on success (optional files missing is not an error)
+- ⚠️ REVISED: Does NOT bulk-copy `.claude/` into `~/.claude/projects/<canonical-path>/.claude/`
+- Claude reads skills, commands, agents, rules, settings.json directly from the project repo (bind mount) via cwd walk-up — seeding them into the projects dir is unnecessary
+- Only creates the `memory/` directory and seeds memory files (see seed_project_memory)
+- Returns 0 on success
 
 **seed_project_memory()**
 - Copies memory files from source to target `memory/` directory
@@ -155,27 +155,15 @@ target_dir="$HOME/.claude/projects/$canonical_id"
 mkdir -p "$target_dir"
 ```
 
-**Step 3: Copy `.claude/` structure**
-```bash
-cp -r "$source_dir/.claude/" "$target_dir/.claude/"
-```
+**Step 3: ⚠️ SKIP — do not copy `.claude/` structure**
 
-This preserves all subdirectories:
-- `settings.json` — project settings
-- `settings.local.json` — local user overrides
-- `rules/` — project-specific rules
-- `commands/` — project-level commands/skills
-- `skills/` — project-level skills
-- `agents/` — project-level agents
-- `memory/` — project memory (seeded separately)
+Claude reads skills, commands, agents, rules, and settings.json directly from the project repo via cwd walk-up. Copying them into `~/.claude/projects/<path>/.claude/` is unnecessary and risks stale data overwriting live repo files.
 
-**Step 4: Copy optional root files**
-```bash
-[[ -f "$source_dir/CLAUDE.md" ]] && cp "$source_dir/CLAUDE.md" "$target_dir/"
-[[ -f "$source_dir/.mcp.json" ]] && cp "$source_dir/.mcp.json" "$target_dir/"
-```
+**Step 4: ⚠️ SKIP — do not copy CLAUDE.md or .mcp.json**
 
-**Step 5: Seed memory files**
+Claude reads these from the project repo directly. No seeding needed.
+
+**Step 5: Seed memory files (ONLY required seeding step)**
 ```bash
 mkdir -p "$target_dir/memory"
 cp -n "$source_dir/.claude/memory"/*.md "$target_dir/memory/" 2>/dev/null || true

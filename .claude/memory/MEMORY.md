@@ -106,5 +106,11 @@ Check existing mounts (like /home/claude/data) before creating new directories. 
 ### [user.md](user.md)
 GitHub username: sun2admin
 
+### [claude-code-file-write-locations.md](claude-code-file-write-locations.md)
+Definitive reference: where each file type is written during a session. Skills/commands/agents/rules/settings.json → project repo (bind mount). Auto-memory → ~/.claude/projects/<path>/memory/. settings.local.json → project repo (auto-gitignored). Confirmed via live observation + Anthropic docs.
+
+### [init-projects-sync-pattern.md](init-projects-sync-pattern.md)
+Correct load/sync pattern: load-projects.sh seeds ONLY memory/ (not entire .claude/ tree). sync-prj-repos-memory copies memory back + git commits repo. Claude reads config from repo directly — bulk-seeding .claude/ into projects dir is wrong.
+
 ## Last Updated
-2026-04-24 (Claude Code project discovery research added)
+2026-04-28 (Corrected file write locations, load/sync patterns based on Anthropic docs + live observation)
