@@ -47,7 +47,7 @@ git repo (.claude/memory/*.md)
 ~/.claude/projects/<path>/memory/  (named volume)
     ↓  Claude writes auto-memory during session
 ~/.claude/projects/<path>/memory/  (updated in named volume)
-    ↑  /sync-prj-repos-memory skill: cp + git commit + push
+    ↑  /sync-prj-repos-memory skill: rsync --delete + git commit + push
 git repo (.claude/memory/*.md)  (committed, portable)
 ```
 
@@ -70,13 +70,14 @@ Converts absolute project paths to the identifier format Claude uses for `~/.cla
 ```bash
 canonicalize_path() {
   local path=$1
-  # Strip leading slash, replace all remaining slashes with dashes
-  echo "$path" | sed 's|^/||;s|/|-|g'
+  # Strip trailing slash (glob paths include it), then leading slash, then replace / with -
+  echo "${path%/}" | sed 's|^/||;s|/|-|g'
 }
 ```
 
 **Examples:**
 - `/workspace/claude/builder-project` → `workspace-claude-builder-project`
+- `/workspace/claude/builder-project/` → `workspace-claude-builder-project` (trailing slash safe)
 - `/workspace/claude/my-first-prj` → `workspace-claude-my-first-prj`
 
 **Important:** No leading dash. Older scripts that skipped stripping the leading `/` produced `-workspace-...` — that format is wrong and will create an orphaned project dir that Claude never reads.
@@ -99,23 +100,25 @@ clone_project() {
 }
 ```
 
-Requires SSH agent or GH_TOKEN to be set up before this runs (handled by earlier init scripts).
+**Why HTTPS works without explicit credential setup:**
 
-### 3. discover_local_projects()
-
-Finds all Claude projects already present in `/workspace/claude/`:
-
-```bash
-discover_local_projects() {
-  local projects=()
-  for subdir in /workspace/claude/*/; do
-    [[ -d "$subdir.claude" ]] && projects+=("$subdir")
-  done
-  echo "${projects[@]}"
-}
+VS Code Dev Containers automatically injects a git credential helper into every container at startup:
 ```
+credential.helper = !f() { node /tmp/vscode-remote-containers-*.js git-credential-helper $*; }; f
+```
+This helper proxies git auth requests back to the **host machine's credential store** (macOS keychain, Windows Credential Manager, etc.). The container never handles credentials directly — the host's existing GitHub auth is forwarded transparently.
 
-**Detection criterion:** presence of `.claude/` subdirectory. This is the definitive marker of a Claude project — no need to check for `CLAUDE.md` or `.mcp.json`.
+This is a VS Code implicit behavior, not set up by any init script. It means:
+- ✓ HTTPS cloning works out of the box inside VS Code Dev Containers
+- ✗ Not portable — CI/CD pipelines, `docker run`, or GitHub Codespaces won't have this helper
+
+For this stack (VS Code Dev Containers only), HTTPS is fine and simpler than SSH for cloning. SSH remains available via `init-ssh.sh` for operations that need it (push, other git operations).
+
+### 3. Project Discovery (inlined in main)
+
+Local project discovery is inlined directly into `main()` rather than extracted into a separate function. This avoids the subshell + word-split anti-pattern (`projects=($(discover_local_projects))`), which loses array structure and breaks on paths with spaces.
+
+**Detection criterion:** presence of `.claude/` subdirectory — the definitive marker of a Claude project.
 
 ### 4. seed_project_memory()
 
@@ -150,14 +153,13 @@ main() {
     clone_project "$repo" && echo "✓ Cloned $repo" || echo "✗ Failed to clone $repo"
   done
 
-  # Discover all local projects and seed their memory
-  local projects
-  projects=($(discover_local_projects))
-
-  for project in "${projects[@]}"; do
+  # Discover and seed all local projects — inlined to avoid subshell/word-split issues
+  for subdir in /workspace/claude/*/; do
+    [[ -d "${subdir}.claude" ]] || continue
+    local project="${subdir%/}"
     seed_project_memory "$project" \
-      && echo "✓ Seeded $(basename $project)" \
-      || echo "✗ Failed to seed $(basename $project)"
+      && echo "✓ Seeded $(basename "$project")" \
+      || echo "✗ Failed to seed $(basename "$project")"
   done
 
   # Always exit 0 — init scripts must not fail container startup
