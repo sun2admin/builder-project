@@ -33,7 +33,20 @@ So the sync operations are:
 
 ### Location and Delivery
 
-Lives in `claude-global-config` repo, baked into **ai-install-layer (Layer 2)**:
+**Current (Phase 1):** Project-scoped skill in `builder-project` repo:
+
+```
+builder-project/
+└── .claude/
+    └── skills/
+        └── sync-prj-repos-memory/
+            ├── SKILL.md
+            └── sync-prj-repos-memory.sh   (chmod +x)
+```
+
+Available immediately — Claude discovers it via cwd walk-up from `/workspace/claude/builder-project`. No image rebuild needed.
+
+**Future (Phase 3):** Migrate to `claude-global-config`, baked into **ai-install-layer (Layer 2)**:
 
 ```
 claude-global-config/
@@ -44,7 +57,6 @@ claude-global-config/
             └── sync-prj-repos-memory.sh   (chmod +x)
 ```
 
-Baked into Layer 2 at image build time:
 ```dockerfile
 RUN git clone https://github.com/sun2admin/claude-global-config /tmp/global-config && \
     mkdir -p /home/claude/.claude/skills && \
@@ -53,7 +65,7 @@ RUN git clone https://github.com/sun2admin/claude-global-config /tmp/global-conf
     rm -rf /tmp/global-config
 ```
 
-All containers built on Layer 2 inherit the skill automatically.
+All containers built on Layer 2 will inherit the skill automatically after migration.
 
 ### Invocation
 
@@ -97,13 +109,14 @@ Same algorithm as `load-projects.sh` — must produce identical output for the p
 
 ```bash
 canonicalize_path() {
-  echo "$1" | sed 's|^/||;s|/|-|g'
+  echo "${1%/}" | sed 's|^/||;s|/|-|g'
 }
-# /workspace/claude/builder-project → workspace-claude-builder-project
-# No leading dash. Strip leading / before replacing.
+# /workspace/claude/builder-project  → workspace-claude-builder-project
+# /workspace/claude/builder-project/ → workspace-claude-builder-project (trailing slash safe)
+# No leading dash. Strip trailing slash first, then leading slash, then replace / with -.
 ```
 
-### Memory Sync (rsync --delete)
+### Memory Sync (rsync --delete with bash fallback)
 
 ```bash
 sync_memory() {
@@ -118,15 +131,30 @@ sync_memory() {
 
   mkdir -p "$repo_memory"
 
-  # rsync --delete: syncs new + modified + handles deletions
-  rsync -a --delete "$live_memory/" "$repo_memory/"
+  if command -v rsync &>/dev/null; then
+    # rsync preferred: handles new, modified, and deleted files in one pass
+    rsync -a --delete "$live_memory/" "$repo_memory/"
+  else
+    # Bash fallback for images without rsync (e.g. current container stack)
+    # Step 1: copy new/modified files from live → repo
+    cp -f "$live_memory"/*.md "$repo_memory/" 2>/dev/null || true
+    # Step 2: remove files in repo not present in live (mirrors rsync --delete behavior)
+    for f in "$repo_memory"/*.md; do
+      [[ -f "$live_memory/$(basename "$f")" ]] || rm -f "$f"
+    done
+  fi
 }
 ```
 
-**Why rsync --delete and not cp:**
+**Why not plain `cp`:**
 - `cp` copies new and modified files but leaves stale files behind
 - If Claude deleted a memory file during the session, `cp` would leave the old version in git
-- `rsync --delete` mirrors the live state exactly, including deletions
+- Both `rsync --delete` and the bash fallback mirror the live state exactly, including deletions
+
+**Why the dual approach:**
+- `rsync` is cleaner and handles the sync atomically but is not installed in the current container stack
+- The bash fallback produces identical results using only standard tools guaranteed to be present
+- `command -v rsync` detects availability at runtime — if rsync is added to the image later, it is used automatically with no code changes needed
 
 ### Git Commit
 
@@ -134,29 +162,27 @@ sync_memory() {
 commit_project() {
   local project_root=$1
 
-  cd "$project_root" || return 1
-
-  # Stage everything: memory updates + any skills/commands/etc Claude wrote during session
-  git add -A
+  # Use git -C throughout — no cd, so no working directory state leaks between projects
+  git -C "$project_root" add -A
 
   # Check if there's anything to commit
-  if git diff --cached --quiet; then
+  if git -C "$project_root" diff --cached --quiet; then
     echo "  Nothing to sync"
     return 0
   fi
 
   # Build a descriptive commit message
   local modified added deleted
-  modified=$(git diff --cached --name-only --diff-filter=M | wc -l | tr -d ' ')
-  added=$(git diff --cached --name-only --diff-filter=A | wc -l | tr -d ' ')
-  deleted=$(git diff --cached --name-only --diff-filter=D | wc -l | tr -d ' ')
+  modified=$(git -C "$project_root" diff --cached --name-only --diff-filter=M | wc -l | tr -d ' ')
+  added=$(git -C "$project_root" diff --cached --name-only --diff-filter=A | wc -l | tr -d ' ')
+  deleted=$(git -C "$project_root" diff --cached --name-only --diff-filter=D | wc -l | tr -d ' ')
 
-  git commit -m "sync-prj-repos-memory: Sync memory and config (modified $modified, added $added, deleted $deleted)"
+  git -C "$project_root" commit -m "sync-prj-repos-memory: Sync memory and config (modified $modified, added $added, deleted $deleted)"
 
   # Detect current branch and push
   local branch
-  branch=$(git rev-parse --abbrev-ref HEAD)
-  git push origin "$branch"
+  branch=$(git -C "$project_root" rev-parse --abbrev-ref HEAD)
+  git -C "$project_root" push origin "$branch"
 }
 ```
 
@@ -285,11 +311,10 @@ git -C /workspace/claude/builder-project show HEAD --name-only | grep settings.l
 
 ## Implementation Phases
 
-### Phase 1: Create claude-global-config repo
-1. Create private GitHub repo `sun2admin/claude-global-config`
-2. Create `.claude/skills/sync-prj-repos-memory/` structure
-3. Write `SKILL.md` — name, description, usage, behavior
-4. Implement `sync-prj-repos-memory.sh` with:
+### Phase 1: Implement skill in builder-project repo
+1. Create `.claude/skills/sync-prj-repos-memory/` in builder-project
+2. Write `SKILL.md` — name, description, usage, behavior
+3. Implement `sync-prj-repos-memory.sh` with:
    - `canonicalize_path()` — strip leading `/`, replace `/` with `-`
    - `find_git_root()` — traverse up to `.git/`
    - `discover_projects()` — find `.claude/` dirs under `/workspace/claude/`
@@ -300,16 +325,19 @@ git -C /workspace/claude/builder-project show HEAD --name-only | grep settings.l
 5. `chmod +x sync-prj-repos-memory.sh`
 6. Commit and push
 
-### Phase 2: Verify load-projects.sh
-1. Confirm seeds only `memory/*.md` with `cp -n`
-2. Confirm no wipe of `~/.claude/projects/`
-3. Verify restart behavior: in-session writes survive
-4. Verify rebuild behavior: memory fully restored from git
+### Phase 2: Verify load-projects.sh ✅ COMPLETE
+1. ✅ Seeds only `memory/*.md` with `cp -n` — `seed_project_config()` removed
+2. ✅ No wipe of `~/.claude/projects/`
+3. ✅ `cp -n` preserves in-session writes on restart
+4. ✅ `canonicalize_path()` trailing slash fix applied
+Committed to `sun2admin/build-with-claude-stage2` — `be946de`
 
-### Phase 3: Integrate into ai-install-layer (Layer 2)
-1. Update `ai-install-layer/Dockerfile` — clone claude-global-config, copy skills to `~/.claude/skills/`
-2. Build and test `:claude` and `:gemini` variants
-3. Push — all downstream layers inherit the skill
+### Phase 3: Migrate to claude-global-config and ai-install-layer (Layer 2)
+1. Create `claude-global-config` repo with `.claude/skills/sync-prj-repos-memory/` structure
+2. Move skill files from builder-project into claude-global-config
+3. Update `ai-install-layer/Dockerfile` — clone claude-global-config, copy skills to `~/.claude/skills/`
+4. Build and test `:claude` and `:gemini` variants
+5. Push — all downstream layers inherit the skill automatically
 
 ### Phase 4: Automatic execution (optional)
 - Claude Code hooks (`PostToolUse` or session-end) could invoke the skill automatically
