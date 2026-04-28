@@ -10,7 +10,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 - Claude stores project state in `~/.claude/projects/<cwd-path>/`
 - This location is NOT in the project repo, NOT version controlled, NOT portable
 - Without explicit persistence strategy: memory/session data is lost on rebuild or machine switch
-- **Solution:** Commit project memory to git and seed on startup via init-memory.sh
+- **Solution:** Commit project memory to git and seed on startup via load-projects.sh
 
 ### 2. Memory Persistence Improves Project Understanding Over Time
 - Claude's auto-memory accumulates learned patterns across sessions
@@ -29,7 +29,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 - `~/.claude/` in named volume (ephemeral on rebuild, persistent across restarts)
 - Project repo in bind mount (survives everything, shared across team)
 - Credentials in `/run/credentials/` via init scripts
-- init-memory.sh bridges the gap: seeds named volume from git on startup
+- load-projects.sh bridges the gap: seeds named volume from git on startup
 - **Result:** Container can be rebuilt without losing project memory
 
 ### 5. Working Directory (cwd) Determines Project Context
@@ -42,7 +42,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 ## What build-with-claude Demonstrates
 
 ### Successful Patterns
-1. **init-memory.sh** — seed project memory from git on postStartCommand
+1. **load-projects.sh** — seed project memory from git on postStartCommand
 2. **settings.local.json** — project-specific permissions and config
 3. **CLAUDE.md** — team-shared project instructions
 4. **/update-build-with-claude skill** — manual sync of memory back to git
@@ -63,7 +63,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 1. **Memory persistence is valuable** — improves Claude's project understanding
 2. **All projects should support it** — not just build-with-claude
 3. **Users can opt-out** — if truly don't need memory
-4. **Overhead is minimal** — init-memory.sh + sync skill + directory
+4. **Overhead is minimal** — load-projects.sh + sync skill + directory
 5. **Pattern is reusable** — same approach works for all project types
 6. **Team benefits** — shared learnings across developers
 

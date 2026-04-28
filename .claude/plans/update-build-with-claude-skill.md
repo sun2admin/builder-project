@@ -113,32 +113,28 @@ For each project to sync:
  - Run `git status` in project directory
  - If uncommitted changes exist:
  - Commit them with auto-message: `sync-prj-repos-memory: [auto] Commit outstanding changes (modified X, added Y, deleted Z)`
-4. **Sync entire .claude/ directory** from live to repo:
- - Source: `~/.claude/projects/<canonical-path>/.claude/`
- - Destination: `<project>/.claude/`
- - Method: rsync with --delete (captures new files, modifications, AND deletions)
- - Exclusions: none (sync everything including settings.local.json)
+4. **Sync memory back to repo**:
+ - Source: `~/.claude/projects/<canonical-path>/memory/*.md`
+ - Destination: `<project>/.claude/memory/`
+ - Method: `cp` (memory is the only thing written outside the repo)
+ - Note: Skills/commands/agents/rules/settings.json are already in the repo (Claude writes there directly)
 5. **Verify and commit**:
- - Stage: `git add .claude/ CLAUDE.md .mcp.json` (all .claude config + root files)
- - Commit with message: `sync-prj-repos-memory: Sync config and memory (modified X, added Y, deleted Z)`
+ - Stage: `git add -A` (captures memory updates + any new/modified/deleted skills, commands, etc.)
+ - Commit with message: `sync-prj-repos-memory: Sync memory and config (modified X, added Y, deleted Z)`
  - Push to origin (detect branch)
 6. **Report**:
  - Per-project status with ✓/✗
- - Files synced/deleted count
+ - Files synced count
  - Git status (pushed, remote)
  - "nothing to sync" if no changes
  - Error messages on failure
 
 **Key architectural points**:
-- ✅ Syncs EVERYTHING (memory + all config files)
-- ✅ Uses rsync with --delete to capture deletions
+- ✅ Syncs memory (the only thing written outside repo) + commits all repo changes
+- ✅ `git add -A` naturally captures deletions (skills/commands deleted from repo during session)
 - ✅ Commit messages include skill name and [auto] for automated pre-sync commits
 - ✅ Handles outstanding changes before syncing
-- ✅ Works with init-projects.sh wipe-and-reseed pattern:
- - User deletes skill during session (from ~/.claude/projects/)
- - Sync skill syncs deletion to git with --delete
- - init-projects.sh wipes ~/.claude/projects/ on restart
- - init-projects.sh re-seeds from git (deletion persisted)
+- ✅ Do NOT sync `~/.claude/projects/<path>/.claude/` back to repo — that is a stale seed artifact
 
 **Reusable code to leverage:**
 - `canonicalize_path()` from `/workspace/claude/.claude/scripts/init-workspace.sh`
@@ -179,23 +175,14 @@ RUN git clone https://github.com/sun2admin/claude-global-config /tmp/global-conf
  rm -rf /tmp/global-config
 ```
 
-### 4. Modify init-projects.sh
-**File**: `/workspace/.devcontainer/scripts/init-projects.sh`
+### 4. Verify load-projects.sh
+**File**: `/workspace/.devcontainer/scripts/load-projects.sh`
 
-**Changes**:
-- Update `seed_project_config()` to copy EVERYTHING including `settings.local.json`:
- ```bash
- # Copy entire .claude/ directory (including settings.local.json)
- if [ -d "$project_path/.claude" ]; then
- cp -r "$project_path/.claude" "$target_base/"
- fi
- ```
-- **BEFORE seeding projects**, wipe the named volume: 
- ```bash
- # Wipe old session state, will be re-seeded from git
- rm -rf "$HOME/.claude/projects/"
- mkdir -p "$HOME/.claude/projects/"
- ```
+**Correct behavior** (no changes needed if already implemented correctly):
+- Seeds only `memory/*.md` into `~/.claude/projects/<canonical-path>/memory/`
+- Uses `cp -n` (no-overwrite) to preserve in-session writes on container restart
+- Does NOT copy entire `.claude/` tree — Claude reads config from repo directly
+- Does NOT wipe `~/.claude/projects/` — `cp -n` correctly handles restart vs rebuild
 
 ### 5. Archive/delete in build-with-claude
 - `/workspace/claude/.claude/commands/update-build-with-claude.md` — delete (replaced by /sync-prj-repos-memory in Layer 2)
@@ -268,22 +255,19 @@ cd /tmp
  - Project scope determination (arg vs cwd vs all)
  - canonicalize_path() function (copied from init-workspace.sh)
  - Outstanding changes auto-commit (check git status, commit if needed)
- - rsync for full .claude/ sync with --delete (captures all changes and deletions)
- - Git workflow (add, commit, push per project)
+ - Copy memory: `cp ~/.claude/projects/<path>/memory/*.md <repo>/.claude/memory/`
+ - `git add -A && git commit && git push` (captures memory + all repo changes)
  - Status reporting with ✓/✗ indicators and "nothing to sync"
 5. Make script executable: `chmod +x sync-prj-repos-memory.sh`
 6. Commit and push to origin
 
-### Phase 2: Update init-projects.sh
-1. File: `/workspace/.devcontainer/scripts/init-projects.sh`
-2. Add wipe step at start of `main()`: `rm -rf "$HOME/.claude/projects/"` (fresh start each container)
-3. Verify `seed_project_config()` copies ENTIRE `.claude/` including `settings.local.json` (use `cp -r`)
-4. Update `seed_project_memory()` to use `cp -r` instead of `cp -n`:
- - Reason: Sync skill runs automatically before exit, so git always has latest state
- - Fresh named volume on restart (wiped), no pre-existing files to conflict with
- - Regular overwrite is safe and simpler
-5. Test: Run init-projects.sh, verify clean seed from git
-6. Commit and push to build-with-claude
+### Phase 2: Verify load-projects.sh
+1. File: `/workspace/.devcontainer/scripts/load-projects.sh`
+2. Confirm: NO wipe of `~/.claude/projects/` (cp -n handles restart vs rebuild correctly)
+3. Confirm: seeds only `memory/*.md` — NOT entire `.claude/` tree
+4. Confirm: uses `cp -n` (no-overwrite) to preserve in-session memory writes on restart
+5. Test: Run load-projects.sh, verify memory seeded correctly from git
+6. Commit and push if any corrections needed
 
 ### Phase 3: Integrate into ai-install-layer (Layer 2)
 1. Access `ai-install-layer` repo (https://github.com/sun2admin/ai-install-layer)
@@ -309,7 +293,7 @@ cd /tmp
 2. Commit and push to build-with-claude repo
 
 ### Phase 6: Verify
-1. Rebuild container with updated ai-install-layer and init-projects.sh
+1. Rebuild container with updated ai-install-layer and load-projects.sh
 2. Verify `/sync-prj-repos-memory` appears in `/help`
 3. Test all verification scenarios below
 

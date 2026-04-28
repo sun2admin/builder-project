@@ -181,12 +181,12 @@ In build-with-claude scenario with `/workspace/` as root and `/workspace/claude/
 1. **When Claude starts with cwd=/workspace/claude:**
  - Searches: `/workspace/claude/.claude/` → `/workspace/.claude/` → `~/.claude/`
  - Loads: project settings, then user settings, then defaults
- - Creates project entry: `~/.claude/projects/-workspace-claude/`
+ - Creates project entry: `~/.claude/projects/workspace-claude/`
 
 2. **If you had /workspace/project-b:**
  - Would need separate `.claude/settings.json` in `/workspace/project-b/.claude/`
  - Starting from `/workspace/project-b` would load that project's config
- - Creates separate entry: `~/.claude/projects/-workspace-project-b/`
+ - Creates separate entry: `~/.claude/projects/workspace-project-b/`
 
 3. **No collision because:**
  - Config is loaded from cwd (separate per project)

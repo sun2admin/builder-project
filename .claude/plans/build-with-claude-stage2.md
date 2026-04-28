@@ -5,17 +5,17 @@
 We are creating a test/staging environment (`build-with-claude-stage2`) to validate our future Layer 4 deployment pattern and the `/sync-prj-repos-memory` skill without risking the production `build-with-claude` repo.
 
 **Why stage2 is needed:**
-- Test the multi-project discovery mechanism (init-projects.sh finding projects under /workspace/claude/)
+- Test the multi-project discovery mechanism (load-projects.sh finding projects under /workspace/claude/)
 - Validate the canonical path calculation and memory seeding for /workspace/claude/<project>/ structure
 - Prove the sync-prj-repos-memory skill works with this directory layout
-- Validate complete end-to-end architecture: init-projects.sh → memory seeding → sync skill
+- Validate complete end-to-end architecture: load-projects.sh → memory seeding → sync skill
 - All without affecting production build-with-claude repo
 
 **Key architectural insight:**
 Future Layer 4 projects will have this structure:
 - Project repo root has minimal devcontainer config
 - On startup, clones actual project (e.g., builder-project) to /workspace/claude/<project>/
-- init-projects.sh discovers and seeds all projects under /workspace/claude/
+- load-projects.sh discovers and seeds all projects under /workspace/claude/
 - sync-prj-repos-memory syncs from ~/.claude/projects/ back to git
 - This pattern scales to multiple projects
 
@@ -31,11 +31,11 @@ Future Layer 4 projects will have this structure:
 
 **Task 1.2: Set up minimal devcontainer structure**
 - Copy `.devcontainer/devcontainer.json` from build-with-claude
-- Copy all init scripts: init-ssh.sh, init-gh-token.sh, init-github-mcp.sh, init-projects.sh
+- Copy all init scripts: init-ssh.sh, init-gh-token.sh, init-github-mcp.sh, load-projects.sh
 - Copy init-firewall.sh to scripts/ if needed
 - Update devcontainer.json:
  - Reference Layer 3 plugin image (same as build-with-claude): `ghcr.io/sun2admin/claude-plugins-a7f3d2e8:latest`
- - Keep postStartCommand with: firewall, ssh, gh-token, github-mcp, init-projects.sh
+ - Keep postStartCommand with: firewall, ssh, gh-token, github-mcp, load-projects.sh
  - Add postAttachCommand: cd to /workspace/claude/builder-project before starting Claude
 
 **Task 1.3: Add repository setup scripts**
@@ -68,8 +68,8 @@ Future Layer 4 projects will have this structure:
 - **Result**: 37 deduplicated, content-verified memory files synced to builder-project
 
 **Task 2.2: Copy .claude/ subdirectories**
-- `.claude/settings.json` — ✓ include (project settings)
-- `.claude/settings.local.json` — ✓ include (user settings/overrides for stage2 inheritance)
+- `.claude/settings.json` — ✓ include (project settings, team-shared)
+- `.claude/settings.local.json` — ✗ exclude (machine-local, auto-gitignored, not portable)
 - `.claude/commands/` — ✓ include all
 - `.claude/skills/` — ✓ include all
 - `.claude/agents/` — ✓ include all (if populated)
@@ -81,7 +81,7 @@ Future Layer 4 projects will have this structure:
 - Include all active plans:
  - `update-build-with-claude.md` (sync-prj-repos-memory skill design)
  - `build-with-claude-stage2.md` (this plan)
- - `federated-zooming-teacup.md` (init-projects.sh plan)
+ - `federated-zooming-teacup.md` (load-projects.sh plan)
  - Any other plans
 
 **Task 2.4: Explicitly excluded from sync**
@@ -116,13 +116,13 @@ Future Layer 4 projects will have this structure:
  3. init-gh-token.sh
  4. init-github-mcp.sh
  5. Clone builder-project to /workspace/claude/builder-project
- 6. init-projects.sh (discovers and seeds /workspace/claude/builder-project)
+ 6. load-projects.sh (discovers and seeds /workspace/claude/builder-project)
 
-**Task 3.2: Verify init-projects.sh discovery**
+**Task 3.2: Verify load-projects.sh discovery**
 - Check that `/workspace/claude/builder-project/` is discovered (has `.claude/` directory)
 - Verify memory seeded to `~/.claude/projects/workspace-claude-builder-project/memory/`
-- Check file count: all 37+ memory files present
-- Verify settings.json, commands/, skills/, agents/ present in ~/.claude/projects/
+- Check file count: all 37+ memory files present in memory/ directory
+- Note: settings.json, commands/, skills/, agents/ are NOT seeded into ~/.claude/projects/ — Claude reads them directly from the repo
 
 **Task 3.3: Start Claude in builder-project**
 - cd /workspace/claude/builder-project
@@ -157,7 +157,7 @@ Future Layer 4 projects will have this structure:
 - `.devcontainer/scripts/init-ssh.sh` (copy)
 - `.devcontainer/scripts/init-gh-token.sh` (copy)
 - `.devcontainer/scripts/init-github-mcp.sh` (copy)
-- `.devcontainer/scripts/init-projects.sh` (copy)
+- `.devcontainer/scripts/load-projects.sh` (copy)
 - `.devcontainer/scripts/clone-builder-project.sh` (new - optional if integrated into postStartCommand)
 - `README.md` (explain stage2 purpose and usage)
 
@@ -184,7 +184,7 @@ Future Layer 4 projects will have this structure:
 - [ ] Commit and push successful to builder-project repo
 
 **After container startup:**
-- [ ] init-projects.sh discovers /workspace/claude/builder-project
+- [ ] load-projects.sh discovers /workspace/claude/builder-project
 - [ ] Memory seeded to ~/.claude/projects/workspace-claude-builder-project/memory/
 - [ ] All 37+ files present in seeded memory
 - [ ] Claude starts successfully in /workspace/claude/builder-project

@@ -58,18 +58,18 @@ Containers are ephemeral by design. On rebuild, the filesystem is lost entirely.
 
 - **Project Repo** (`/workspace/claude/.claude/`) = shared, team-visible, stable config
 - **Named Volume** (`/home/claude/.claude/`) = user/session-specific, ephemeral-but-restart-persistent
-- **init-memory.sh** = bridge that seeds the named volume from repo on start
+- **load-projects.sh** = bridge that seeds the named volume from repo on start
 
 On rebuild:
 1. Fresh container created
 2. Fresh named volume created (empty)
-3. init-memory.sh copies project config from repo into named volume
+3. load-projects.sh copies project config from repo into named volume
 4. Claude starts and sees fresh config
 
 On restart (same container):
 1. Container restarts
 2. Named volume preserved (still has session-written memories + project config)
-3. init-memory.sh runs again but `-n` flag prevents overwriting session writes
+3. load-projects.sh runs again but `-n` flag prevents overwriting session writes
 4. Claude starts and sees preserved state
 
 ## Why `cp -n` (No-Overwrite) is Crucial
@@ -93,10 +93,10 @@ All new projects (Minimal, Standard, Full) should use this exact pattern:
 1. **devcontainer.json**
  - Named volume: `claude-code-config-${devcontainerId}` → `/home/claude/.claude`
  - `CLAUDE_CONFIG_DIR` env var pointing to `/home/claude/.claude`
- - `postStartCommand` that runs init-memory.sh
+ - `postStartCommand` that runs load-projects.sh
 
-2. **init-memory.sh**
- - Copy structure: `cp -n` from `/workspace/<project>/.claude/memory/` → `/home/claude/.claude/projects/-workspace/memory/`
+2. **load-projects.sh**
+ - Seeds memory only: `cp -n /workspace/<project>/.claude/memory/*.md ~/.claude/projects/<canonical-id>/memory/`
  - Graceful error handling
 
 3. **Project Config Directories**

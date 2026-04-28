@@ -56,7 +56,6 @@ This directory is populated by `load-projects.sh` seeding — it is NOT written 
 **The only files that genuinely belong in `~/.claude/projects/<path>/` are:**
 - `memory/` — auto-memory Claude writes and reads during sessions
 - `*.jsonl` — session transcripts (auto-created, never synced)
-- `CLAUDE.md`, `.mcp.json` — these are read here by Claude when the projects dir is the effective root (rare; in normal containerized setups with bind mounts, Claude reads from the repo directly)
 
 ## Implications for load-projects.sh
 

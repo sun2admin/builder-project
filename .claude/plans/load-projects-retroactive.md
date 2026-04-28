@@ -38,7 +38,7 @@ Without project seeding on container startup:
 
 **canonicalize_path()**
 - Converts file paths to canonical form for project IDs
-- Pattern: `/workspace/claude/project-name` → `-workspace-claude-project-name`
+- Pattern: `/workspace/claude/project-name` → `workspace-claude-project-name`
 - Uses: `echo "$path" | sed 's|^/||;s|/|-|g'`
 
 **clone_project()**
@@ -88,9 +88,9 @@ canonicalize_path() {
 ```
 
 **Examples**:
-- `/workspace/claude/build-with-claude` → `-workspace-claude-build-with-claude`
-- `/workspace/claude/my-first-claude-prj` → `-workspace-claude-my-first-claude-prj`
-- `/workspace/my-workspace/project-a` → `-workspace-my-workspace-project-a`
+- `/workspace/claude/build-with-claude` → `workspace-claude-build-with-claude`
+- `/workspace/claude/my-first-claude-prj` → `workspace-claude-my-first-claude-prj`
+- `/workspace/my-workspace/project-a` → `workspace-my-workspace-project-a`
 
 ### 3. Remote Project Cloning
 
@@ -298,14 +298,14 @@ Expected: Clone fails, projects_failed incremented, continue with local discover
 3. **Clear feedback**: Status messages with `✓` and `✗` for each operation
 4. **Always succeeds**: Returns 0 on exit even with failures (init scripts must not break container startup)
 5. **Idempotent**: Can be called multiple times without issues (skips existing repos, respects in-session changes)
-6. **Comprehensive**: Seeds entire `.claude/` structure, not just memory
+6. **Minimal seeding**: Seeds only `memory/*.md` — Claude reads all other config directly from the repo via cwd walk-up
 
 ## Summary
 
-`load-projects.sh` is a comprehensive project seeding script that:
+`load-projects.sh` is a project seeding script that:
 - Clones remote projects from GitHub into the container
 - Discovers local projects already in `/workspace/claude/`
-- Seeds complete project configuration to `~/.claude/projects/`
+- Seeds only `memory/*.md` to `~/.claude/projects/<canonical-path>/memory/` (not the full .claude/ tree)
 - Preserves in-session memory changes across restarts
 - Enables multi-project workspace support
 - Integrates seamlessly into the devcontainer startup sequence

@@ -18,7 +18,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 **Q3: init-claude-prj.sh - does it exist?**
 - A: No, it does not currently exist
 - Status: New script to create
-- Replaces: Current init-memory.sh pattern
+- Replaces: Old init-memory.sh pattern (now load-projects.sh)
 - Purpose: Seed memory from git to ~/.claude/projects/<path>/memory/
 
 **Q4: sync-project-repo skill - does it exist?**
@@ -63,7 +63,7 @@ These questions should be revisited during implementation:
 
 ## Implementation Patterns to Follow
 
-- **init-claude-prj.sh**: Modeled after init-memory.sh (seed from git, use cp -n to preserve live)
+- **init-claude-prj.sh**: Modeled after load-projects.sh (seed from git, use cp -n to preserve live)
 - **sync-project-repo**: Modeled after update-build-with-claude (copy, commit, push)
 - **Error messages**: Clear and actionable for user
 - **Dynamic queries**: Always fetch fresh data (variants, repos, images) per skill execution
