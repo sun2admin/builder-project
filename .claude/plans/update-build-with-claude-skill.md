@@ -1,327 +1,326 @@
-# Create /sync-prj-repos-memory Skill (Global Workspace Skill)
-
-## Context
-
-Currently there's a manual skill at `/update-build-with-claude` that syncs memory from live session back to a single project's git repo. This needs to be generalized into a workspace-level skill `/sync-prj-repos-memory` that can sync memory for ANY project.
-
-**Architecture decision**: 
-- Create new repo `claude-global-config` to hold workspace-level skills, MCP servers, and config
-- Integrate into **ai-install-layer (Layer 2)** — the foundational layer all containers build on
-- Skills in `~/.claude/skills/` will be available to all projects automatically
-- This keeps global workspace tooling separate from project-specific code
-
-## Current Implementation
-
-The existing `/update-build-with-claude` command does:
-
-1. **Sync memory files** (copy from live back to repo):
- - Source: `~/.claude/projects/workspace-claude/memory/*.md`
- - Dest: `/workspace/claude/.claude/memory/`
- - Mode: Complete sync (overwrite all, not incremental)
-
-2. **Remove stale files**:
- - Any file in repo that's not in live memory gets deleted
-
-3. **Verify counts match**:
- - File count check: live memory file count == repo memory file count
-
-4. **Commit and push**:
- - `git add .claude/memory/ MEMORY.md`
- - Exclude sensitive files: `settings.local.json`
- - Create descriptive commit message
- - Push to origin main
-
-**Problem**: This only works for the hardcoded `workspace-claude` project. The new skill needs to handle ALL projects.
-
-## Design Decisions (Finalized)
-
-1. **Repository**: New repo `claude-global-config`
- - Holds workspace-level skills, MCP servers, utilities, and config
- - Will be integrated into ai-install-layer (Layer 2)
- - Structure:
- ```
- claude-global-config/
- └── .claude/
- └── skills/
- └── sync-prj-repos-memory/
- ├── SKILL.md
- └── sync-prj-repos-memory.sh
- ```
-
-2. **Skill name**: `/sync-prj-repos-memory` (generic, workspace-scoped)
- - Replaces hardcoded `/update-build-with-claude`
- - Works for any project in the workspace
- - Available globally from Layer 2
-
-3. **Integration point**: ai-install-layer (Layer 2)
- - After `npm install -g @anthropic-ai/claude-code`
- - Clone `claude-global-config` repo
- - Copy skills to `~/.claude/skills/`
- - All downstream layers inherit the skills
-
-4. **Execution context**: Manual or automatic
- - Explicit invocation: `/sync-prj-repos-memory`
- - Automatic before container exit is ideal but not required to preserve skills/commands (those write to repo directly)
- - Auto-memory in named volume is the only thing at risk if not synced before rebuild
- - ⚠️ REVISED: Wipe-and-reseed (`rm -rf ~/.claude/projects/`) is NOT needed or recommended — `cp -n` on load correctly handles the restart vs rebuild distinction
-
-5. **Scope**: All projects + correct sync targets
- - Discover all projects in ~/.claude/projects/
- - ⚠️ REVISED: Do NOT rsync `~/.claude/projects/<path>/.claude/` back to repo — that copy is stale seeded data
- - Claude writes skills, commands, agents, rules, settings.json directly to the repo (bind mount) during sessions — they are already in the right place
- - Only two sync operations needed:
-   1. Copy `~/.claude/projects/<path>/memory/*.md` → `<repo>/.claude/memory/` (memory is the only thing written outside the repo)
-   2. `git add -A && git commit && git push` (captures memory + any new skills/commands/etc Claude wrote to repo)
- - `settings.local.json` lives in repo `.claude/` (auto-gitignored) — do not commit it
- - Deletions of skills/commands: handled naturally since Claude deletes from repo directly; git status shows them
-
-6. **Implementation**: Executable skill (shell script)
- - Full script implementation in sync-prj-repos-memory.sh
- - Self-contained, no supporting scripts needed
- - Uses rsync for robust directory sync with selective exclusions
-
-## Implementation Approach: sync-prj-repos-memory Skill
-
-### New skill location and structure:
-```
-claude-global-config/ (NEW REPO)
-└── .claude/
- └── skills/
- └── sync-prj-repos-memory/
- ├── SKILL.md ← metadata and usage documentation
- └── sync-prj-repos-memory.sh ← bash implementation
-```
-
-### SKILL.md Structure
-- **Name**: sync-prj-repos-memory
-- **Description**: Sync memory from live session back to project git repositories
-- **Usage**: `/sync-prj-repos-memory [project-path]`
-- **Behavior**: 
- - If `project-path` provided: sync only that project
- - If no path provided and in a project dir: sync that project only
- - If no path and outside a project: sync all discovered projects
-- **Output**: List of synced projects, file counts, git status
-
-### sync-prj-repos-memory.sh Implementation
-
-**What it needs to do** (generalized from current /update-build-with-claude):
-
-For each project to sync:
-1. **Find project root** — traverse up directory tree until .git/ found
-2. **Calculate canonical path** — use canonicalize_path() from init-workspace.sh
-3. **Check for outstanding uncommitted changes**:
- - Run `git status` in project directory
- - If uncommitted changes exist:
- - Commit them with auto-message: `sync-prj-repos-memory: [auto] Commit outstanding changes (modified X, added Y, deleted Z)`
-4. **Sync memory back to repo**:
- - Source: `~/.claude/projects/<canonical-path>/memory/*.md`
- - Destination: `<project>/.claude/memory/`
- - Method: `cp` (memory is the only thing written outside the repo)
- - Note: Skills/commands/agents/rules/settings.json are already in the repo (Claude writes there directly)
-5. **Verify and commit**:
- - Stage: `git add -A` (captures memory updates + any new/modified/deleted skills, commands, etc.)
- - Commit with message: `sync-prj-repos-memory: Sync memory and config (modified X, added Y, deleted Z)`
- - Push to origin (detect branch)
-6. **Report**:
- - Per-project status with ✓/✗
- - Files synced count
- - Git status (pushed, remote)
- - "nothing to sync" if no changes
- - Error messages on failure
-
-**Key architectural points**:
-- ✅ Syncs memory (the only thing written outside repo) + commits all repo changes
-- ✅ `git add -A` naturally captures deletions (skills/commands deleted from repo during session)
-- ✅ Commit messages include skill name and [auto] for automated pre-sync commits
-- ✅ Handles outstanding changes before syncing
-- ✅ Do NOT sync `~/.claude/projects/<path>/.claude/` back to repo — that is a stale seed artifact
-
-**Reusable code to leverage:**
-- `canonicalize_path()` from `/workspace/claude/.claude/scripts/init-workspace.sh`
-- `find_git_root()` pattern: traverse up to .git/
-- Git workflow patterns: stage, commit, push
-- Status reporting: checkmarks from build-workspace.sh
-
-## Repos and Files to Create
-
-### 1. Create new repo: claude-global-config
-**GitHub repo**: `https://github.com/sun2admin/claude-global-config`
-
-**Initial structure**:
-```
-claude-global-config/
-├── README.md
-└── .claude/
- └── skills/
- └── sync-prj-repos-memory/
- ├── SKILL.md
- └── sync-prj-repos-memory.sh
-```
-
-### 2. Files to create in claude-global-config
-- `claude-global-config/.claude/skills/sync-prj-repos-memory/SKILL.md` — skill metadata, description, usage
-- `claude-global-config/.claude/skills/sync-prj-repos-memory/sync-prj-repos-memory.sh` — executable bash script (chmod +x)
-
-### 3. Modify ai-install-layer Dockerfile
-**File**: `ai-install-layer/Dockerfile`
-
-**Add after Claude Code install** (after `npm install -g @anthropic-ai/claude-code`):
-```dockerfile
-# Add global workspace skills from claude-global-config
-RUN git clone https://github.com/sun2admin/claude-global-config /tmp/global-config && \
- mkdir -p /home/claude/.claude/skills && \
- cp -r /tmp/global-config/.claude/skills/* /home/claude/.claude/skills/ && \
- chown -R claude:claude /home/claude/.claude/skills && \
- rm -rf /tmp/global-config
-```
-
-### 4. Verify load-projects.sh
-**File**: `/workspace/.devcontainer/scripts/load-projects.sh`
-
-**Correct behavior** (no changes needed if already implemented correctly):
-- Seeds only `memory/*.md` into `~/.claude/projects/<canonical-path>/memory/`
-- Uses `cp -n` (no-overwrite) to preserve in-session writes on container restart
-- Does NOT copy entire `.claude/` tree — Claude reads config from repo directly
-- Does NOT wipe `~/.claude/projects/` — `cp -n` correctly handles restart vs rebuild
-
-### 5. Archive/delete in build-with-claude
-- `/workspace/claude/.claude/commands/update-build-with-claude.md` — delete (replaced by /sync-prj-repos-memory in Layer 2)
-
-**REUSE (don't modify):**
-- `/workspace/claude/.claude/scripts/init-workspace.sh` — extract and reuse canonicalize_path() logic
-
-## Verification and Testing
-
-### Test 1: Skill discovery at startup
-```
-Start new container
-/help | grep sync-prj-repos-memory
-# Verify: skill appears in help output with description
-```
-
-### Test 2: Sync single project (cwd-based)
-```
-cd /workspace/claude
-/sync-prj-repos-memory
-# Verify:
-# - Memory files copied from ~/.claude/projects/workspace-claude/memory/ to /workspace/claude/.claude/memory/
-# - File counts match (ls -1 | wc -l comparison)
-# - No stale files left behind
-# - Git commit created with descriptive message
-# - Push succeeded to origin main
-```
-
-### Test 3: Sync with explicit project path
-```
-cd /tmp
-/sync-prj-repos-memory /workspace/claude/my-first-claude-prj
-# Verify: only my-first-claude-prj synced, not build-with-claude
-# - Memory from ~/.claude/projects/workspace-claude-my-first-claude-prj/ synced to project
-# - Git commit and push succeeded in that project only
-```
-
-### Test 4: Sync all projects (no args, called outside project)
-```
-cd /tmp
-/sync-prj-repos-memory
-# Verify: discovers and syncs all projects
-# - workspace-claude (build-with-claude)
-# - workspace-claude-my-first-claude-prj
-# - (any others)
-# Each shows ✓ or ✗ status
-```
-
-### Test 5: Edge cases
-- Missing live memory directory (should skip gracefully)
-- No changes to sync (should report "nothing to sync")
-- Git errors (missing .git, no remote, etc.) — report clearly
-- Sensitive files not committed (settings.local.json, *.local.json)
-- Stale file removal works (add/delete files in live, verify sync removes them from repo)
-
-### Test 6: Integration
-- Skill invocable as `/sync-prj-repos-memory` from Claude CLI
-- Works in both interactive and piped input modes
-- Can be called from cron/automation (no interactive prompts needed)
-
-## Implementation Steps
-
-### Phase 1: Create claude-global-config repo
-1. Create new GitHub repo `sun2admin/claude-global-config`
-2. Create `.claude/skills/sync-prj-repos-memory/` directory structure
-3. Write SKILL.md with metadata, description, usage, and examples
-4. Implement sync-prj-repos-memory.sh:
- - Argument parsing (optional project path)
- - Project discovery logic (find all in ~/.claude/projects/)
- - Project scope determination (arg vs cwd vs all)
- - canonicalize_path() function (copied from init-workspace.sh)
- - Outstanding changes auto-commit (check git status, commit if needed)
- - Copy memory: `cp ~/.claude/projects/<path>/memory/*.md <repo>/.claude/memory/`
- - `git add -A && git commit && git push` (captures memory + all repo changes)
- - Status reporting with ✓/✗ indicators and "nothing to sync"
-5. Make script executable: `chmod +x sync-prj-repos-memory.sh`
-6. Commit and push to origin
-
-### Phase 2: Verify load-projects.sh
-1. File: `/workspace/.devcontainer/scripts/load-projects.sh`
-2. Confirm: NO wipe of `~/.claude/projects/` (cp -n handles restart vs rebuild correctly)
-3. Confirm: seeds only `memory/*.md` — NOT entire `.claude/` tree
-4. Confirm: uses `cp -n` (no-overwrite) to preserve in-session memory writes on restart
-5. Test: Run load-projects.sh, verify memory seeded correctly from git
-6. Commit and push if any corrections needed
-
-### Phase 3: Integrate into ai-install-layer (Layer 2)
-1. Access `ai-install-layer` repo (https://github.com/sun2admin/ai-install-layer)
-2. Update Dockerfile to clone and copy skills from claude-global-config
-3. Add after `npm install -g @anthropic-ai/claude-code`:
- ```dockerfile
- RUN git clone https://github.com/sun2admin/claude-global-config /tmp/global-config && \
- mkdir -p /home/claude/.claude/skills && \
- cp -r /tmp/global-config/.claude/skills/* /home/claude/.claude/skills/ && \
- chown -R claude:claude /home/claude/.claude/skills && \
- rm -rf /tmp/global-config
- ```
-4. Test build of ai-install-layer with :claude and :gemini variants
-5. Push changes to ai-install-layer
-
-### Phase 4: Set up automatic execution
-1. Determine mechanism for automatic sync before container exit (hook, postAttachCommand, or other)
-2. Ensure sync-prj-repos-memory runs automatically (transparent to user)
-3. Document: "Sync runs automatically before rebuild; no manual action required"
-
-### Phase 5: Clean up build-with-claude
-1. Delete `/workspace/claude/.claude/commands/update-build-with-claude.md` (replaced by global skill)
-2. Commit and push to build-with-claude repo
-
-### Phase 6: Verify
-1. Rebuild container with updated ai-install-layer and load-projects.sh
-2. Verify `/sync-prj-repos-memory` appears in `/help`
-3. Test all verification scenarios below
-
+---
+name: sync-prj-repos-memory-skill-plan
+description: Design and implementation plan for the /sync-prj-repos-memory global workspace skill
 ---
 
-## What the Skill Currently Does (Summary)
+# /sync-prj-repos-memory — Global Workspace Skill
 
-**Current /update-build-with-claude implementation**:
-1. Syncs memory from `~/.claude/projects/workspace-claude/memory/` → `/workspace/claude/.claude/memory/`
-2. Removes stale files (in repo but not in live)
-3. Verifies file counts match
-4. Commits with message: lists modified, added, deleted files
-5. Pushes to origin main
+## What It Does
 
-**What /sync-prj-repos-memory needs to do** (generalized):
-1. Same memory sync logic, but for ALL projects (not hardcoded)
-2. Discover projects in `~/.claude/projects/`
-3. For each project:
- - Find git root
- - Calculate canonical path
- - Sync memory back to project repo
- - Remove stale files
- - Commit and push
-4. Report per-project status
+`/sync-prj-repos-memory` is the **outbound half** of the memory persistence lifecycle:
 
-**Open questions for discussion**:
-- Should it skip projects with no changes, or report "nothing to sync"?
-- How should it handle failed syncs (one project fails, continue with others)?
-- Should memory files be the only thing synced, or also `.claude/` config files?
-- What should the commit message format be per project?
-- Should it validate git is clean before syncing (no uncommitted changes)?
+```
+git repo (.claude/memory/*.md)
+    ↓  load-projects.sh: cp -n on container start       ← inbound
+~/.claude/projects/<path>/memory/  (named volume)
+    ↓  Claude writes auto-memory during session
+~/.claude/projects/<path>/memory/  (updated in named volume)
+    ↑  /sync-prj-repos-memory: rsync + git commit/push  ← outbound (this skill)
+git repo (.claude/memory/*.md)  (committed, portable)
+```
+
+Without this skill, memory written during a session lives only in the named volume. It survives a container restart but is lost on rebuild. This skill commits it back to git so it survives rebuilds and is portable across machines.
+
+## Why "sync-prj-repos-memory" and Not a Broader Sync
+
+Claude writes skills, commands, agents, rules, and settings.json **directly to the project repo** (bind mount) during sessions — they are already in git. The only thing written *outside* the repo is auto-memory, which goes to the named volume at `~/.claude/projects/<path>/memory/`.
+
+So the sync operations are:
+1. **Memory**: `rsync --delete` from named volume → repo (handles new, modified, AND deleted files)
+2. **Everything else**: `git add -A && git commit && git push` (picks up anything Claude wrote to the repo: new skills, deleted commands, modified settings, etc.)
+
+## Skill Specification
+
+### Location and Delivery
+
+Lives in `claude-global-config` repo, baked into **ai-install-layer (Layer 2)**:
+
+```
+claude-global-config/
+└── .claude/
+    └── skills/
+        └── sync-prj-repos-memory/
+            ├── SKILL.md
+            └── sync-prj-repos-memory.sh   (chmod +x)
+```
+
+Baked into Layer 2 at image build time:
+```dockerfile
+RUN git clone https://github.com/sun2admin/claude-global-config /tmp/global-config && \
+    mkdir -p /home/claude/.claude/skills && \
+    cp -r /tmp/global-config/.claude/skills/* /home/claude/.claude/skills/ && \
+    chown -R claude:claude /home/claude/.claude/skills && \
+    rm -rf /tmp/global-config
+```
+
+All containers built on Layer 2 inherit the skill automatically.
+
+### Invocation
+
+```
+/sync-prj-repos-memory [project-path]
+```
+
+| Invocation | Behavior |
+|---|---|
+| `/sync-prj-repos-memory` (from inside a git repo) | Sync the current project only |
+| `/sync-prj-repos-memory /workspace/claude/my-prj` | Sync the specified project only |
+| `/sync-prj-repos-memory` (from outside any git repo) | Sync ALL projects in `/workspace/claude/` |
+
+### Project Discovery
+
+For "sync all" mode, projects are discovered from `/workspace/claude/` (not from `~/.claude/projects/`). This avoids the reverse-mapping problem: canonical IDs like `workspace-claude-my-prj` cannot be reliably reverse-mapped to paths because project names can contain hyphens that collide with the path separator.
+
+```bash
+for subdir in /workspace/claude/*/; do
+  [[ -d "$subdir.claude" ]] && sync_project "$subdir"
+done
+```
+
+For single-project mode, the git root is found by traversing up from cwd:
+```bash
+find_git_root() {
+  local dir="${1:-$PWD}"
+  while [[ "$dir" != "/" ]]; do
+    [[ -d "$dir/.git" ]] && echo "$dir" && return 0
+    dir=$(dirname "$dir")
+  done
+  return 1
+}
+```
+
+## Core Sync Logic
+
+### canonicalize_path()
+
+Same algorithm as `load-projects.sh` — must produce identical output for the paths to match:
+
+```bash
+canonicalize_path() {
+  echo "$1" | sed 's|^/||;s|/|-|g'
+}
+# /workspace/claude/builder-project → workspace-claude-builder-project
+# No leading dash. Strip leading / before replacing.
+```
+
+### Memory Sync (rsync --delete)
+
+```bash
+sync_memory() {
+  local project_root=$1
+  local canonical_id
+  canonical_id=$(canonicalize_path "$project_root")
+  local live_memory="$HOME/.claude/projects/$canonical_id/memory"
+  local repo_memory="$project_root/.claude/memory"
+
+  # Skip if named volume has no memory for this project
+  [[ -d "$live_memory" ]] || { echo "  No live memory found, skipping"; return 0; }
+
+  mkdir -p "$repo_memory"
+
+  # rsync --delete: syncs new + modified + handles deletions
+  rsync -a --delete "$live_memory/" "$repo_memory/"
+}
+```
+
+**Why rsync --delete and not cp:**
+- `cp` copies new and modified files but leaves stale files behind
+- If Claude deleted a memory file during the session, `cp` would leave the old version in git
+- `rsync --delete` mirrors the live state exactly, including deletions
+
+### Git Commit
+
+```bash
+commit_project() {
+  local project_root=$1
+
+  cd "$project_root" || return 1
+
+  # Stage everything: memory updates + any skills/commands/etc Claude wrote during session
+  git add -A
+
+  # Check if there's anything to commit
+  if git diff --cached --quiet; then
+    echo "  Nothing to sync"
+    return 0
+  fi
+
+  # Build a descriptive commit message
+  local modified added deleted
+  modified=$(git diff --cached --name-only --diff-filter=M | wc -l | tr -d ' ')
+  added=$(git diff --cached --name-only --diff-filter=A | wc -l | tr -d ' ')
+  deleted=$(git diff --cached --name-only --diff-filter=D | wc -l | tr -d ' ')
+
+  git commit -m "sync-prj-repos-memory: Sync memory and config (modified $modified, added $added, deleted $deleted)"
+
+  # Detect current branch and push
+  local branch
+  branch=$(git rev-parse --abbrev-ref HEAD)
+  git push origin "$branch"
+}
+```
+
+**Why `git add -A`:**
+- Captures memory files just synced via rsync
+- Captures skills/commands/agents/rules/settings.json Claude wrote to the repo during the session
+- Captures deletions (skills/commands removed during session)
+- `settings.local.json` is auto-gitignored, so it won't be staged even with `-A`
+
+### Per-Project Sync Flow
+
+```bash
+sync_project() {
+  local project_root=$1
+  local name
+  name=$(basename "$project_root")
+
+  echo "Syncing $name..."
+
+  # Step 1: Sync memory from named volume → repo
+  sync_memory "$project_root" || { echo "✗ $name: memory sync failed"; return 1; }
+
+  # Step 2: Stage + commit + push everything
+  commit_project "$project_root" || { echo "✗ $name: git commit/push failed"; return 1; }
+
+  echo "✓ $name"
+}
+```
+
+## Error Handling
+
+| Failure | Behavior |
+|---|---|
+| No live memory directory | Skip memory sync, still commit any repo changes |
+| rsync error | Log error, skip this project, continue with others |
+| git commit error | Log error, skip this project, continue with others |
+| git push error (no remote, auth failure) | Log error with details, skip push only |
+| Project has no `.git` | Skip entirely with warning |
+| Nothing to sync | Report "Nothing to sync" — not an error |
+
+**One project failing never stops others from syncing.**
+
+## What Is and Is NOT Committed
+
+| File | Committed? | Reason |
+|---|---|---|
+| `memory/*.md` | Yes | Core purpose of the skill |
+| `skills/**`, `commands/**`, `agents/**`, `rules/**` | Yes (if modified) | Claude writes here during session — `git add -A` picks them up |
+| `settings.json` | Yes (if modified) | Team-shared, in repo |
+| `CLAUDE.md`, `.mcp.json` | Yes (if modified) | Team-shared, in repo |
+| `settings.local.json` | **No** | Auto-gitignored (machine-local) |
+| Session transcripts (`.jsonl`) | **No** | In named volume only, never in repo |
+| `~/.claude/projects/<path>/.claude/` | **No** | Stale seed artifact, never synced back |
+
+## Integration with Persistence Lifecycle
+
+| Event | Script/Skill | What happens |
+|---|---|---|
+| Container rebuild | `load-projects.sh` | Clones repos, seeds `memory/*.md` from git → named volume with `cp -n` |
+| Container restart | `load-projects.sh` | `cp -n` skips existing files → in-session writes preserved |
+| End of session | `/sync-prj-repos-memory` | Rsyncs memory from named volume → repo, commits all changes |
+| Between sessions | git | Memory and all config portable, shared with team |
+
+The two scripts are complementary — `load-projects.sh` is read-only (seeds from git), `/sync-prj-repos-memory` is write-only (commits back to git). Neither overwrites the other's work.
+
+## Verification Tests
+
+### Test 1: Skill discovery
+```bash
+/help | grep sync-prj-repos-memory
+# Expect: skill appears with description
+```
+
+### Test 2: Sync current project
+```bash
+cd /workspace/claude/builder-project
+# Write a memory file in live session (or let Claude write one)
+/sync-prj-repos-memory
+# Expect:
+# - memory/*.md in repo updated to match ~/.claude/projects/workspace-claude-builder-project/memory/
+# - Any new skills/commands in repo also committed
+# - git log shows commit: "sync-prj-repos-memory: Sync memory and config (...)"
+# - Push succeeded
+```
+
+### Test 3: Explicit project path
+```bash
+cd /tmp
+/sync-prj-repos-memory /workspace/claude/builder-project
+# Expect: only builder-project synced, not any other projects
+```
+
+### Test 4: Sync all projects
+```bash
+cd /tmp  # outside any git repo
+/sync-prj-repos-memory
+# Expect: all projects in /workspace/claude/ discovered and synced
+# Each shows ✓ or ✗
+```
+
+### Test 5: Stale memory file removal
+```bash
+# Add extra file to repo memory that doesn't exist in live
+touch /workspace/claude/builder-project/.claude/memory/stale-test.md
+git -C /workspace/claude/builder-project add .claude/memory/stale-test.md
+git -C /workspace/claude/builder-project commit -m "test: add stale file"
+# Now run sync
+/sync-prj-repos-memory /workspace/claude/builder-project
+# Expect: stale-test.md removed from repo (rsync --delete removes it)
+```
+
+### Test 6: Nothing to sync
+```bash
+# Run sync twice in a row with no session changes between
+/sync-prj-repos-memory
+# Expect: "Nothing to sync" reported — no empty commit created
+```
+
+### Test 7: settings.local.json not committed
+```bash
+ls /workspace/claude/builder-project/.claude/settings.local.json  # exists
+/sync-prj-repos-memory /workspace/claude/builder-project
+git -C /workspace/claude/builder-project show HEAD --name-only | grep settings.local
+# Expect: no output — settings.local.json never appears in commits
+```
+
+## Implementation Phases
+
+### Phase 1: Create claude-global-config repo
+1. Create private GitHub repo `sun2admin/claude-global-config`
+2. Create `.claude/skills/sync-prj-repos-memory/` structure
+3. Write `SKILL.md` — name, description, usage, behavior
+4. Implement `sync-prj-repos-memory.sh` with:
+   - `canonicalize_path()` — strip leading `/`, replace `/` with `-`
+   - `find_git_root()` — traverse up to `.git/`
+   - `discover_projects()` — find `.claude/` dirs under `/workspace/claude/`
+   - `sync_memory()` — `rsync -a --delete` live → repo
+   - `commit_project()` — `git add -A`, build message, commit, push
+   - `sync_project()` — orchestrate per project
+   - `main()` — parse args, determine scope, loop
+5. `chmod +x sync-prj-repos-memory.sh`
+6. Commit and push
+
+### Phase 2: Verify load-projects.sh
+1. Confirm seeds only `memory/*.md` with `cp -n`
+2. Confirm no wipe of `~/.claude/projects/`
+3. Verify restart behavior: in-session writes survive
+4. Verify rebuild behavior: memory fully restored from git
+
+### Phase 3: Integrate into ai-install-layer (Layer 2)
+1. Update `ai-install-layer/Dockerfile` — clone claude-global-config, copy skills to `~/.claude/skills/`
+2. Build and test `:claude` and `:gemini` variants
+3. Push — all downstream layers inherit the skill
+
+### Phase 4: Automatic execution (optional)
+- Claude Code hooks (`PostToolUse` or session-end) could invoke the skill automatically
+- Manual invocation is sufficient for now — the named volume protects against restart loss; only rebuild requires a manual sync before rebuild
+- Document: "Run `/sync-prj-repos-memory` before rebuilding the container"
+
+### Phase 5: Clean up
+1. Delete `/workspace/claude/.claude/commands/update-build-with-claude.md` — replaced by this skill
+2. Commit and push to builder-project
+
+### Phase 6: End-to-end verification
+1. Rebuild container
+2. Verify skill appears in `/help`
+3. Run all 7 verification tests above
