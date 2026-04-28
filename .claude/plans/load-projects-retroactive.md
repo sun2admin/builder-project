@@ -1,311 +1,239 @@
 ---
 name: load-projects-retroactive-plan
-description: Retroactive plan document for load-projects.sh implementation
+description: Retroactive plan document for load-projects.sh — project cloning, memory seeding, and persistence lifecycle
 ---
 
-# load-projects.sh - Remote Cloning and Local Project Seeding
+# load-projects.sh — Project Cloning and Memory Seeding
 
 ## Context
 
-The `/workspace/.devcontainer/scripts/load-projects.sh` script is responsible for discovering and seeding Claude projects on container startup. It supports two modes:
+`/workspace/.devcontainer/scripts/load-projects.sh` runs on every container startup via `postStartCommand`. It has two responsibilities:
 
-1. **Remote Cloning**: Clone specified projects from GitHub (e.g., `sun2admin/builder-project`) and seed their configuration
-2. **Local Discovery**: Discover projects already present in `/workspace/claude/` and seed their configuration to `~/.claude/projects/`
+1. **Remote Cloning** — Clone specified GitHub projects (e.g., `sun2admin/builder-project`) into `/workspace/claude/`
+2. **Memory Seeding** — Seed each project's `memory/*.md` from the git-committed repo into the named volume at `~/.claude/projects/<canonical-path>/memory/`
 
-Together, these modes ensure projects are discoverable across the container lifecycle and properly configured for multi-project workspace support.
+## Why Memory Seeding Is Needed
 
-## Problem Statement
+Claude Code stores auto-memory outside the project repo:
 
-Without project seeding on container startup:
-- Cloned projects aren't available in Claude's `~/.claude/projects/` directory
-- Local projects in `/workspace/claude/` aren't accessible to Claude
-- Session memory and configuration are lost across container rebuilds
-- Multi-project support is broken
+> *"Auto memory is machine-local. All worktrees and subdirectories within the same git repository share one auto memory directory. Files are not shared across machines or cloud environments."* — Anthropic docs
 
-## Solution
+Auto-memory path: `~/.claude/projects/<canonical-path>/memory/`
 
-`load-projects.sh` combines remote cloning with local discovery to provide:
-- Automatic cloning of specified GitHub repositories
-- Automatic discovery and seeding of local projects
-- Complete `.claude/` structure preservation (settings, memory, skills, commands, rules, agents)
-- Canonical path generation for correct project identification
-- Non-destructive memory seeding (preserves runtime changes with `cp -n`)
-- Clear status feedback on seeding progress
+This lives in the **named Docker volume** (`~/.claude/`), which:
+- Persists across container **restarts** (same `devcontainerId`)
+- Is fresh/empty on container **rebuild** (new `devcontainerId`)
+
+Without seeding, every rebuild loses all accumulated project memory. `load-projects.sh` bridges this gap by seeding memory from the git-committed repo copy into the named volume on startup.
+
+## What Needs Seeding (and What Doesn't)
+
+| File type | Seeded? | Why |
+|---|---|---|
+| `memory/*.md` | **Yes** | Written to named volume during session; must be re-seeded from git on rebuild |
+| `skills/`, `commands/`, `agents/`, `rules/` | No | Written by Claude directly to the project repo (bind mount) — already there |
+| `settings.json` | No | Read directly from project repo via cwd walk-up |
+| `CLAUDE.md`, `.mcp.json` | No | Read directly from project repo via cwd walk-up |
+| `settings.local.json` | No | Machine-local, auto-gitignored — must not be seeded or committed |
+| Session transcripts (`.jsonl`) | No | Session state only, never committed |
+
+**Key insight:** Claude reads all project config (skills, commands, settings, CLAUDE.md) directly from the bind-mounted project repo by walking up the directory tree from cwd. It does NOT read from `~/.claude/projects/<path>/.claude/`. The projects directory is session state only.
+
+## The Full Persistence Lifecycle
+
+```
+git repo (.claude/memory/*.md)
+    ↓  load-projects.sh: cp -n on container start
+~/.claude/projects/<path>/memory/  (named volume)
+    ↓  Claude writes auto-memory during session
+~/.claude/projects/<path>/memory/  (updated in named volume)
+    ↑  /sync-prj-repos-memory skill: cp + git commit + push
+git repo (.claude/memory/*.md)  (committed, portable)
+```
+
+On **restart** (same devcontainerId):
+- Named volume persists with in-session memory writes
+- `cp -n` skips all existing files → preserves in-session writes
+
+On **rebuild** (new devcontainerId):
+- Named volume is brand new (empty)
+- `cp -n` seeds all files from git → full memory restored
+
+This means `cp -n` correctly handles both cases with no wipe-and-reseed needed.
 
 ## Implementation Details
 
-### 1. Functions
+### 1. canonicalize_path()
 
-**canonicalize_path()**
-- Converts file paths to canonical form for project IDs
-- Pattern: `/workspace/claude/project-name` → `workspace-claude-project-name`
-- Uses: `echo "$path" | sed 's|^/||;s|/|-|g'`
-
-**clone_project()**
-- Clones a remote GitHub repository
-- Takes GitHub repo identifier (e.g., `sun2admin/builder-project`)
-- Clones to `/workspace/claude/<project-name>`
-- Validates clone completion
-
-**discover_local_projects()**
-- Searches `/workspace/claude/` for directories with `.claude/` subdirectory
-- `.claude/` is the definitive marker of a valid Claude project
-- Returns array of discovered project paths
-
-**seed_project_config()**
-- ⚠️ REVISED: Does NOT bulk-copy `.claude/` into `~/.claude/projects/<canonical-path>/.claude/`
-- Claude reads skills, commands, agents, rules, settings.json directly from the project repo (bind mount) via cwd walk-up — seeding them into the projects dir is unnecessary
-- Only creates the `memory/` directory and seeds memory files (see seed_project_memory)
-- Returns 0 on success
-
-**seed_project_memory()**
-- Copies memory files from source to target `memory/` directory
-- Uses `cp -n` (no-overwrite) to preserve in-session changes on container restart
-- Behavior:
-  - On container restart (same devcontainerId): named volume persists, in-session changes preserved
-  - On container rebuild (new devcontainerId): fresh volume, files seeded from source
-- Returns 0 even if memory directory doesn't exist (expected on first run)
-
-**main()**
-- Orchestrates the full seeding workflow
-- Execution order:
-  1. Clone specified remote projects (if any)
-  2. Discover local projects in `/workspace/claude/`
-  3. Seed configuration and memory for all projects
-  4. Report success/failure summary
-  5. Exit with code 0 (init scripts must not fail container startup)
-
-### 2. Canonical Path Algorithm
-
-Converts file paths to canonical project identifiers for `~/.claude/projects/`:
+Converts absolute project paths to the identifier format Claude uses for `~/.claude/projects/`:
 
 ```bash
 canonicalize_path() {
   local path=$1
-  # Remove leading slash, replace remaining slashes with dashes
+  # Strip leading slash, replace all remaining slashes with dashes
   echo "$path" | sed 's|^/||;s|/|-|g'
 }
 ```
 
-**Examples**:
-- `/workspace/claude/build-with-claude` → `workspace-claude-build-with-claude`
-- `/workspace/claude/my-first-claude-prj` → `workspace-claude-my-first-claude-prj`
-- `/workspace/my-workspace/project-a` → `workspace-my-workspace-project-a`
+**Examples:**
+- `/workspace/claude/builder-project` → `workspace-claude-builder-project`
+- `/workspace/claude/my-first-prj` → `workspace-claude-my-first-prj`
 
-### 3. Remote Project Cloning
+**Important:** No leading dash. Older scripts that skipped stripping the leading `/` produced `-workspace-...` — that format is wrong and will create an orphaned project dir that Claude never reads.
 
-**Input**: GitHub repository identifier (e.g., `sun2admin/builder-project`)
+### 2. clone_project()
 
-**Process**:
+Clones a GitHub repository into `/workspace/claude/` if it doesn't already exist:
+
 ```bash
-# Validate GitHub repo format
-if [[ "$repo" != *"/"* ]]; then
-  echo "Invalid repo format. Use: owner/repo"
-  return 1
-fi
+clone_project() {
+  local repo=$1  # format: owner/repo-name
+  local project_name="${repo##*/}"
+  local clone_dir="/workspace/claude/$project_name"
 
-# Extract project name from repo
-project_name="${repo##*/}"
+  # Skip if already cloned (restart case)
+  [[ -d "$clone_dir/.git" ]] && return 0
 
-# Clone to /workspace/claude/<project-name>
-clone_dir="/workspace/claude/$project_name"
-git clone "https://github.com/$repo.git" "$clone_dir"
-
-# Verify clone succeeded
-if [[ ! -d "$clone_dir/.git" ]]; then
-  return 1
-fi
+  git clone "https://github.com/$repo.git" "$clone_dir"
+  [[ -d "$clone_dir/.git" ]] || return 1
+}
 ```
 
-### 4. Local Project Discovery
+Requires SSH agent or GH_TOKEN to be set up before this runs (handled by earlier init scripts).
 
-**Search location**: `/workspace/claude/`
+### 3. discover_local_projects()
 
-**Valid project criteria**:
-- Directory exists under `/workspace/claude/`
-- Contains `.claude/` subdirectory
-- `.claude/` presence is definitive (no need to check for `CLAUDE.md` or `.mcp.json`)
+Finds all Claude projects already present in `/workspace/claude/`:
 
-**Discovery logic**:
 ```bash
 discover_local_projects() {
   local projects=()
   for subdir in /workspace/claude/*/; do
-    if [[ -d "$subdir.claude" ]]; then
-      projects+=("$subdir")
-    fi
+    [[ -d "$subdir.claude" ]] && projects+=("$subdir")
   done
   echo "${projects[@]}"
 }
 ```
 
-### 5. Configuration Seeding
+**Detection criterion:** presence of `.claude/` subdirectory. This is the definitive marker of a Claude project — no need to check for `CLAUDE.md` or `.mcp.json`.
 
-For each project (cloned or discovered):
+### 4. seed_project_memory()
 
-**Step 1: Calculate paths**
+Seeds `memory/*.md` from the git-committed repo into the named volume:
+
 ```bash
-source_dir="/workspace/claude/$(basename $project_path)"
-canonical_id=$(canonicalize_path "$source_dir")
-target_dir="$HOME/.claude/projects/$canonical_id"
+seed_project_memory() {
+  local project_path=$1
+  local canonical_id
+  canonical_id=$(canonicalize_path "$project_path")
+  local target_dir="$HOME/.claude/projects/$canonical_id/memory"
+
+  mkdir -p "$target_dir"
+
+  # cp -n: no-overwrite preserves in-session writes on restart
+  # 2>/dev/null || true: graceful if source memory dir is empty or missing
+  cp -n "$project_path/.claude/memory"/*.md "$target_dir/" 2>/dev/null || true
+}
 ```
 
-**Step 2: Create target directory**
+**Why `cp -n` and not `cp -r` or `rsync`:**
+- `cp -n` never overwrites → in-session memory writes survive container restart
+- `rsync --delete` would destroy session writes → wrong behavior on restart
+- `cp -r` without `-n` would overwrite → wrong behavior on restart
+
+### 5. main()
+
 ```bash
-mkdir -p "$target_dir"
+main() {
+  # Clone any specified remote repos first
+  for repo in "$@"; do
+    clone_project "$repo" && echo "✓ Cloned $repo" || echo "✗ Failed to clone $repo"
+  done
+
+  # Discover all local projects and seed their memory
+  local projects
+  projects=($(discover_local_projects))
+
+  for project in "${projects[@]}"; do
+    seed_project_memory "$project" \
+      && echo "✓ Seeded $(basename $project)" \
+      || echo "✗ Failed to seed $(basename $project)"
+  done
+
+  # Always exit 0 — init scripts must not fail container startup
+  exit 0
+}
 ```
 
-**Step 3: ⚠️ SKIP — do not copy `.claude/` structure**
+## Canonical Path Gotcha
 
-Claude reads skills, commands, agents, rules, and settings.json directly from the project repo via cwd walk-up. Copying them into `~/.claude/projects/<path>/.claude/` is unnecessary and risks stale data overwriting live repo files.
+Claude derives the project identifier from the **git repository root**, not the cwd subdirectory. All subdirectories within the same git repo share one `~/.claude/projects/` entry.
 
-**Step 4: ⚠️ SKIP — do not copy CLAUDE.md or .mcp.json**
+Example: If `/workspace/claude/builder-project` is the git root, then:
+- `cd /workspace/claude/builder-project && claude` → uses `workspace-claude-builder-project`
+- `cd /workspace/claude/builder-project/src && claude` → same, `workspace-claude-builder-project`
 
-Claude reads these from the project repo directly. No seeding needed.
+`load-projects.sh` should canonicalize from the project's git root, not an arbitrary subdirectory.
 
-**Step 5: Seed memory files (ONLY required seeding step)**
-```bash
-mkdir -p "$target_dir/memory"
-cp -n "$source_dir/.claude/memory"/*.md "$target_dir/memory/" 2>/dev/null || true
-```
+## Error Handling
 
-The `-n` flag means "no-overwrite": existing files in target are never overwritten. This preserves changes made during the container session.
+- **Missing memory directory** (`$project/.claude/memory/` doesn't exist): `2>/dev/null || true` handles gracefully — no files seeded, project still usable
+- **Clone failure**: Log error, increment failure counter, continue with remaining projects
+- **`cp -n` partial failure**: Non-fatal — some files may not seed but project is still accessible
+- **Always exit 0**: Container startup must not be blocked by project seeding failures
 
-### 6. Error Handling
+## Integration with devcontainer.json
 
-**Strategy**:
-- `set -e` at script top for fail-fast behavior
-- Allow specific failures (missing optional files) to not break the script
-- Track successes and failures with counters
-- Return 0 on exit (init scripts must not fail container startup)
-
-**Patterns**:
-- Missing `.mcp.json`: Skip with warning, not an error
-- Missing memory directory: Skip with warning, not an error
-- Clone failure: Increment failure counter, continue with next project
-- Configuration copy failure: Report with specific error, continue
-
-### 7. Status Tracking
-
-**Counters**:
-- `clones_failed` — number of failed clones
-- `projects_seeded` — number of successfully seeded projects
-- `projects_failed` — number of failed seeds
-- `projects_skipped` — number of skipped projects (wrong owner, etc.)
-
-**Output**:
-```
-✓ Cloned sun2admin/builder-project
-✓ Seeded build-with-claude
-✓ Seeded my-first-claude-prj
-✗ Failed to seed broken-project: missing .claude directory
-Summary: Seeded 2 projects (1 failed, 1 skipped)
-```
-
-### 8. Integration with devcontainer.json
-
-**postStartCommand** calls load-projects.sh in the init chain:
+`postStartCommand` calls `load-projects.sh` last in the init chain:
 
 ```bash
 sudo /usr/local/bin/init-firewall.sh && \
   /workspace/.devcontainer/scripts/init-ssh.sh && \
   /workspace/.devcontainer/scripts/init-gh-token.sh && \
   /workspace/.devcontainer/scripts/init-github-mcp.sh && \
-  /workspace/.devcontainer/scripts/load-projects.sh <remote-repos...>
+  /workspace/.devcontainer/scripts/load-projects.sh sun2admin/builder-project
 ```
 
-**Execution order**:
-1. Firewall (iptables egress rules)
-2. SSH agent setup and key loading
-3. GitHub PAT environment variable setup
-4. GitHub MCP server binary installation
-5. **Project cloning and seeding** ← load-projects.sh
-6. Claude Code startup via postAttachCommand
+**Why this order matters:**
+1. Firewall first — iptables rules block/allow egress before any network calls
+2. SSH + gh-token before cloning — git auth must be ready before `clone_project()`
+3. GitHub MCP binary before Claude — MCP server must exist before Claude starts
+4. `load-projects.sh` last before Claude — projects must be seeded before Claude discovers them
 
-**Why this order**:
-- SSH and GitHub auth must be ready before cloning repos
-- MCP server installed before Claude starts
-- Projects must be seeded before Claude discovers them
-- All init scripts complete before Claude Code starts
+## Behavior Under Different Conditions
 
-### 9. Behavior Under Different Conditions
+| Condition | Cloning | Memory seeding | Result |
+|---|---|---|---|
+| First start (fresh devcontainerId) | Clones repos | Seeds all `memory/*.md` fresh | Full memory restored from git |
+| Restart (same devcontainerId) | Skips (repos exist) | `cp -n` skips existing files | In-session writes preserved |
+| Rebuild (new devcontainerId) | Clones again | Seeds all `memory/*.md` fresh | Full memory restored from git |
+| No remote specified, local projects exist | N/A | Seeds all discovered projects | Works for pure-local setups |
 
-**First Container Start (fresh devcontainerId)**:
-- `clones_failed=0`: Clone specified repos successfully
-- `projects_seeded=N`: Seed all discovered/cloned projects
-- Memory directory created fresh and seeded from source
-- Named volume for `~/.claude` is brand new
+## Alternative: autoMemoryDirectory
 
-**Container Restart (same devcontainerId)**:
-- Clones skipped (repos already exist in `/workspace/claude/`)
-- Local projects discovered and seeded
-- `cp -n` prevents overwriting in-session memory changes
-- Named volume persists across restart
+If you want to skip the seed/sync cycle entirely, set `autoMemoryDirectory` to write memory directly into the project repo:
 
-**Container Rebuild (new devcontainerId)**:
-- Clones performed again (fresh workspace)
-- Local projects discovered and seeded
-- Memory restored from git-committed files
-- New named volume with clean state
-
-### 10. Files and Integration
-
-**Files**:
-- `/workspace/.devcontainer/scripts/load-projects.sh` — main script
-- `/workspace/.devcontainer/devcontainer.json` — postStartCommand reference
-
-**Related**:
-- `/workspace/claude/.claude/scripts/init-workspace.sh` — reuses canonicalize_path pattern
-- Git-committed project memory files enable seeding across rebuilds
-- Named volume `claude-code-config-${devcontainerId}` stores live project state
-
-### 11. Testing Scenarios
-
-**Scenario 1: Remote cloning**
-```bash
-./load-projects.sh sun2admin/builder-project
+```json
+// ~/.claude/settings.json or .claude/settings.local.json
+{
+  "autoMemoryDirectory": "/workspace/claude/builder-project/.claude/memory"
+}
 ```
-Expected: Clones builder-project and seeds it
 
-**Scenario 2: Local discovery only**
-```bash
-./load-projects.sh
-```
-Expected: Discovers projects in /workspace/claude/ and seeds them
-
-**Scenario 3: Mixed (remote + local)**
-```bash
-./load-projects.sh sun2admin/builder-project
-```
-Expected: Clones builder-project AND discovers other local projects, seeds all
-
-**Scenario 4: No projects**
-```bash
-./load-projects.sh  # (no local projects, no remote specified)
-```
-Expected: Exits gracefully with message, returns 0
-
-**Scenario 5: Clone failure**
-```bash
-./load-projects.sh sun2admin/nonexistent-repo
-```
-Expected: Clone fails, projects_failed incremented, continue with local discovery, return 0
+When set, Claude writes auto-memory directly to the repo path — no seeding needed, memory is always in git. Trade-off: memory is committed on every write (noisier git history), and the setting cannot be in project-scoped `.claude/settings.json` due to a security restriction.
 
 ## Design Principles
 
-1. **Non-destructive**: Uses `cp -n` for memory to preserve in-session changes
-2. **Graceful failure**: Missing optional files (`.mcp.json`, memory dir) don't break seeding
-3. **Clear feedback**: Status messages with `✓` and `✗` for each operation
-4. **Always succeeds**: Returns 0 on exit even with failures (init scripts must not break container startup)
-5. **Idempotent**: Can be called multiple times without issues (skips existing repos, respects in-session changes)
-6. **Minimal seeding**: Seeds only `memory/*.md` — Claude reads all other config directly from the repo via cwd walk-up
+1. **Memory-only seeding** — Only `memory/*.md` belongs in `~/.claude/projects/`. All other config is read from the repo directly.
+2. **Non-destructive** — `cp -n` never overwrites. In-session writes always survive restarts.
+3. **No wipe-and-reseed** — Never `rm -rf ~/.claude/projects/` before seeding. The named volume lifecycle (fresh on rebuild) handles cleanup automatically.
+4. **Graceful failure** — Missing memory dirs, failed clones, or `cp` errors never block container startup.
+5. **Idempotent** — Safe to call multiple times. Already-cloned repos are skipped. `cp -n` skips already-seeded files.
+6. **Always exit 0** — Init scripts that fail would kill container startup. Log errors and continue.
 
-## Summary
+## Files
 
-`load-projects.sh` is a project seeding script that:
-- Clones remote projects from GitHub into the container
-- Discovers local projects already in `/workspace/claude/`
-- Seeds only `memory/*.md` to `~/.claude/projects/<canonical-path>/memory/` (not the full .claude/ tree)
-- Preserves in-session memory changes across restarts
-- Enables multi-project workspace support
-- Integrates seamlessly into the devcontainer startup sequence
+- `/workspace/.devcontainer/scripts/load-projects.sh` — this script
+- `/workspace/.devcontainer/devcontainer.json` — `postStartCommand` invocation
+- `<project>/.claude/memory/*.md` — source of truth for seeded memory
+- `~/.claude/projects/<canonical-path>/memory/` — seeding target (named volume)
