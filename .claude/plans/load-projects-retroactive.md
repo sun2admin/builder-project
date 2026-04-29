@@ -70,17 +70,18 @@ Converts absolute project paths to the identifier format Claude uses for `~/.cla
 ```bash
 canonicalize_path() {
   local path=$1
-  # Strip trailing slash (glob paths include it), then leading slash, then replace / with -
-  echo "${path%/}" | sed 's|^/||;s|/|-|g'
+  # Strip trailing slash (glob paths include it), then replace / with -
+  # Leading dash is intentional — Claude Code does not strip the leading /
+  echo "${path%/}" | sed 's|/|-|g'
 }
 ```
 
 **Examples:**
-- `/workspace/claude/builder-project` → `workspace-claude-builder-project`
-- `/workspace/claude/builder-project/` → `workspace-claude-builder-project` (trailing slash safe)
-- `/workspace/claude/my-first-prj` → `workspace-claude-my-first-prj`
+- `/workspace/claude/builder-project` → `-workspace-claude-builder-project`
+- `/workspace/claude/builder-project/` → `-workspace-claude-builder-project` (trailing slash safe)
+- `/workspace/claude/my-first-prj` → `-workspace-claude-my-first-prj`
 
-**Important:** No leading dash. Older scripts that skipped stripping the leading `/` produced `-workspace-...` — that format is wrong and will create an orphaned project dir that Claude never reads.
+**Important:** The leading dash is correct. Claude Code canonicalizes paths by replacing all `/` with `-` without stripping the leading slash. Scripts that strip the leading `/` produce `workspace-...` — that format is wrong and will seed to a directory Claude never reads.
 
 ### 2. clone_project()
 

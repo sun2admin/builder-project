@@ -109,11 +109,11 @@ Same algorithm as `load-projects.sh` — must produce identical output for the p
 
 ```bash
 canonicalize_path() {
-  echo "${1%/}" | sed 's|^/||;s|/|-|g'
+  echo "${1%/}" | sed 's|/|-|g'
 }
-# /workspace/claude/builder-project  → workspace-claude-builder-project
-# /workspace/claude/builder-project/ → workspace-claude-builder-project (trailing slash safe)
-# No leading dash. Strip trailing slash first, then leading slash, then replace / with -.
+# /workspace/claude/builder-project  → -workspace-claude-builder-project
+# /workspace/claude/builder-project/ → -workspace-claude-builder-project (trailing slash safe)
+# Leading dash is intentional — Claude Code replaces all / with - without stripping the leading /.
 ```
 
 ### Memory Sync (rsync --delete with bash fallback)

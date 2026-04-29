@@ -14,7 +14,7 @@ failed=0
 # Must produce identical output to load-projects.sh canonicalize_path()
 # ============================================================================
 canonicalize_path() {
-  echo "${1%/}" | sed 's|^/||;s|/|-|g'
+  echo "${1%/}" | sed 's|/|-|g'
 }
 
 # ============================================================================
