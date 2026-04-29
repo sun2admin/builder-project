@@ -11,7 +11,7 @@ description: Retroactive plan document for load-projects.sh — live project clo
 
 1. **Clone the live project** — Clone the `-live` repo to `/workspace/claude/<name>/` and seed its memory
 2. **Clone side repos** — Clone any non-live repos to `/workspace/repos/<name>/` (no seeding)
-3. **Write `/tmp/live-project`** — Record the live project path so `postAttachCommand` knows where to `cd`
+3. **Write `~/live-project`** — Record the live project path so `postAttachCommand` knows where to `cd`
 
 ## One Container = One Live Session
 
@@ -28,7 +28,7 @@ This means:
 load-projects.sh [-live owner/repo] [owner/repo ...]
 ```
 
-| Argument | Clone target | Memory seeded | /tmp/live-project |
+| Argument | Clone target | Memory seeded | ~/live-project |
 |---|---|---|---|
 | `-live owner/repo` | `/workspace/claude/<name>` | Yes | Written with live path |
 | `owner/repo` | `/workspace/repos/<name>` | No | — |
@@ -38,7 +38,7 @@ load-projects.sh [-live owner/repo] [owner/repo ...]
 - Only one `-live` is allowed — specifying more than one is a hard error
 - Live repo clone failure is **fatal** — exits non-zero, container startup aborted
 - Non-live repo clone failure is a **warning** — logged, script continues
-- If no `-live` is specified, `/tmp/live-project` is written with `$HOME` so `postAttachCommand` starts Claude from the home directory
+- If no `-live` is specified, `~/live-project` is written with `$HOME` so `postAttachCommand` starts Claude from the home directory
 
 ## Why Memory Seeding Is Needed
 
@@ -171,7 +171,7 @@ seed_memory() {
 main() {
   parse_args "$@"
 
-  # Live project: clone to /workspace/claude/, seed memory, write /tmp/live-project
+  # Live project: clone to /workspace/claude/, seed memory, write ~/live-project
   if [ -n "$live_repo" ]; then
     local live_name live_path
     live_name=$(echo "$live_repo" | cut -d'/' -f2)
@@ -183,9 +183,9 @@ main() {
     }
 
     seed_memory "$live_path"
-    echo "$live_path" > /tmp/live-project
+    echo "$live_path" > ~/live-project
   else
-    echo "$HOME" > /tmp/live-project
+    echo "$HOME" > ~/live-project
   fi
 
   # Non-live repos: clone to /workspace/repos/, no seeding
@@ -199,20 +199,20 @@ main() {
 }
 ```
 
-## /tmp/live-project Contract
+## ~/live-project Contract
 
-`load-projects.sh` writes the live project's absolute path to `/tmp/live-project`. `postAttachCommand` reads it to determine where to `cd` before starting Claude.
+`load-projects.sh` writes the live project's absolute path to `~/live-project` (`/home/claude/live-project`). `postAttachCommand` reads it to determine where to `cd` before starting Claude. The sync skill reads it to find the live project when invoked with no arguments.
 
 ```bash
 # In devcontainer.json postAttachCommand:
-bash --login -c 'cd $(cat /tmp/live-project 2>/dev/null || echo ~) && claude --dangerously-skip-permissions'
+bash --login -c 'cd $(cat ~/live-project 2>/dev/null || echo ~) && claude --dangerously-skip-permissions'
 ```
 
 - If `-live` was specified → file contains `/workspace/claude/<live-name>`
 - If no `-live` → file contains `$HOME`
 - If file is missing (abnormal) → falls back to `~`
 
-`/tmp` is the right location: created fresh every container start by `load-projects.sh`, correct lifetime (exists for the container lifecycle), no stale state across rebuilds.
+`~/live-project` is written to the claude user's home directory — more predictable and conventional than `/tmp`. `load-projects.sh` writes it fresh on every container start (restart and rebuild), so the file always reflects the current live project. Persistence across rebuilds is not needed since the file is always rewritten before anything reads it.
 
 ## Error Handling
 
@@ -236,7 +236,7 @@ bash --login -c 'cd $(cat /tmp/live-project 2>/dev/null || echo ~) && claude --d
   /workspace/.devcontainer/scripts/init-github-mcp.sh && \
   /workspace/.devcontainer/scripts/load-projects.sh -live sun2admin/builder-project",
 
-"postAttachCommand": "bash --login -c 'cd $(cat /tmp/live-project 2>/dev/null || echo ~) && claude --dangerously-skip-permissions'"
+"postAttachCommand": "bash --login -c 'cd $(cat ~/live-project 2>/dev/null || echo ~) && claude --dangerously-skip-permissions'"
 ```
 
 **Why this order matters:**
@@ -273,7 +273,7 @@ bash --login -c 'cd $(cat /tmp/live-project 2>/dev/null || echo ~) && claude --d
 
 - `/workspace/.devcontainer/scripts/load-projects.sh` — this script
 - `/workspace/.devcontainer/devcontainer.json` — `postStartCommand` and `postAttachCommand`
-- `/tmp/live-project` — live project path written by this script, read by `postAttachCommand`
+- `~/live-project` — live project path written by this script, read by `postAttachCommand`
 - `<live-project>/.claude/memory/*.md` — source of truth for seeded memory
 - `~/.claude/projects/<canonical-path>/memory/` — seeding target (named volume)
 - `/workspace/claude/<live-name>/` — live project clone location
