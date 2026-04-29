@@ -1,90 +1,92 @@
 # Plan: builder-project Directory Restructure
 
 ## Goal
-Align builder-project with Anthropic best practices for Claude Code project structure, while correctly reflecting the Layer 4 two-part architecture.
+Align builder-project with Anthropic best practices: slim CLAUDE.md, create modular
+rules files per layer, and correctly reflect the Layer 4 Part 2 role of this repo.
 
-## Current State
-- `CLAUDE.md` — mixes architecture overview with Layer 4 Part 1 operational detail
-- `.claude/rules/` — exists but empty (`.gitkeep` only)
-- No path-scoped or modular rule files
-- Layer 4 Part 1 and Part 2 are not distinguished in project documentation
+---
 
-## Proposed Structure
+## Step 1: Slim CLAUDE.md
 
-```
-builder-project/
-├── CLAUDE.md                          # ~20 lines: overview + cross-layer rules only
-├── .claude/
-│   ├── settings.json                  # hooks + permissions (no layer detail here)
-│   ├── hooks/
-│   │   └── session-start.sh           # PATH setup via $CLAUDE_PROJECT_DIR (done)
-│   ├── rules/
-│   │   ├── layer-1-base-ai.md         # base-ai-layer context
-│   │   ├── layer-2-ai-install.md      # ai-install-layer context
-│   │   ├── layer-3-plugins.md         # plugin layer context
-│   │   ├── layer-4-part1.md           # Part 1: container/dependency layer
-│   │   ├── layer-4-part2.md           # Part 2: claude project repos pattern
-│   │   └── cross-layer.md             # spans all layers (GHCR private, bash, credentials)
-│   ├── skills/                        # unchanged
-│   ├── commands/                      # unchanged
-│   ├── memory/                        # unchanged (git-committed pattern)
-│   └── plans/                         # unchanged
-└── .mcp.json                          # unchanged for now
-```
+**Keep** (~20 lines total):
+- Project purpose (1–2 sentences)
+- 4-layer architecture diagram + dependency chain
+- Pointer to `.claude/rules/` for layer detail
+- Cross-cutting rules: GHCR always private, bash not zsh
 
-## Layer 4 Two-Part Distinction
-
-Layer 4 is two distinct roles that must be documented separately:
-
-**Part 1 — Container/Dependency Layer** (`layer-4-part1.md`)
-- Repos: `build-with-claude`, `build-with-claude-stage2`, `build-with-claude-stage3`
-- Contains: devcontainer.json, init scripts, firewall rules, Layer 3 image reference
-- Dictated by what Part 2 needs — if Part 2 uses `gh` or GitHub MCP, Part 1 must provide it
-- Detail: `update-github-mcp.yml` pattern, `init-github-mcp.sh`, `postStartCommand` sequencing
-
-**Part 2 — Claude Project Repos** (`layer-4-part2.md`)
-- Repos: `builder-project` and all future claude/ai project repos
-- Contains: CLAUDE.md, .claude/, .mcp.json, skills, memory — Claude files only
-- Self-contained and portable: usable independently of the 4-layer architecture
-- Cloned to `/workspace/<ai-name>/<repo-name>` (e.g. `/workspace/claude/builder-project`)
-- Only one AI workspace exists at a time (`claude/` or `gemini/`, not both)
-
-## Hook Consideration for layer-4-part2.md
-
-The `SessionStart` hook + `$CLAUDE_ENV_FILE` pattern is a **standard for all Part 2 repos**:
-- Adds `$CLAUDE_PROJECT_DIR/scripts/bin` to PATH dynamically at session start
-- Enables project-local binaries (gh, MCP server, etc.) without Part 1 involvement
-- Implemented in: `.claude/hooks/session-start.sh` + `settings.json` SessionStart hook
-- `layer-4-part2.md` must document this as a required pattern when a Part 2 repo uses local binaries
-
-Cross-reference: see `mcp-binary-to-part2.md` for the full gh libs / MCP binary migration plan.
-
-## CLAUDE.md Changes
-
-**Remove** (move to rule files):
+**Remove** (moves to rule files):
 - Init scripts table → `layer-4-part1.md`
-- Credentials section → `layer-4-part1.md` and `cross-layer.md`
+- Credentials section → `layer-4-part1.md`
 - Shell section → `cross-layer.md`
-- MCP section → `layer-4-part1.md` (Part 1 binary deployment) and `layer-4-part2.md` (.mcp.json pattern)
+- MCP section → `layer-4-part1.md` + `layer-4-part2.md`
 - GitHub Actions section → `layer-4-part1.md`
 
-**Keep** in CLAUDE.md:
-- Project purpose (1–2 sentences)
-- 4-layer architecture diagram
-- Dependency chain (Layer 1 → 2 → 3 → 4)
-- Note pointing to `.claude/rules/` for layer detail
-- Cross-cutting rules that apply everywhere
+---
 
-## Open Questions
+## Step 2: Create .claude/rules/ Files
 
-1. **Path-scoped vs always-loaded rules**: Since Layers 1–3 are external repos managed via MCP (no local files), path-scoped rules won't fire for those layers. Options: always-loaded rules (simpler, consistent) or manual `@` import per session. TBD.
+Six files, always-loaded (no `paths:` frontmatter — layers 1–3 are external repos,
+no local files to trigger path-scoped loading).
 
-2. **Rule file depth**: How much detail belongs in rule files vs memory? Agreed: rules = "how to work with this layer now"; memory = "what we've learned and decided". No duplication.
+### `layer-1-base-ai.md`
+- Repo: `sun2admin/base-ai-layer`
+- What it builds: system packages, Python, graphics libs, Playwright
+- Tag variants: `:light`, `:latest`, `:playwright_with_*`
+- Dockerfile ARG structure (INCLUDE_EXTRAS, INCLUDE_PLAYWRIGHT, BROWSERS)
+- GitHub Actions matrix: 6 variants in parallel
 
-3. **Q3 deferred**: Which repo is the primary target for this restructure — `build-with-claude` (Part 1) or `builder-project` (Part 2)? This plan covers Part 2 (builder-project) only. Part 1 restructure is a separate effort.
+### `layer-2-ai-install.md`
+- Repo: `sun2admin/ai-install-layer`
+- Builds FROM base-ai-layer:latest
+- Tag variants: `:claude`, `:gemini`
+- Single Dockerfile with conditional ARG logic (AI_TYPE, AI_PACKAGE, USERNAME)
+- GitHub Actions matrix: 2 variants in parallel
+
+### `layer-3-plugins.md`
+- 8 plugin repos: claude-anthropic-{base,coding,ext,all}-plugins-container + 4 custom
+- All build FROM ai-install-layer:claude
+- Plugin baking: CLAUDE_CODE_PLUGIN_CACHE_DIR + CLAUDE_CODE_PLUGIN_SEED_DIR
+- Marketplace sources: anthropics/claude-plugins-official, anthropics/skills
+- Key constraint: all GHCR images must be private
+
+### `layer-4-part1.md`
+- Repos: build-with-claude, build-with-claude-stage2, build-with-claude-stage3
+- Role: container/dependency layer — shaped by what Part 2 needs
+- devcontainer.json references Layer 3 image
+- Init scripts: init-firewall.sh (sudo/iptables), init-ssh.sh, init-gh-token.sh, init-github-mcp.sh
+- Credentials via bind-mounted /run/credentials/ files
+- postStartCommand sequence, postAttachCommand uses bash --login
+- update-github-mcp.yml: weekly GitHub Action to update MCP binary (identical across all 3 repos)
+- Note: see layer4-design.md for planned migration of scripts to Part 2
+
+### `layer-4-part2.md`
+- This repo (builder-project) is the reference implementation
+- Role: Claude project repo — self-contained and portable, usable outside 4-layer architecture
+- Contains only Claude files: CLAUDE.md, .claude/, .mcp.json, skills, memory
+- Cloned to /workspace/<ai-name>/<repo-name> — only one AI workspace at a time
+- SessionStart hook: adds $CLAUDE_PROJECT_DIR/scripts/bin to PATH via $CLAUDE_ENV_FILE
+  (enables project-local binaries without Part 1 involvement)
+- .mcp.json uses relative path for MCP binary (./scripts/bin/...) — confirmed working
+- Note: see layer4-design.md for planned migration of init scripts and binaries to Part 2
+
+### `cross-layer.md`
+- Shell: bash only (not zsh) — bash is pre-installed, Claude Code supports it equally
+- GHCR: all images must always be private
+- Credentials: use ~/.profile (chmod 600), not /etc/environment; bash --login in postAttachCommand
+- Dependency cascade: update Layer 1 → rebuild Layer 2 → rebuild Layer 3 → Layer 4 auto-inherits
+- Container user: `claude` (bash shell)
+
+---
+
+## Step 3: Clean Up
+
+- Remove `.gitkeep` from `.claude/rules/` once rule files are added
+- Verify CLAUDE.md stays under 25 lines after slim-down
+
+---
 
 ## Status
-- [x] SessionStart hook implemented (`session-start.sh` + `settings.json`)
-- [ ] CLAUDE.md restructure not started
-- [ ] `.claude/rules/` files not yet created
-- [ ] Pending resolution of open questions above
+- [x] SessionStart hook added (session-start.sh + settings.json)
+- [ ] CLAUDE.md not yet slimmed
+- [ ] Rule files not yet created
+- [ ] Ready to implement
