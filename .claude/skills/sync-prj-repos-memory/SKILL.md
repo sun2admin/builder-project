@@ -1,19 +1,20 @@
 ---
 name: sync-prj-repos-memory
-description: Sync session memory from named volume back to project git repos and commit all changes
+description: Sync session memory from named volume back to project git repo and commit all changes
 shortcut: sync
 usage: |
   /sync-prj-repos-memory [project-path]
 
   Syncs auto-memory from ~/.claude/projects/<path>/memory/ back to the
-  project repo, stages all changes (memory + any skills/commands written
+  live project repo, stages all changes (memory + any skills/commands written
   during the session), commits, and pushes.
 
   Arguments:
     project-path   Optional. Absolute path to a specific project to sync.
-                   If omitted and cwd is inside a git repo, syncs that project.
-                   If omitted and cwd is outside any git repo, syncs ALL
-                   projects found under /workspace/claude/.
+                   If omitted, reads ~/live-project to determine the live project.
+
+  Only syncs repos owned by the authenticated GitHub user. Non-owned repos
+  are skipped entirely with a logged reason.
 ---
 
 # /sync-prj-repos-memory
@@ -35,9 +36,18 @@ project repo during sessions — this skill picks those up via `git add -A` too.
 
 | Invocation | Behavior |
 |---|---|
-| `/sync-prj-repos-memory` (inside git repo) | Sync current project only |
-| `/sync-prj-repos-memory /workspace/claude/my-prj` | Sync specified project only |
-| `/sync-prj-repos-memory` (outside any git repo) | Sync ALL projects in /workspace/claude/ |
+| `/sync-prj-repos-memory` (no args) | Read `~/live-project`, sync that project |
+| `/sync-prj-repos-memory /workspace/claude/my-prj` | Sync specified project path |
+
+`~/live-project` is written by `load-projects.sh` at container start. cwd is
+not used — it can drift during a session via Bash tool `cd` commands.
+
+## Ownership Filtering
+
+Only repos owned by the authenticated GitHub user (`gh whoami`) are synced.
+If a repo's remote owner differs from the authenticated user, the entire sync
+is skipped (no memory sync, no commit, no push) and the reason is logged.
+Repos with no detectable remote are treated as owned and synced normally.
 
 ## What Gets Committed
 

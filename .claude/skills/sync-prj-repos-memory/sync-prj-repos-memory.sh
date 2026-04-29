@@ -1,16 +1,11 @@
 #!/bin/bash
-# sync-prj-repos-memory — sync session memory from named volume back to git repos
+# sync-prj-repos-memory — sync session memory from named volume back to git repo
 # See SKILL.md for full documentation
 
 set -euo pipefail
 
-WORKSPACE_ROOT="/workspace/claude"
-
-synced=0
-failed=0
-
 # ============================================================================
-# Canonical path: strip trailing slash, then leading slash, then replace / with -
+# Canonical path: replace / with - (leading dash intentional — matches Claude Code)
 # Must produce identical output to load-projects.sh canonicalize_path()
 # ============================================================================
 canonicalize_path() {
@@ -18,15 +13,22 @@ canonicalize_path() {
 }
 
 # ============================================================================
-# Traverse up from a directory until .git/ is found; print the git root
+# Get authenticated GitHub username
 # ============================================================================
-find_git_root() {
-  local dir="${1:-$PWD}"
-  while [[ "$dir" != "/" ]]; do
-    [[ -d "$dir/.git" ]] && echo "$dir" && return 0
-    dir=$(dirname "$dir")
-  done
-  return 1
+get_authenticated_user() {
+  gh whoami 2>/dev/null || echo ""
+}
+
+# ============================================================================
+# Extract GitHub owner from git remote origin URL
+# Returns 1 if no remote or URL unparseable
+# ============================================================================
+get_repo_owner() {
+  local project_path=$1
+  local remote_url
+  remote_url=$(git -C "$project_path" config --get remote.origin.url 2>/dev/null || echo "")
+  [[ -z "$remote_url" ]] && return 1
+  echo "$remote_url" | sed -E 's|.*[:/]([^/]+)/[^/]+/?$|\1|'
 }
 
 # ============================================================================
@@ -41,7 +43,6 @@ sync_memory() {
   local live_memory="$HOME/.claude/projects/$canonical_id/memory"
   local repo_memory="$project_root/.claude/memory"
 
-  # Skip gracefully if no live memory exists for this project
   if [[ ! -d "$live_memory" ]]; then
     echo "  No live memory found, skipping memory sync"
     return 0
@@ -65,7 +66,7 @@ sync_memory() {
 
 # ============================================================================
 # Stage all changes, commit with descriptive message, and push
-# Uses git -C throughout — no cd, so no cwd state leaks between projects
+# Uses git -C throughout — no cd, so cwd never changes
 # ============================================================================
 commit_project() {
   local project_root=$1
@@ -74,13 +75,11 @@ commit_project() {
   # settings.local.json is auto-gitignored and will never be staged
   git -C "$project_root" add -A
 
-  # Nothing to commit — not an error
   if git -C "$project_root" diff --cached --quiet; then
     echo "  Nothing to sync"
     return 0
   fi
 
-  # Build descriptive commit message with change counts
   local modified added deleted
   modified=$(git -C "$project_root" diff --cached --name-only --diff-filter=M | wc -l | tr -d ' ')
   added=$(git -C "$project_root" diff --cached --name-only --diff-filter=A | wc -l | tr -d ' ')
@@ -88,61 +87,63 @@ commit_project() {
 
   git -C "$project_root" commit -m "sync-prj-repos-memory: Sync memory and config (modified $modified, added $added, deleted $deleted)"
 
-  # Detect branch and push
   local branch
   branch=$(git -C "$project_root" rev-parse --abbrev-ref HEAD)
   git -C "$project_root" push origin "$branch"
 }
 
 # ============================================================================
-# Sync a single project: memory then commit
+# Sync a single project: verify ownership, sync memory, commit and push
 # ============================================================================
 sync_project() {
-  local project_root="${1%/}"  # strip trailing slash defensively
+  local project_root="${1%/}"
   local name
   name=$(basename "$project_root")
 
   echo "Syncing $name..."
 
   if [[ ! -d "$project_root/.git" ]]; then
-    echo "✗ $name: not a git repository, skipping"
-    ((++failed))
-    return 1
+    echo "✗ $name: not a git repository" >&2
+    exit 1
   fi
 
-  sync_memory "$project_root" || { echo "✗ $name: memory sync failed"; ((++failed)); return 1; }
-  commit_project "$project_root" || { echo "✗ $name: git commit/push failed"; ((++failed)); return 1; }
+  # Ownership check — only sync repos owned by the authenticated user
+  local auth_user repo_owner
+  auth_user=$(get_authenticated_user)
+
+  if [[ -z "$auth_user" ]]; then
+    echo "  ⚠ Could not verify ownership (gh whoami failed) — proceeding"
+  else
+    repo_owner=$(get_repo_owner "$project_root" 2>/dev/null || echo "")
+    if [[ -n "$repo_owner" && "$repo_owner" != "$auth_user" ]]; then
+      echo "⊘ $name: skipping (owner: $repo_owner, authenticated: $auth_user)"
+      exit 0
+    fi
+  fi
+
+  sync_memory "$project_root" || { echo "✗ $name: memory sync failed" >&2; exit 1; }
+  commit_project "$project_root" || { echo "✗ $name: git commit/push failed" >&2; exit 1; }
 
   echo "✓ $name"
-  ((++synced))
 }
 
 # ============================================================================
-# Main: determine scope and dispatch
+# Main: resolve project path and sync
 # ============================================================================
 main() {
   if [[ $# -gt 0 ]]; then
     # Explicit project path provided
     sync_project "$1"
-
-  elif find_git_root "$PWD" &>/dev/null; then
-    # Inside a git repo — sync current project only
-    local project_root
-    project_root=$(find_git_root "$PWD")
-    sync_project "$project_root"
-
   else
-    # Outside any git repo — sync all projects under /workspace/claude/
-    echo "Syncing all projects in $WORKSPACE_ROOT..."
-    echo ""
-    for subdir in "$WORKSPACE_ROOT"/*/; do
-      [[ -d "${subdir}.claude" ]] || continue
-      sync_project "$subdir"
-    done
+    # No args — read live project from ~/live-project
+    if [[ ! -f "$HOME/live-project" ]]; then
+      echo "✗ ~/live-project not found — is load-projects.sh configured with -live?" >&2
+      exit 1
+    fi
+    local live_path
+    live_path=$(cat "$HOME/live-project")
+    sync_project "$live_path"
   fi
-
-  echo ""
-  echo "Done: $synced synced, $failed failed"
 }
 
 main "$@"
