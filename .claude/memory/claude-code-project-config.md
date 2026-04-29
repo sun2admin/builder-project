@@ -41,11 +41,11 @@ project-repo/
 
 ## Important: Auto-Memory Location
 
-Auto-memory (`~/.claude/projects/<project-path>/memory/`) is user-scoped and lives in ~/.claude/ (or CLAUDE_CONFIG_DIR if set). The `<project-path>` is derived from the working directory when Claude starts (canonicalized, e.g., `/workspace/claude` → `workspace-claude`).
+Auto-memory (`~/.claude/projects/<project-path>/memory/`) is user-scoped and lives in ~/.claude/ (or CLAUDE_CONFIG_DIR if set). The `<project-path>` is derived from the working directory when Claude starts (canonicalized, e.g., `/workspace/claude` → `-workspace-claude`).
 
 Auto-memory is NOT auto-discovered from `.claude/memory/` in the project repo. However, in containerized setups where the named volume is ephemeral:
 - Project memory files must be committed to the repo (e.g., `/workspace/claude/.claude/memory/`)
-- load-projects.sh seeds the fresh named volume with these committed files on startup using `cp -n`
+- init-memory.sh seeds the fresh named volume with these committed files on startup using `cp -n`
 - In-session updates are preserved across restarts (not overwritten) by the `-n` flag
 
 ## Config Precedence (highest to lowest)

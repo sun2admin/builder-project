@@ -31,14 +31,12 @@ When Claude starts in a cwd, it searches upward for:
 ### Auto-Memory Directory
 Auto-memory is stored at: `~/.claude/projects/<project-identifier>/memory/`
 
-The `<project-identifier>` is derived from the **git repository root** path, canonicalized:
-- Strip leading `/`, replace remaining `/` with `-`
-- `/workspace/claude` → `workspace-claude` (no leading dash)
+The `<project-identifier>` is derived from the **working directory path**, canonicalized into a safe directory name (e.g., `/workspace/claude` → `-workspace-claude`).
 
 When Claude starts with cwd=/workspace/claude:
-- It creates/uses `~/.claude/projects/workspace-claude/` for session data
-- Auto-memory writes to `~/.claude/projects/workspace-claude/memory/`
-- Session transcripts stored in `~/.claude/projects/workspace-claude/<session-id>.jsonl`
+- It creates/uses `~/.claude/projects/-workspace-claude/` for session data
+- Auto-memory writes to `~/.claude/projects/-workspace-claude/memory/`
+- Session transcripts stored in `~/.claude/projects/-workspace-claude/<session-id>.jsonl`
 
 ### What Gets Persisted in ~/.claude/projects/
 1. **Auto-memory files** — notes Claude writes when learning preferences/corrections
@@ -60,14 +58,14 @@ When Claude starts with cwd=/workspace/claude:
 4. Claude walks up directory tree from `/workspace/claude` looking for config
 5. Finds `/workspace/claude/.claude/`, `/workspace/claude/CLAUDE.md`
 6. Loads project config from there
-7. Creates or updates `~/.claude/projects/workspace-claude/` directory
-8. **No memory is pre-seeded** — auto-memory from previous sessions already lives in `~/.claude/projects/workspace-claude/memory/`
+7. Creates or updates `~/.claude/projects/-workspace-claude/` directory
+8. **No memory is pre-seeded** — auto-memory from previous sessions already lives in `~/.claude/projects/-workspace-claude/memory/`
 
 ### On Restart (Container Restart, Same Session)
 1. Same cwd set (postAttachCommand does this: `cd /workspace/claude && claude ...`)
 2. Claude starts from same working directory
 3. Claude loads the SAME project config (hasn't changed)
-4. Claude accesses the SAME `~/.claude/projects/workspace-claude/` that was persisted
+4. Claude accesses the SAME `~/.claude/projects/-workspace-claude/` that was persisted
 5. Previous session's auto-memory is still there
 6. Previous session transcripts are still there
 7. Session continues seamlessly (if not starting new session)
@@ -75,7 +73,7 @@ When Claude starts with cwd=/workspace/claude:
 ### On Rebuild (Container Image Rebuild, New devcontainerId)
 1. If named volume is tied to `devcontainerId`: named volume gets FRESH (previous state lost)
 2. But project config in `/workspace/claude/.claude/` is on bind mount (survives rebuild)
-3. This is why we need load-projects.sh: to seed fresh named volume with project memory from git-committed files
+3. This is why we need init-memory.sh: to seed fresh named volume with project memory from git-committed files
 
 ## How Containers Differ From Local Setups
 
@@ -91,12 +89,9 @@ When Claude starts with cwd=/workspace/claude:
 - Switching between projects = would need to `cd` within container and have multiple projects in `/workspace/`
 - If named volume gets wiped on rebuild, memory must be **re-seeded from git-committed files**
 
-**Critical Pattern:** load-projects.sh bridges the gap:
+**Critical Pattern:** init-memory.sh bridges the gap:
 ```bash
-# Seed only memory/*.md — all other config read from repo via cwd walk-up
-mkdir -p ~/.claude/projects/workspace-claude/memory
-cp -n /workspace/claude/.claude/memory/*.md \
-  ~/.claude/projects/workspace-claude/memory/ 2>/dev/null || true
+cp -n /workspace/claude/.claude/memory/MEMORY.md /workspace/claude/.claude/memory/ai-install-layer-implementation.md /workspace/claude/.claude/memory/architecture-four-layer-stack.md /workspace/claude/.claude/memory/base-ai-layer-implementation.md /workspace/claude/.claude/memory/build-project-design-decisions.md /workspace/claude/.claude/memory/build-project-skill-clarifications.md /workspace/claude/.claude/memory/claude-code-config-loading-precedence.md /workspace/claude/.claude/memory/claude-code-memory-portability-architecture.md /workspace/claude/.claude/memory/claude-code-multi-project-architecture.md /workspace/claude/.claude/memory/claude-code-project-config.md /workspace/claude/.claude/memory/claude-code-project-discovery-sessions.md /workspace/claude/.claude/memory/devcontainer-claude-code-auth.md /workspace/claude/.claude/memory/devcontainer-credential-files.md /workspace/claude/.claude/memory/devcontainer-implicit-behavior.md /workspace/claude/.claude/memory/devcontainer-persistence-strategy.md /workspace/claude/.claude/memory/devcontainer-playwright.md /workspace/claude/.claude/memory/devcontainer-ssh-and-keys.md /workspace/claude/.claude/memory/devcontainer-volumes-and-mounts.md /workspace/claude/.claude/memory/feedback-auto-commit-on-success.md /workspace/claude/.claude/memory/feedback-bash-over-zsh.md /workspace/claude/.claude/memory/feedback-check-mounts-first.md /workspace/claude/.claude/memory/feedback-credentials-shell-env.md /workspace/claude/.claude/memory/feedback-ghcr-always-private.md /workspace/claude/.claude/memory/feedback-init-scripts-not-in-image.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-output.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-repo-verification.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-vs-build-separation.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-search-bug.md /workspace/claude/.claude/memory/feedback-plugins-first-approach.md /workspace/claude/.claude/memory/feedback-use-skill-tool.md /workspace/claude/.claude/memory/init-projects-sync-pattern.md /workspace/claude/.claude/memory/plugin-layer-ai-install-migration.md /workspace/claude/.claude/memory/project-claude-code-actions-placement.md /workspace/claude/.claude/memory/project-plugin-lists.md /workspace/claude/.claude/memory/project-plugin-seed-approach.md /workspace/claude/.claude/memory/reference-plugins-vs-skills.md /workspace/claude/.claude/memory/user.md ~/.claude/projects/-workspace-claude/memory/
 ```
 
 This copies project memory from git-committed location into the fresh named volume. The `cp -n` (no-overwrite) ensures in-session updates aren't blown away on restart.
@@ -105,17 +100,23 @@ This copies project memory from git-committed location into the fresh named volu
 
 ```
 ~/.claude/projects/
-├── workspace-claude/             # Project: /workspace/claude (git repo root)
-│   ├── memory/                   # Auto-memory (persisted in named volume)
-│   ├── 5521fc77-xxxx.jsonl       # Session transcript file
-│   ├── a924aeb1-xxxx.jsonl       # Another session transcript
-│   └── [more session data]
+├── -workspace/ # Project: /workspace (if cwd set there)
+│ └── memory/ # Auto-memory for /workspace
 │
-└── workspace-claude-builder-project/  # Would exist if builder-project was a separate git repo
-    └── memory/
+├── -workspace-claude/ # Project: /workspace/claude (actual working project)
+│ ├── memory/ # Auto-memory (persisted in named volume)
+│ ├── 5521fc77-xxxx.jsonl # Session transcript file
+│ ├── a924aeb1-xxxx.jsonl # Another session transcript
+│ └── [more session data]
+│
+└── <other-project-path>/ # Would exist if Claude ran with different cwd
+ └── memory/
 ```
 
-**Note:** All subdirectories of the same git repo share one project entry. The identifier is derived from the git repo root, not the specific subdirectory.
+**Why `-workspace/` exists with minimal content:**
+- It was created by init-memory.sh when it ran `mkdir -p ~/.claude/projects/-workspace/memory`
+- This suggests build-with-claude's init-memory.sh might have a bug OR there's a /workspace/.claude/memory/ somewhere
+- OR it was created during development/testing
 
 ## CLAUDE_CONFIG_DIR Environment Variable
 
@@ -133,7 +134,7 @@ If you want multiple projects in one workspace (e.g., `/workspace/project-a`, `/
 
 1. Each project needs its own `.claude/` directory with separate config
 2. Each project needs to be started with a separate `cd /workspace/project-X` before `claude` runs
-3. Claude automatically creates separate `~/.claude/projects/workspace-project-x/` entries
+3. Claude automatically creates separate `~/.claude/projects/-workspace-project-X/` entries
 4. Each project maintains separate memory, session history, config
 5. No risk of collision or cross-contamination (working directory scoping handles this)
 

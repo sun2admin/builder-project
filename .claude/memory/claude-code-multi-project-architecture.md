@@ -16,8 +16,8 @@ Claude Code is **fundamentally designed for one project per session**, not multi
 
 **Example:**
 ```
-cwd=/workspace/project-a → reads from ~/.claude/projects/workspace-project-a/
-cwd=/workspace/project-b → reads from ~/.claude/projects/workspace-project-b/
+cwd=/workspace/project-a → reads from ~/.claude/projects/-workspace-project-a/
+cwd=/workspace/project-b → reads from ~/.claude/projects/-workspace-project-b/
 ```
 
 ## Switching Between Projects: /resume Command
@@ -62,24 +62,22 @@ $ claude
 → User can type /resume to switch to a specific project
 ```
 
-## Multi-Project Setup: Seed Memory for All Projects
+## Multi-Project Setup: Copy All Projects to ~/.claude/projects/
 
 **The approach:**
 ```
-Source (in git repos):
+Source (in git repo):
  /workspace/claude/
- ├── project-a/.claude/memory/*.md
- ├── project-b/.claude/memory/*.md
- └── project-c/.claude/memory/*.md
+ ├── project-a/.claude/
+ ├── project-b/.claude/
+ └── project-c/.claude/
 
-Seeded to named volume (memory only):
+Copied to named volume:
  ~/.claude/projects/
- ├── workspace-project-a/memory/
- ├── workspace-project-b/memory/
- └── workspace-project-c/memory/
+ ├── -workspace-project-a/.claude/
+ ├── -workspace-project-b/.claude/
+ └── -workspace-project-c/.claude/
 ```
-
-**Important:** Only `memory/` is seeded. Skills, commands, agents, rules, settings.json are read directly from the project repo via cwd walk-up — no seeding needed or wanted.
 
 **How it works:**
 1. postAttachCommand: `claude` (no explicit cd to project)
@@ -88,9 +86,8 @@ Seeded to named volume (memory only):
 4. User types `/resume`
 5. /resume picker shows all three projects
 6. User selects project-a
-7. Claude loads project-a config from the bind-mounted repo `/workspace/project-a/.claude/`
-8. Claude accesses memory from `~/.claude/projects/workspace-project-a/memory/`
-9. User works on project-a
+7. Claude loads project-a context from `~/.claude/projects/-workspace-project-a/`
+8. User works on project-a
 
 **Benefits:**
 - ✓ Single startup command (no per-project .devcontainer)
@@ -103,7 +100,7 @@ Seeded to named volume (memory only):
 
 **Multi-project scaffold would include:**
 
-1. **load-projects.sh** — seeds all projects' memory to ~/.claude/projects/<path>/memory/
+1. **init-memory.sh** — copies all projects' .claude/memory/ to ~/.claude/projects/<path>/memory/
 2. **Root-level /workspace/.claude/** — optional global config for all projects
 3. **Root-level /workspace/CLAUDE.md** — optional global instructions
 4. **Per-project /workspace/project-*/.claude/** — project-specific config
@@ -113,26 +110,26 @@ Seeded to named volume (memory only):
 ```
 /workspace/ ✓ git repo (.git exists)
  ├── .devcontainer/
- │   └── devcontainer.json (workspaceFolder=/workspace, postAttach: claude)
+ │ └── devcontainer.json (workspaceFolder=/workspace, postAttach: claude)
  ├── .claude/ (optional global config)
  ├── CLAUDE.md (optional global instructions)
  └── claude/
-     ├── project-a/
-     │   ├── .claude/ (project-specific, read directly from here)
-     │   └── CLAUDE.md
-     ├── project-b/
-     │   ├── .claude/
-     │   └── CLAUDE.md
-     └── project-c/
-         ├── .claude/
-         └── CLAUDE.md
+ ├── project-a/
+ │ ├── .claude/ (project-specific)
+ │ └── CLAUDE.md
+ ├── project-b/
+ │ ├── .claude/
+ │ └── CLAUDE.md
+ └── project-c/
+ ├── .claude/
+ └── CLAUDE.md
 ```
 
 **On container start:**
-1. load-projects.sh seeds all projects' memory to ~/.claude/projects/<path>/memory/
+1. init-memory.sh copies all projects' configs to ~/.claude/projects/<path>/
 2. Claude starts from /workspace (global context)
 3. User uses /resume to select project
-4. Claude switches to project context (reads config from bind-mounted repo)
+4. Claude switches to project context
 
 ## Why This Works Without Explicit Project Selection Config
 

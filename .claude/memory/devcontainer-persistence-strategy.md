@@ -24,15 +24,13 @@ Containers are ephemeral by design. On rebuild, the filesystem is lost entirely.
 ### Layer 2: Git-Committed Project Config
 `/workspace/claude/.claude/` (checked into repo)
 
-- Contains: memory/, commands/, agents/, skills/, rules/, settings.json
+- Contains: memory/, commands/, agents/, rules/, settings.json
 - Team-shared, version-controlled, reproducible
-- **Only memory/ needs seeding** into named volume — all other config is read directly from the repo by Claude (cwd walk-up discovery)
+- Seeded into named volume on `postStartCommand` via `init-memory.sh`
 
-### Layer 3: Seed-on-Start with No-Overwrite (memory only)
-`load-projects.sh`: `cp -n "$SOURCE/.claude/memory"/*.md "$TARGET/memory/"`
+### Layer 3: Seed-on-Start with No-Overwrite
+`init-memory.sh`: `cp -n "$MEMORY_SRC"/*.md "$MEMORY_DEST/"`
 
-- **Seeds**: ONLY `memory/*.md` into `~/.claude/projects/<canonical-path>/memory/`
-- **Does NOT seed**: skills/, commands/, agents/, rules/, settings.json (Claude reads those from repo directly)
 - **First start**: copies all project memory from repo → named volume (empty volume)
 - **On restart**: preserves any memories Claude wrote in-session (no-overwrite flag `-n`)
 - **Elegant approach**: no complex merge logic, just simple copy-if-not-exists
@@ -58,18 +56,18 @@ Containers are ephemeral by design. On rebuild, the filesystem is lost entirely.
 
 - **Project Repo** (`/workspace/claude/.claude/`) = shared, team-visible, stable config
 - **Named Volume** (`/home/claude/.claude/`) = user/session-specific, ephemeral-but-restart-persistent
-- **load-projects.sh** = bridge that seeds the named volume from repo on start
+- **init-memory.sh** = bridge that seeds the named volume from repo on start
 
 On rebuild:
 1. Fresh container created
 2. Fresh named volume created (empty)
-3. load-projects.sh copies project config from repo into named volume
+3. init-memory.sh copies project config from repo into named volume
 4. Claude starts and sees fresh config
 
 On restart (same container):
 1. Container restarts
 2. Named volume preserved (still has session-written memories + project config)
-3. load-projects.sh runs again but `-n` flag prevents overwriting session writes
+3. init-memory.sh runs again but `-n` flag prevents overwriting session writes
 4. Claude starts and sees preserved state
 
 ## Why `cp -n` (No-Overwrite) is Crucial
@@ -93,10 +91,10 @@ All new projects (Minimal, Standard, Full) should use this exact pattern:
 1. **devcontainer.json**
  - Named volume: `claude-code-config-${devcontainerId}` → `/home/claude/.claude`
  - `CLAUDE_CONFIG_DIR` env var pointing to `/home/claude/.claude`
- - `postStartCommand` that runs load-projects.sh
+ - `postStartCommand` that runs init-memory.sh
 
-2. **load-projects.sh**
- - Seeds memory only: `cp -n /workspace/<project>/.claude/memory/*.md ~/.claude/projects/<canonical-id>/memory/`
+2. **init-memory.sh**
+ - Copy structure: `cp -n` from `/workspace/<project>/.claude/memory/` → `/home/claude/.claude/projects/-workspace/memory/`
  - Graceful error handling
 
 3. **Project Config Directories**
