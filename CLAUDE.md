@@ -44,3 +44,11 @@ The container uses **bash** (not zsh). Claude Code does not require zsh. Bash is
 ## GitHub Actions
 
 `update-github-mcp.yml` — checks for new `github-mcp-server` releases weekly, verifies checksums, commits updated binaries, and opens a PR.
+
+## Working Across Layers
+
+**IMPORTANT:** This repo contains multiple architecture layers as subdirectories. When working across layers:
+
+- Before modifying any layer file, explicitly state which layer you are targeting
+- If a request could apply to more than one layer, ALWAYS ask which layer before proceeding — never infer from semantic context alone
+- When starting work on a layer, declare it: "I am working on Layer X" so all follow-up instructions are correctly scoped

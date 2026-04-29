@@ -12,23 +12,25 @@ originSessionId: 5c59a0d5-1064-4e64-9cef-f4c77d757503
 
 ## 4-Layer Container Architecture
 
-| Layer | Image | Contents |
+All 4 layers are managed within the single `sun2admin/builder-project` GitHub repo.
+Each layer has its own subdirectory containing Dockerfiles, GitHub Actions, and config.
+
+| Layer | Published Image | Contents |
 |---|---|---|
 | Layer 1 | `ghcr.io/sun2admin/base-ai-layer:latest` | System packages, Python, graphics libs, Playwright |
 | Layer 2 | `ghcr.io/sun2admin/ai-install-layer:claude` | Claude Code CLI, claude user, env setup |
-| Layer 3 | `ghcr.io/sun2admin/claude-plugins-a7f3d2e8:latest` | Pre-baked Claude Code plugins |
-| Layer 4 | `build-with-claude` (this repo) | devcontainer.json referencing Layer 3 |
+| Layer 3 | `ghcr.io/sun2admin/claude-plugins-*:latest` | Pre-baked Claude Code plugins |
+| Layer 4 Part 1 | devcontainer config subdir | devcontainer.json, init scripts, load-projects.sh |
+| Layer 4 Part 2 | separate standalone repos | Claude/AI project files only, cloned by load-projects.sh |
 
-Stage2 = `sun2admin/build-with-claude-stage2` — the active devcontainer config repo.
-Stage3 = `sun2admin/build-with-claude-stage3` — clone of stage2, used for testing new configs.
+**Layer 4 Part 2 repos are NOT inside builder-project.** They are separate repos cloned at
+container start by `load-projects.sh` into `/workspace/<ai-name>/<repo-name>`.
+`builder-project` itself is the reference implementation of a Part 2 repo.
 
 ## Key Repos
 
-- `sun2admin/builder-project` — live project repo (skills, commands, plans, memory)
-- `sun2admin/build-with-claude-stage2` — devcontainer config (load-projects.sh, devcontainer.json, init scripts)
-- `sun2admin/build-with-claude-stage3` — stage2 clone for testing
-- `/workspace/.devcontainer/` — bind-mounted from the host workspace (stage2 or stage3 repo)
-- `/workspace/claude/builder-project/` — live project clone (bind mount via load-projects.sh)
+- `sun2admin/builder-project` — **the single GitHub repo** containing all layer source files as subdirectories (Layers 1–3 and Layer 4 Part 1); also serves as the reference Part 2 Claude project
+- `/workspace/claude/builder-project/` — live project clone (loaded by load-projects.sh into the running container)
 
 ## Persistence Lifecycle
 

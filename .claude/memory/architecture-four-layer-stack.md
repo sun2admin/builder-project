@@ -37,7 +37,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 
 **Purpose**: Minimal base with system packages, no AI tools or user config.
 
-**Repository**: `https://github.com/sun2admin/base-ai-layer`
+**Source**: Subdirectory within `sun2admin/builder-project` (single repo for all layers)
 
 **Tag Variants**:
 - `:light` — Anthropic-recommended minimal packages only
@@ -67,7 +67,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 
 **Purpose**: Installs AI tool (Claude Code or Gemini CLI) and creates corresponding user with environment setup.
 
-**Repository**: `https://github.com/sun2admin/ai-install-layer` (image-based replacement for claude-install-container features)
+**Source**: Subdirectory within `sun2admin/builder-project` (single repo for all layers)
 
 **Tag Variants**:
 - `:claude` — Claude Code CLI + `claude` user

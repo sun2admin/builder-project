@@ -11,8 +11,13 @@ rules files per layer, and correctly reflect the Layer 4 Part 2 role of this rep
 **Keep** (~20 lines total):
 - Project purpose (1–2 sentences)
 - 4-layer architecture diagram + dependency chain
-- Pointer to `.claude/rules/` for layer detail
+- Pointer to nested CLAUDE.md files for layer detail
 - Cross-cutting rules: GHCR always private, bash not zsh
+- Layer disambiguation rule: before modifying any layer file, state which layer is targeted;
+  if a request could apply to more than one layer, always ask before proceeding;
+  never infer target layer from semantic context alone
+- Session discipline pattern: explicitly declare "I am working on Layer X" before giving
+  layer-specific instructions, so vague follow-ups are correctly scoped
 
 **Remove** (moves to rule files):
 - Init scripts table → `layer-4-part1.md`
