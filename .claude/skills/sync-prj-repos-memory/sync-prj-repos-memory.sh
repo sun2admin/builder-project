@@ -14,9 +14,10 @@ canonicalize_path() {
 
 # ============================================================================
 # Get authenticated GitHub username
+# gh whoami does not exist in all gh versions — use gh api instead
 # ============================================================================
 get_authenticated_user() {
-  gh whoami 2>/dev/null || echo ""
+  gh api user --jq '.login' 2>/dev/null || echo ""
 }
 
 # ============================================================================
@@ -112,7 +113,7 @@ sync_project() {
   auth_user=$(get_authenticated_user)
 
   if [[ -z "$auth_user" ]]; then
-    echo "  ⚠ Could not verify ownership (gh whoami failed) — proceeding"
+    echo "  ⚠ Could not verify ownership (gh api user failed) — proceeding"
   else
     repo_owner=$(get_repo_owner "$project_root" 2>/dev/null || echo "")
     if [[ -n "$repo_owner" && "$repo_owner" != "$auth_user" ]]; then

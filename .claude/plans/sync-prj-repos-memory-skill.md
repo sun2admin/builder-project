@@ -94,7 +94,7 @@ The skill only commits and pushes to repos owned by the authenticated GitHub use
 
 ```bash
 get_authenticated_user() {
-  gh whoami 2>/dev/null || echo ""
+  gh api user --jq '.login' 2>/dev/null || echo ""
 }
 
 get_repo_owner() {
@@ -111,7 +111,7 @@ get_repo_owner() {
 | Remote owner matches auth user | Sync, commit, push |
 | Remote owner differs from auth user | Skip entirely, log reason |
 | No remote detectable | Treat as owned, sync and commit (no push) |
-| `gh whoami` fails | Log warning, proceed (cannot verify ownership) |
+| `gh api user` fails | Log warning, proceed (cannot verify ownership) |
 
 All skips are logged with the reason:
 ```
@@ -362,7 +362,7 @@ Committed to `sun2admin/builder-project` — `dced57a`
 ### Phase 6: Update skill implementation
 1. Remove cwd detection from `main()`
 2. Add `~/live-project` read for no-args invocation
-3. Add ownership filtering via `gh whoami` + remote URL parsing
+3. Add ownership filtering via `gh api user --jq '.login'` + remote URL parsing
 4. Remove "sync all projects" loop
 5. Update `SKILL.md` invocation table
 6. Update error handling for missing `~/live-project`
