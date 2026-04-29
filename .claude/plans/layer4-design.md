@@ -5,15 +5,17 @@
 Layer 4 is split into two distinct parts. Part 2 dictates what Part 1 contains.
 
 **Part 1 — Container/Dependency Layer**
-Subdirectory within `sun2admin/builder-project` (single repo).
+A subdirectory within `sun2admin/builder-project` (single repo).
 Contains: devcontainer.json, init scripts, firewall rules, Layer 3 image reference.
+`load-projects.sh` lives here — it clones Part 2 repos into the running container.
 
-**Part 2 — Claude Project Repos**
-Subdirectory within `sun2admin/builder-project` (single repo).
-`builder-project` itself is the reference implementation of a Part 2 repo.
+**Part 2 — Claude/AI Project Repos**
+Separate standalone repos — NOT subdirectories of builder-project.
+Cloned by `load-projects.sh` (Part 1) into `/workspace/<ai-name>/<repo-name>` at container start.
+Only one AI workspace exists at a time (e.g. /workspace/claude/ or /workspace/gemini/).
+`builder-project` is the reference implementation example of a Part 2 repo.
 Contains: Claude files only (CLAUDE.md, .claude/, .mcp.json, skills, memory).
 Self-contained and portable — usable independently of the 4-layer architecture.
-Cloned to `/workspace/<ai-name>/<repo-name>`. Only one AI workspace exists at a time.
 
 ---
 

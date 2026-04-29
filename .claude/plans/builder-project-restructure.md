@@ -51,22 +51,24 @@ this single repo, so rules fire automatically when Claude opens files in each la
 - Key constraint: all GHCR images must be private
 
 ### `layer-4-part1.md`
-- Repos: build-with-claude, build-with-claude-stage2, build-with-claude-stage3
-- Role: container/dependency layer — shaped by what Part 2 needs
+- Path scope: `layer4-part1/**` (subdir name TBD)
+- Role: container/dependency layer — shaped by what Part 2 repos need
 - devcontainer.json references Layer 3 image
 - Init scripts: init-firewall.sh (sudo/iptables), init-ssh.sh, init-gh-token.sh, init-github-mcp.sh
+- load-projects.sh: clones Part 2 repos into /workspace/<ai-name>/<repo-name> at container start
 - Credentials via bind-mounted /run/credentials/ files
 - postStartCommand sequence, postAttachCommand uses bash --login
-- update-github-mcp.yml: weekly GitHub Action to update MCP binary (identical across all 3 repos)
-- Note: see layer4-design.md for planned migration of scripts to Part 2
+- Note: see layer4-design.md for planned migration of init scripts to Part 2 repos
 
 ### `layer-4-part2.md`
-- This repo (builder-project) is the reference implementation
-- Role: Claude project repo — self-contained and portable, usable outside 4-layer architecture
+- Always-loaded (no paths: frontmatter) — Part 2 repos are separate standalone repos,
+  not subdirectories of builder-project; no local files to trigger path-scoped loading
+- Documents the Part 2 pattern: builder-project is the reference implementation
+- Role: standalone Claude/AI project repo, cloned by load-projects.sh into the container
+- Self-contained and portable — usable outside the 4-layer architecture entirely
 - Contains only Claude files: CLAUDE.md, .claude/, .mcp.json, skills, memory
 - Cloned to /workspace/<ai-name>/<repo-name> — only one AI workspace at a time
 - SessionStart hook: adds $CLAUDE_PROJECT_DIR/scripts/bin to PATH via $CLAUDE_ENV_FILE
-  (enables project-local binaries without Part 1 involvement)
 - .mcp.json uses relative path for MCP binary (./scripts/bin/...) — confirmed working
 - Note: see layer4-design.md for planned migration of init scripts and binaries to Part 2
 
