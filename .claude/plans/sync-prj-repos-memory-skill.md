@@ -96,6 +96,11 @@ The skill only commits and pushes to repos owned by the authenticated GitHub use
 get_authenticated_user() {
   gh api user --jq '.login' 2>/dev/null || echo ""
 }
+```
+
+> **Note:** `gh whoami` is the cleaner command for this purpose but does not exist in the current gh CLI version installed in the container. When `ai-base-layer` is next updated, check whether `gh whoami` has been added — if so, replace `gh api user --jq '.login'` with `gh whoami` in the skill script and this plan.
+
+```bash
 
 get_repo_owner() {
   local project_path=$1
