@@ -44,7 +44,7 @@ not used — it can drift during a session via Bash tool `cd` commands.
 
 ## Ownership Filtering
 
-Only repos owned by the authenticated GitHub user (`gh whoami`) are synced.
+Only repos owned by the authenticated GitHub user (`gh api user --jq '.login'`) are synced.
 If a repo's remote owner differs from the authenticated user, the entire sync
 is skipped (no memory sync, no commit, no push) and the reason is logged.
 Repos with no detectable remote are treated as owned and synced normally.

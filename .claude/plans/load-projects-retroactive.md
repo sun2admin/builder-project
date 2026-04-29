@@ -260,6 +260,12 @@ bash --login -c 'cd $(cat ~/live-project 2>/dev/null || echo ~) && claude --dang
 
 **Implication:** `load-projects.sh` cannot make a side repo appear in `/resume`. Side repos are working directories only — Claude edits them from within the live session without ever switching project context.
 
+## History: What Was Replaced
+
+**`init-memory.sh`** — A separate init script that previously handled memory seeding. Replaced entirely by `load-projects.sh`, which consolidates repo cloning and memory seeding into a single script invoked once from `postStartCommand`. There is no `init-memory.sh` in the current container stack.
+
+**`seed_project_config()`** — An earlier function that seeded the full `.claude/` directory (skills, commands, settings, etc.) into the named volume. Removed when it was established that Claude reads all project config directly from the bind-mounted repo via cwd walk-up — it does NOT read from `~/.claude/projects/<path>/.claude/`. Only `memory/*.md` needs seeding because it is the only Claude-written artifact that lives in the named volume rather than the repo.
+
 ## Design Principles
 
 1. **One live project per container** — One container = one Claude session = one live project. Side repos are editing targets, not sessions.

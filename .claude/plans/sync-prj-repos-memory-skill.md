@@ -364,16 +364,20 @@ Committed to `sun2admin/build-with-claude-stage2` — `26b8100`
 Deleted `/workspace/claude/builder-project/.claude/commands/update-build-with-claude.md`
 Committed to `sun2admin/builder-project` — `dced57a`
 
-### Phase 6: Update skill implementation
-1. Remove cwd detection from `main()`
-2. Add `~/live-project` read for no-args invocation
-3. Add ownership filtering via `gh api user --jq '.login'` + remote URL parsing
-4. Remove "sync all projects" loop
-5. Update `SKILL.md` invocation table
-6. Update error handling for missing `~/live-project`
-7. Commit and push to builder-project
+### Phase 6: Update skill implementation ✅ COMPLETE
+1. ✅ Removed cwd detection from `main()`
+2. ✅ Added `~/live-project` read for no-args invocation
+3. ✅ Added ownership filtering via `gh api user --jq '.login'` + remote URL parsing
+4. ✅ Removed "sync all projects" loop
+5. ✅ Updated `SKILL.md` invocation table and ownership docs
+6. ✅ Added hard error if `~/live-project` missing
+7. ✅ Fixed: `gh whoami` does not exist in current gh CLI — use `gh api user --jq '.login'`
+Committed to `sun2admin/builder-project` — `78773e2`
 
-### Phase 7: End-to-end verification
-1. Run all 8 verification tests above
-2. Confirm `~/live-project` is read correctly
-3. Confirm ownership filtering skips non-owned repos
+### Phase 7: End-to-end verification ✅ COMPLETE
+1. ✅ Test 2: No-args reads `~/live-project`, syncs live project
+2. ✅ Test 3: Explicit path argument syncs specified path
+3. ✅ Test 4: Missing `~/live-project` produces clear error, exit 1
+4. ✅ Test 6: Nothing to sync — no empty commit created
+5. ✅ Test 7: settings.local.json never committed
+6. ✅ Test 8: Ownership filtering skips non-owned repo with logged reason
