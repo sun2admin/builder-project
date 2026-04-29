@@ -1,7 +1,7 @@
 # Plan: Move GitHub MCP Binary Ownership to Part 2 (builder-project)
 
 ## Problem
-Currently the GitHub MCP server binary is owned by Part 1 (build-with-claude repo):
+Currently the GitHub MCP server binary is owned by Part 1 (Layer 4 Part 1 subdir of builder-project):
 - `scripts/bin/github-mcp-server-linux-amd64` + `linux-arm64` committed to Part 1
 - `init-github-mcp.sh` copies binary to `~/.local/bin/` at container start
 - `update-github-mcp.yml` keeps binary updated in Part 1 repo
@@ -21,7 +21,7 @@ Move binary ownership to builder-project (Part 2). Confirmed working: `.mcp.json
 - [ ] `.github/workflows/update-github-mcp.yml` — automated weekly update workflow
 - [ ] Update `.mcp.json` `command` to use relative path `./scripts/bin/github-mcp-server`
 
-### Part 1 repos (build-with-claude, stage2, stage3) — REMOVE
+### Part 1 subdir in builder-project — REMOVE
 - [ ] `scripts/bin/` directory and contents
 - [ ] `init-github-mcp.sh` init script
 - [ ] `update-github-mcp.yml` workflow

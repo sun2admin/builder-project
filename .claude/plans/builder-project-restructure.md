@@ -25,25 +25,26 @@ rules files per layer, and correctly reflect the Layer 4 Part 2 role of this rep
 
 ## Step 2: Create .claude/rules/ Files
 
-Six files, always-loaded (no `paths:` frontmatter — layers 1–3 are external repos,
-no local files to trigger path-scoped loading).
+Six files, **path-scoped** (`paths:` frontmatter) — all layers are subdirectories within
+this single repo, so rules fire automatically when Claude opens files in each layer's dir.
 
 ### `layer-1-base-ai.md`
-- Repo: `sun2admin/base-ai-layer`
+- Path scope: `layer1/**` (or whatever the actual subdir name is — TBD)
 - What it builds: system packages, Python, graphics libs, Playwright
 - Tag variants: `:light`, `:latest`, `:playwright_with_*`
 - Dockerfile ARG structure (INCLUDE_EXTRAS, INCLUDE_PLAYWRIGHT, BROWSERS)
 - GitHub Actions matrix: 6 variants in parallel
 
 ### `layer-2-ai-install.md`
-- Repo: `sun2admin/ai-install-layer`
+- Path scope: `layer2/**` (subdir name TBD)
 - Builds FROM base-ai-layer:latest
 - Tag variants: `:claude`, `:gemini`
 - Single Dockerfile with conditional ARG logic (AI_TYPE, AI_PACKAGE, USERNAME)
 - GitHub Actions matrix: 2 variants in parallel
 
 ### `layer-3-plugins.md`
-- 8 plugin repos: claude-anthropic-{base,coding,ext,all}-plugins-container + 4 custom
+- Path scope: `layer3/**` (subdir name TBD)
+- 8 plugin variants: claude-anthropic-{base,coding,ext,all}-plugins-container + 4 custom
 - All build FROM ai-install-layer:claude
 - Plugin baking: CLAUDE_CODE_PLUGIN_CACHE_DIR + CLAUDE_CODE_PLUGIN_SEED_DIR
 - Marketplace sources: anthropics/claude-plugins-official, anthropics/skills

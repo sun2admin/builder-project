@@ -5,11 +5,12 @@
 Layer 4 is split into two distinct parts. Part 2 dictates what Part 1 contains.
 
 **Part 1 — Container/Dependency Layer**
-Repos: `build-with-claude`, `build-with-claude-stage2`, `build-with-claude-stage3`
+Subdirectory within `sun2admin/builder-project` (single repo).
 Contains: devcontainer.json, init scripts, firewall rules, Layer 3 image reference.
 
 **Part 2 — Claude Project Repos**
-Repos: `builder-project` and all future claude/ai project repos.
+Subdirectory within `sun2admin/builder-project` (single repo).
+`builder-project` itself is the reference implementation of a Part 2 repo.
 Contains: Claude files only (CLAUDE.md, .claude/, .mcp.json, skills, memory).
 Self-contained and portable — usable independently of the 4-layer architecture.
 Cloned to `/workspace/<ai-name>/<repo-name>`. Only one AI workspace exists at a time.
