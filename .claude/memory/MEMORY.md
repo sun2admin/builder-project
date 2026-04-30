@@ -39,6 +39,7 @@
 - [build-project-skill-clarifications.md](build-project-skill-clarifications.md) — Clarifications on /build-project skill scope and design
 
 ## Feedback
+- [feedback-sync-always-push.md](feedback-sync-always-push.md) — sync-prj-repos-memory must always git push at the end, even if nothing new to commit
 - [feedback-auto-commit-on-success.md](feedback-auto-commit-on-success.md) — Auto-commit repo changes after successful implementation, no errors, tests pass
 - [feedback-bash-over-zsh.md](feedback-bash-over-zsh.md) — Prefer bash over zsh in Linux devcontainers; bash is pre-installed, Claude Code supports it equally
 - [feedback-check-mounts-first.md](feedback-check-mounts-first.md) — Check existing mounts (like /home/claude/data) before creating new directories
