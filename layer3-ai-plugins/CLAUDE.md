@@ -36,7 +36,7 @@ Plugins cached at `/opt/claude-custom-plugins` inside the image.
 
 ## Managing Plugin Layers
 
-Use the `/new-plugin-layer` command (`.claude/commands/new-plugin-layer/`) to create, search, and manage plugin layer configurations.
+Use the `/new-plugin-layer` skill (`.claude/skills/new-plugin-layer/`) to create, search, and manage plugin layer configurations.
 
 Plugin definitions are tracked in `standards.json` (built images) and `plugin-lists.json` (plugin selections).
 

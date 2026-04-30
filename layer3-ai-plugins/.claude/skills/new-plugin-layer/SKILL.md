@@ -115,7 +115,7 @@ gh repo create sun2admin/claude-plugins-<hash> --private --description "Claude C
 ### Dockerfile
 
 ```dockerfile
-FROM ghcr.io/sun2admin/ai-install-layer:claude
+FROM ghcr.io/sun2admin/layer2-ai-install:claude
 
 # Plugin layer: <description>
 # Plugins (<count>): <comma-separated names>
@@ -241,7 +241,7 @@ Show the GitHub Actions URL so they can watch the build.
 ## Key Constraints
 
 - All GHCR images **must** be private — enforce this in the workflow and after push
-- Base image is always `ghcr.io/sun2admin/ai-install-layer:claude` — never change this
+- Base image is always `ghcr.io/sun2admin/layer2-ai-install:claude` — never change this
 - Do not modify the four `type: "standard"` entries in `references/standards.json`
 - Identical plugin selections must reuse the existing image (hash-based deduplication)
 - Only add marketplace sources for marketplaces actually used in the selection
