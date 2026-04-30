@@ -1,12 +1,12 @@
 ---
 name: Playwright Chromium/Firefox/WebKit in Dev Containers
-description: How to bake Playwright browser binaries into devcontainer images using multi-stage builds; current implementation in base-ai-layer
+description: How to bake Playwright browser binaries into devcontainer images using multi-stage builds; current implementation in layer1-ai-depends
 type: project
 originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 ---
-## Current Approach: base-ai-layer
+## Current Approach: layer1-ai-depends
 
-**See**: `base-ai-layer` repo for the current production implementation.
+**See**: `layer1-ai-depends` repo for the current production implementation.
 
 Browser binaries (Chromium, Firefox, WebKit) are large (~300-500MB each) and require system deps to download. Use a dedicated `playwright-builder` stage that conditionally installs browsers based on ARG.
 
@@ -53,7 +53,7 @@ fi
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 ```
 
-## Tag Variants (base-ai-layer)
+## Tag Variants (layer1-ai-depends)
 
 | Tag | BROWSERS | Use Case |
 |-----|----------|----------|
@@ -71,12 +71,12 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 3. **GitHub Actions matrix**: All variants build in parallel via CI/CD
 4. **Minimal overhead for :light**: No Playwright installed or cached
 
-## If Using base-ai-layer Images
+## If Using layer1-ai-depends Images
 
 Just reference the appropriate tag in your devcontainer:
 ```json
 {
- "image": "ghcr.io/sun2admin/base-ai-layer:playwright_with_chromium"
+ "image": "ghcr.io/sun2admin/layer1-ai-depends:playwright_with_chromium"
 }
 ```
 

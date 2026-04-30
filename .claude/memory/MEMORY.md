@@ -6,10 +6,10 @@
 - [user.md](user.md) — GitHub username: sun2admin
 
 ## Container Architecture
-- [architecture-four-layer-stack.md](architecture-four-layer-stack.md) — Complete 4-layer stack (base-ai-layer, ai-install-layer, plugins, project), dependency flow, current status
-- [base-ai-layer-implementation.md](base-ai-layer-implementation.md) — base-ai-layer single Dockerfile with 6 tag variants via ARGs, playwright-builder stage, GitHub Actions matrix
-- [ai-install-layer-implementation.md](ai-install-layer-implementation.md) — ai-install-layer Layer 2, :claude and :gemini variants, replaces deprecated claude-install-container
-- [plugin-layer-ai-install-migration.md](plugin-layer-ai-install-migration.md) — All 8 plugin repos migrated to ai-install-layer:claude base as of 2026-04-23
+- [architecture-four-layer-stack.md](architecture-four-layer-stack.md) — Complete 4-layer stack (layer1-ai-depends, layer2-ai-install, plugins, project), dependency flow, current status
+- [layer1-ai-depends-implementation.md](layer1-ai-depends-implementation.md) — layer1-ai-depends single Dockerfile with 6 tag variants via ARGs, playwright-builder stage, GitHub Actions matrix
+- [layer2-ai-install-implementation.md](layer2-ai-install-implementation.md) — layer2-ai-install Layer 2, :claude and :gemini variants, replaces deprecated claude-install-container
+- [plugin-layer-ai-install-migration.md](plugin-layer-ai-install-migration.md) — All 8 plugin repos migrated to layer2-ai-install:claude base as of 2026-04-23
 
 ## Devcontainer Behavior
 - [devcontainer-implicit-behavior.md](devcontainer-implicit-behavior.md) — VS Code Dev Container implicit behaviors, Docker default capabilities, postStartCommand vs postAttachCommand sequencing

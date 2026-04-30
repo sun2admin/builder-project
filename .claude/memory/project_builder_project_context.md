@@ -17,8 +17,8 @@ Each layer has its own subdirectory containing Dockerfiles, GitHub Actions, and 
 
 | Layer | Published Image | Contents |
 |---|---|---|
-| Layer 1 | `ghcr.io/sun2admin/base-ai-layer:latest` | System packages, Python, graphics libs, Playwright |
-| Layer 2 | `ghcr.io/sun2admin/ai-install-layer:claude` | Claude Code CLI, claude user, env setup |
+| Layer 1 | `ghcr.io/sun2admin/layer1-ai-depends:latest` | System packages, Python, graphics libs, Playwright |
+| Layer 2 | `ghcr.io/sun2admin/layer2-ai-install:claude` | Claude Code CLI, claude user, env setup |
 | Layer 3 | `ghcr.io/sun2admin/claude-plugins-*:latest` | Pre-baked Claude Code plugins |
 | Layer 4 Part 1 | devcontainer config subdir | devcontainer.json, init scripts, load-projects.sh |
 | Layer 4 Part 2 | separate standalone repos | Claude/AI project files only, cloned by load-projects.sh |
@@ -60,4 +60,4 @@ Claude Code converts `/workspace/claude/builder-project` → `-workspace-claude-
 ## Ongoing Work
 
 - Auto-restore init script for `.claude.json` backup — proposed, not yet implemented
-- Phase 3 (future): migrate `sync-prj-repos-memory` skill to `claude-global-config` repo and bake into ai-install-layer (Layer 2)
+- Phase 3 (future): migrate `sync-prj-repos-memory` skill to `claude-global-config` repo and bake into layer2-ai-install (Layer 2)

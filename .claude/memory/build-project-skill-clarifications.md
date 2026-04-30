@@ -6,7 +6,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 ---
 ## Clarifying Questions - Answered
 
-**Q1: Base image and ai-install-layer variants - how to fetch?**
+**Q1: Base image and layer2-ai-install variants - how to fetch?**
 - A: Search dynamically on every skill execution (not static list)
 - Implementation: Query GitHub repos for available tags
 

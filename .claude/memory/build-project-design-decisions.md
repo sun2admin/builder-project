@@ -19,8 +19,8 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 - **Benefit:** Project-specific knowledge becomes embedded in memory, reduces context waste
 
 ### 3. Four-Layer Container Architecture Supports Multiple Project Types
-- Layer 1 (base-ai-layer): System packages, dev tools, Python, graphics
-- Layer 2 (ai-install-layer): Claude/Gemini CLI + user setup
+- Layer 1 (layer1-ai-depends): System packages, dev tools, Python, graphics
+- Layer 2 (layer2-ai-install): Claude/Gemini CLI + user setup
 - Layer 3 (plugin containers): Pre-baked Claude Code plugins
 - Layer 4 (project repos): Individual projects using Layer 3 images
 - **Pattern:** Projects don't define base environment; they reference pre-built images

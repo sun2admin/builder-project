@@ -1,12 +1,12 @@
 ---
-name: base-ai-layer Implementation Details
+name: layer1-ai-depends Implementation Details
 description: Single Dockerfile with conditional builds for 6 tag variants; multi-stage playwright-builder; GitHub Actions matrix
 type: project
 originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 ---
-## base-ai-layer Repo
+## layer1-ai-depends Repo
 
-**Repository**: `https://github.com/sun2admin/base-ai-layer`
+**Repository**: `https://github.com/sun2admin/layer1-ai-depends`
 
 **Purpose**: Replacement for deprecated `claude-depends-container` (deleted 2026-04-24). Uses conditional Dockerfile builds and tag variants instead of separate image repos.
 
@@ -107,9 +107,9 @@ Defines 6 jobs in matrix strategy, one per variant. Each job:
 
 **Tags format**:
 ```
-ghcr.io/sun2admin/base-ai-layer:light
-ghcr.io/sun2admin/base-ai-layer:latest
-ghcr.io/sun2admin/base-ai-layer:playwright_with_chromium
+ghcr.io/sun2admin/layer1-ai-depends:light
+ghcr.io/sun2admin/layer1-ai-depends:latest
+ghcr.io/sun2admin/layer1-ai-depends:playwright_with_chromium
 (etc.)
 ```
 
@@ -137,21 +137,21 @@ All 6 variants built successfully on 2026-04-23:
 - ✅ :playwright_with_safari (500MB+ for WebKit)
 - ✅ :playwright_with_all (1.2GB+ for all three browsers)
 
-Images are private on GHCR. Verified all pushed successfully to `ghcr.io/sun2admin/base-ai-layer`.
+Images are private on GHCR. Verified all pushed successfully to `ghcr.io/sun2admin/layer1-ai-depends`.
 
 ---
 
 ## Downstream Usage (Completed)
 
-**ai-install-layer** (Layer 2) Dockerfile:
+**layer2-ai-install** (Layer 2) Dockerfile:
 ```dockerfile
-FROM ghcr.io/sun2admin/base-ai-layer:latest
+FROM ghcr.io/sun2admin/layer1-ai-depends:latest
 ```
 
 **All 8 plugin layer Dockerfiles** (Layer 3):
 ```dockerfile
-FROM ghcr.io/sun2admin/ai-install-layer:claude
+FROM ghcr.io/sun2admin/layer2-ai-install:claude
 ```
 
-This cascades base-ai-layer updates automatically through all layers:
-- base-ai-layer → ai-install-layer → plugin containers → project repos
+This cascades layer1-ai-depends updates automatically through all layers:
+- layer1-ai-depends → layer2-ai-install → plugin containers → project repos

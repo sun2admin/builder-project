@@ -1,12 +1,12 @@
 ---
-name: ai-install-layer Implementation (Layer 2)
+name: layer2-ai-install Implementation (Layer 2)
 description: Conditional Dockerfile with :claude and :gemini variants; image-based replacement for deprecated claude-install-container
 type: project
 originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 ---
-## ai-install-layer Repo
+## layer2-ai-install Repo
 
-**Repository**: `https://github.com/sun2admin/ai-install-layer`
+**Repository**: `https://github.com/sun2admin/layer2-ai-install`
 
 **Purpose**: Layer 2 of 4-layer stack. Installs AI tool (Claude Code or Gemini CLI) and creates corresponding user with environment setup.
 
@@ -19,7 +19,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 **Single Dockerfile with conditional logic via ARGs:**
 
 ```dockerfile
-ARG BASE_IMAGE=ghcr.io/sun2admin/base-ai-layer:latest
+ARG BASE_IMAGE=ghcr.io/sun2admin/layer1-ai-depends:latest
 FROM ${BASE_IMAGE}
 
 # Layer 1: Conditionally install AI tool
@@ -58,14 +58,14 @@ USER ${USERNAME}
 - **AI_TYPE**: claude
 - **AI_PACKAGE**: @anthropic-ai/claude-code
 - **USERNAME**: claude
-- **Base**: ghcr.io/sun2admin/base-ai-layer:latest
+- **Base**: ghcr.io/sun2admin/layer1-ai-depends:latest
 - **Use**: Default Claude Code projects
 
 ### :gemini
 - **AI_TYPE**: gemini
 - **AI_PACKAGE**: @google/gemini-cli
 - **USERNAME**: gemini
-- **Base**: ghcr.io/sun2admin/base-ai-layer:latest
+- **Base**: ghcr.io/sun2admin/layer1-ai-depends:latest
 - **Use**: Gemini-based projects (e.g., career-ops Phase 2)
 
 ---
@@ -78,12 +78,12 @@ Matrix strategy with two jobs:
 1. `:claude` variant
  - AI_TYPE=claude
  - AI_PACKAGE=@anthropic-ai/claude-code
- - Tag: `ghcr.io/sun2admin/ai-install-layer:claude`
+ - Tag: `ghcr.io/sun2admin/layer2-ai-install:claude`
 
 2. `:gemini` variant
  - AI_TYPE=gemini
  - AI_PACKAGE=@google/gemini-cli
- - Tag: `ghcr.io/sun2admin/ai-install-layer:gemini`
+ - Tag: `ghcr.io/sun2admin/layer2-ai-install:gemini`
 
 Both build in parallel; cache via GitHub Actions.
 
@@ -93,14 +93,14 @@ Both build in parallel; cache via GitHub Actions.
 
 ```json
 {
- "image": "ghcr.io/sun2admin/ai-install-layer:claude"
+ "image": "ghcr.io/sun2admin/layer2-ai-install:claude"
 }
 ```
 
 Or for Gemini:
 ```json
 {
- "image": "ghcr.io/sun2admin/ai-install-layer:gemini"
+ "image": "ghcr.io/sun2admin/layer2-ai-install:gemini"
 }
 ```
 
@@ -112,7 +112,7 @@ No features needed; everything is in the image.
 
 ### Completed ✅
 1. ✅ Both :claude and :gemini variants building successfully
-2. ✅ All 8 downstream plugin layer repos updated to use ai-install-layer:claude base
+2. ✅ All 8 downstream plugin layer repos updated to use layer2-ai-install:claude base
 3. ✅ All plugin repos building successfully with new base
 4. ✅ Complete 4-layer architecture validated end-to-end
 
@@ -123,6 +123,6 @@ No features needed; everything is in the image.
 
 ## Current Status (2026-04-23, COMPLETE)
 
-✅ **ai-install-layer**: Both :claude and :gemini variants published and working
-✅ **Plugin migration**: All 8 plugin repos successfully migrated to use ai-install-layer:claude
+✅ **layer2-ai-install**: Both :claude and :gemini variants published and working
+✅ **Plugin migration**: All 8 plugin repos successfully migrated to use layer2-ai-install:claude
 ✅ **4-layer stack**: Complete architecture operational (Layer 1 → 2 → 3 → 4)

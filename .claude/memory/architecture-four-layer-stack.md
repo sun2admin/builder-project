@@ -19,13 +19,13 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 └─────────────────────────────────────────────────────────┘
  ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Layer 2: AI-Install Container (ai-install-layer) │
+│ Layer 2: AI-Install Container (layer2-ai-install) │
 │ (:claude and :gemini variants) │
 │ Installs: Claude Code/Gemini CLI, user setup, init │
 └─────────────────────────────────────────────────────────┘
  ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Layer 1: base-ai-layer (Base Image) │
+│ Layer 1: layer1-ai-depends (Base Image) │
 │ Tag Variants: :light, :latest, :playwright_with_* │
 │ Contains: system packages (Node, Python, git, etc.) │
 └─────────────────────────────────────────────────────────┘
@@ -33,7 +33,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 
 ---
 
-## Layer 1: base-ai-layer
+## Layer 1: layer1-ai-depends
 
 **Purpose**: Minimal base with system packages, no AI tools or user config.
 
@@ -63,7 +63,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 
 ---
 
-## Layer 2: AI-Install Layer (ai-install-layer)
+## Layer 2: AI-Install Layer (layer2-ai-install)
 
 **Purpose**: Installs AI tool (Claude Code or Gemini CLI) and creates corresponding user with environment setup.
 
@@ -75,7 +75,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 
 **How it works**:
 - Single Dockerfile with conditional ARG logic (AI_TYPE, AI_PACKAGE, USERNAME)
-- Builds from `base-ai-layer:latest`
+- Builds from `layer1-ai-depends:latest`
 - All setup baked into image at build time (no features needed)
 - GitHub Actions matrix builds both variants in parallel
 - Status: ✅ Published and working
@@ -98,7 +98,7 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 - `claude-plugins-54ca621f` (base + external subset)
 
 **Tag Variants** (per plugin layer):
-- `:latest` — built on ai-install-layer:claude (which uses base-ai-layer:latest)
+- `:latest` — built on layer2-ai-install:claude (which uses layer1-ai-depends:latest)
 
 **How Plugins Are Baked**:
 - Dockerfile runs `claude plugin marketplace add` then `claude plugin install` at build time
@@ -126,17 +126,17 @@ originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 **Key Points**:
 - Project repos reference Layer 3 (plugins) image directly
 - Image includes all setup from Layers 1, 2, and 3 (no features needed)
-- Changes to Layer 1 (base-ai-layer) cascade through Layers 2 and 3 via Dockerfile FROM statements
-- Project repos do NOT need updates when base-ai-layer changes (rebuild plugins layer and it automatically uses new base)
+- Changes to Layer 1 (layer1-ai-depends) cascade through Layers 2 and 3 via Dockerfile FROM statements
+- Project repos do NOT need updates when layer1-ai-depends changes (rebuild plugins layer and it automatically uses new base)
 
 ---
 
 ## Dependency Flow
 
-When base-ai-layer is updated:
-1. base-ai-layer CI/CD: Builds 6 tag variants automatically
-2. ai-install-layer Dockerfile: `FROM ghcr.io/sun2admin/base-ai-layer:latest` → Rebuild to inherit new base
-3. Plugin container Dockerfiles: `FROM ghcr.io/sun2admin/ai-install-layer:claude` → Rebuild to inherit new base
+When layer1-ai-depends is updated:
+1. layer1-ai-depends CI/CD: Builds 6 tag variants automatically
+2. layer2-ai-install Dockerfile: `FROM ghcr.io/sun2admin/layer1-ai-depends:latest` → Rebuild to inherit new base
+3. Plugin container Dockerfiles: `FROM ghcr.io/sun2admin/layer2-ai-install:claude` → Rebuild to inherit new base
 4. Project repos: On next devcontainer rebuild, automatically use new stack
 
 **No project repo code changes needed** — rebuild flows automatically through dependency chain:
@@ -146,11 +146,11 @@ When base-ai-layer is updated:
 
 ## Current Status (2026-04-23, COMPLETE)
 
-✅ **Layer 1**: base-ai-layer published with 6 tag variants (:light, :latest, :playwright_with_chromium/firefox/safari/all) — all building successfully
-✅ **Layer 2**: ai-install-layer published with :claude and :gemini variants — both building successfully
-✅ **Layer 3**: All 8 plugin repos migrated to use ai-install-layer:claude base — all building successfully
+✅ **Layer 1**: layer1-ai-depends published with 6 tag variants (:light, :latest, :playwright_with_chromium/firefox/safari/all) — all building successfully
+✅ **Layer 2**: layer2-ai-install published with :claude and :gemini variants — both building successfully
+✅ **Layer 3**: All 8 plugin repos migrated to use layer2-ai-install:claude base — all building successfully
 ✅ **Layer 4**: Project repos (build-with-claude) can reference any Layer 3 plugin container
 
 **Complete Dependency Chain**:
-- Layer 1 (base-ai-layer) → Layer 2 (ai-install-layer) → Layer 3 (plugin containers) → Layer 4 (project repos)
+- Layer 1 (layer1-ai-depends) → Layer 2 (layer2-ai-install) → Layer 3 (plugin containers) → Layer 4 (project repos)
 - All layers working end-to-end with automatic inheritance of base image updates

@@ -1,12 +1,12 @@
 ---
-name: Plugin Layer Migration to ai-install-layer
-description: Completed migration of all 8 plugin repos from deprecated claude-install-container to ai-install-layer:claude base image (deleted 2026-04-24)
+name: Plugin Layer Migration to layer2-ai-install
+description: Completed migration of all 8 plugin repos from deprecated claude-install-container to layer2-ai-install:claude base image (deleted 2026-04-24)
 type: project
 originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
 ---
 ## Completed Migration
 
-All 8 plugin layer repositories have been updated to use `ghcr.io/sun2admin/ai-install-layer:claude` as their base image instead of `ghcr.io/sun2admin/claude-install-container:latest`.
+All 8 plugin layer repositories have been updated to use `ghcr.io/sun2admin/layer2-ai-install:claude` as their base image instead of `ghcr.io/sun2admin/claude-install-container:latest`.
 
 ### Repos Migrated
 
@@ -24,11 +24,11 @@ All 8 plugin layer repositories have been updated to use `ghcr.io/sun2admin/ai-i
 
 **Dockerfile Updates (all repos):**
 - Changed: `ARG BASE_IMAGE=ghcr.io/sun2admin/claude-install-container:latest`
-- To: `ARG BASE_IMAGE=ghcr.io/sun2admin/ai-install-layer:claude`
+- To: `ARG BASE_IMAGE=ghcr.io/sun2admin/layer2-ai-install:claude`
 
 **Workflow Matrix Fixes (repos 5 & 6 only):**
-- Removed: `playwright` tag variant (does not exist in ai-install-layer)
-- Updated: `latest` base from `claude-install-container:latest` to `ai-install-layer:claude`
+- Removed: `playwright` tag variant (does not exist in layer2-ai-install)
+- Updated: `latest` base from `claude-install-container:latest` to `layer2-ai-install:claude`
 - Repos affected: claude-plugins-34e199d2, claude-plugins-3f889e47
 
 ### Current Status (2026-04-23, COMPLETE)
@@ -60,8 +60,8 @@ All 8 plugin layer repositories have been updated to use `ghcr.io/sun2admin/ai-i
 ### GHCR Permissions
 
 All plugin repos are private. The user manually granted read access on:
-- `base-ai-layer` → all ai-install-layer and plugin repos
-- `ai-install-layer` → all plugin repos
+- `layer1-ai-depends` → all layer2-ai-install and plugin repos
+- `layer2-ai-install` → all plugin repos
 
 This allows proper image pulling during multi-layer builds.
 
@@ -75,4 +75,4 @@ Once both rebuilds complete:
 ---
 
 **Date**: 2026-04-23
-**Status**: ✅ Complete — All 8 repos building successfully with ai-install-layer:claude base
+**Status**: ✅ Complete — All 8 repos building successfully with layer2-ai-install:claude base
