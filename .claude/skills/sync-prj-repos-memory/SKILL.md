@@ -56,6 +56,13 @@ Repos with no detectable remote are treated as owned and synced normally.
 - `settings.json`, `CLAUDE.md`, `.mcp.json` — if modified during session
 - `settings.local.json` — never committed (auto-gitignored, machine-local)
 
+## Push Behavior
+
+**Always push at the end**, even if there was nothing new to commit. Sessions
+often produce commits via direct git commands that are never pushed. The sync
+skill is the canonical push point — it must always run `git push` as its final
+step so that nothing is left unpushed.
+
 ## Lifecycle
 
 ```
@@ -65,5 +72,5 @@ git repo (.claude/memory/*.md)
     ↓  Claude writes auto-memory during session
 ~/.claude/projects/<path>/memory/  (updated)
     ↑  /sync-prj-repos-memory  ← this skill
-git repo (.claude/memory/*.md)  (committed, portable)
+git repo (.claude/memory/*.md)  (committed + pushed, portable)
 ```
