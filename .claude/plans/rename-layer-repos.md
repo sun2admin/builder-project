@@ -86,6 +86,6 @@ Files:
 - [x] layer1-ai-depends GitHub repo created, workflow updated, 5/6 images built
 - [x] layer2-ai-install GitHub repo created, workflow updated, both images built
 - [x] builder-project subdirs renamed (base-ai-layer/ → layer1-ai-depends/, ai-install-layer/ → layer2-ai-install/)
-- [ ] Step 1: Fix local layer2-ai-install/Dockerfile BASE_IMAGE reference
-- [ ] Step 2: Update 8 plugin repos and rebuild images
-- [ ] Step 3: Update memory files
+- [x] Step 1: Fix local layer2-ai-install/Dockerfile BASE_IMAGE reference
+- [x] Step 2: Update 8 plugin repos and rebuild images — all 8 builds successful
+- [x] Step 3: Update memory files — 12 files updated, 2 renamed, synced to named volume
