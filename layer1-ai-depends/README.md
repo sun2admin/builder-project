@@ -1,4 +1,4 @@
-# base-ai-layer
+# layer1-ai-depends
 
 Base container image with conditional tag variants for AI development environments.
 
@@ -11,21 +11,21 @@ Base container image with conditional tag variants for AI development environmen
 | `:playwright_with_chromium` | ~1.45GB | `:latest` + Chromium browser |
 | `:playwright_with_firefox` | ~1.4GB | `:latest` + Firefox browser |
 | `:playwright_with_safari` | ~1.35GB | `:latest` + WebKit (Safari) browser |
-| `:playwright_with_all` | ~1.8GB | `:latest` + Chromium + Firefox + WebKit |
+| `:playwright_with_all` | — | ❌ Exceeds GitHub Actions runner time limit — do not build |
 
 ## Usage
 
 In devcontainer.json:
 ```json
 {
-  "image": "ghcr.io/sun2admin/base-ai-layer:latest"
+  "image": "ghcr.io/sun2admin/layer1-ai-depends:latest"
 }
 ```
 
-Or with Playwright for PDF generation:
+Or with Playwright:
 ```json
 {
-  "image": "ghcr.io/sun2admin/base-ai-layer:playwright_with_chromium"
+  "image": "ghcr.io/sun2admin/layer1-ai-depends:playwright_with_chromium"
 }
 ```
 

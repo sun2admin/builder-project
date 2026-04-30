@@ -15,7 +15,7 @@ Each layer subdirectory has its own `CLAUDE.md` with layer-specific detail:
 | Layer 1 | `layer1-ai-depends/CLAUDE.md` |
 | Layer 2 | `layer2-ai-install/CLAUDE.md` |
 | Layer 3 | `layer3-ai-plugins/CLAUDE.md` |
-| layer4-devcontainer | `layer4-part1/CLAUDE.md` |
+| layer4-devcontainer | `layer4-devcontainer/CLAUDE.md` |
 
 The root `CLAUDE.md` should contain only:
 - Project purpose (1–2 sentences)
@@ -45,5 +45,5 @@ The root `CLAUDE.md` should contain only:
 ## Status
 - [x] SessionStart hook added (session-start.sh + settings.json)
 - [x] Nested CLAUDE.md files already in place for all layers
-- [ ] Root CLAUDE.md not yet slimmed
-- [ ] Ready to implement
+- [x] Root CLAUDE.md slimmed to ~33 lines
+- [x] Complete
