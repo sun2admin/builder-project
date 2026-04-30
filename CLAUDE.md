@@ -1,54 +1,34 @@
-# build-with-claude
+# builder-project
 
-A devcontainer project for building and managing GitHub repos using Claude Code.
+Reference Layer 4 Part 2 Claude project and single repo for all container layer sources.
 
 ## Architecture
 
-This repo uses a 4-layer container architecture (inherited from base images):
+4-layer container stack — each layer is a subdirectory with its own `CLAUDE.md`:
 
-- **Layer 1 (base-ai-layer)**: `ghcr.io/sun2admin/base-ai-layer:latest` — system packages, dev tools, Python, graphics libs, Playwright browsers
-- **Layer 2 (ai-install-layer)**: `ghcr.io/sun2admin/ai-install-layer:claude` — Claude Code CLI + claude user + env setup
-- **Layer 3 (plugins)**: `ghcr.io/sun2admin/claude-plugins-a7f3d2e8:latest` — pre-baked Claude Code plugins
-- **Layer 4 (project)**: This repo (build-with-claude) references Layer 3 image in devcontainer.json
+| Layer | Subdir | Published Image |
+|---|---|---|
+| Layer 1 | `base-ai-layer/` | `ghcr.io/sun2admin/base-ai-layer` |
+| Layer 2 | `ai-install-layer/` | `ghcr.io/sun2admin/ai-install-layer:claude` |
+| Layer 3 | `plugins/` | `ghcr.io/sun2admin/claude-plugins-*` |
+| Layer 4 Part 1 | `layer4-part1/` | devcontainer config + init scripts |
+| Layer 4 Part 2 | *(this repo root)* | Claude project files — CLAUDE.md, .claude/, .mcp.json |
+
+**Dependency cascade**: Layer 1 → Layer 2 → Layer 3 → Layer 4 inherits automatically on rebuild.
+
+**Layer 4 Part 2 repos** are separate standalone GitHub repos cloned by `load-projects.sh` at container start into `/workspace/claude/<name>`. They are not subdirectories here.
+
+## Cross-Cutting Rules
+
+- **Shell**: bash only (not zsh)
+- **GHCR**: all images must always be private
+- **Credentials**: write to `~/.profile` (chmod 600), never `/etc/environment`; use `bash --login` in `postAttachCommand`
 - **Container user**: `claude` (bash shell)
-
-## Init Scripts
-
-Run at container start via `postStartCommand`:
-
-| Script | Purpose |
-|---|---|
-| `init-firewall.sh` | Configures iptables egress rules (runs as sudo) |
-| `init-ssh.sh` | Loads SSH key from `/run/credentials/gh_claude_ed25519` into ssh-agent |
-| `init-gh-token.sh` | Reads PAT from `/run/credentials/gh_pat`, writes to `~/.profile` (chmod 600) |
-| `init-github-mcp.sh` | Copies arch-appropriate `github-mcp-server` binary to `~/.local/bin/` |
-
-## Credentials
-
-Secrets are injected via bind-mounted files at `/run/credentials/`:
-- `gh_claude_ed25519` — SSH private key for GitHub
-- `gh_pat` — GitHub Personal Access Token
-
-The PAT is written to `/home/claude/.profile` with `chmod 600` so only the `claude` user can read it. It is **not** stored in `/etc/environment` (world-readable) or `.bashrc` (not sourced by subprocesses).
-
-`postAttachCommand` uses `bash --login` to ensure `.profile` is sourced before Claude starts, making the PAT available to Claude and its MCP subprocesses.
-
-## Shell
-
-The container uses **bash** (not zsh). Claude Code does not require zsh. Bash is pre-installed in the base image and avoids the complexity of zsh-in-docker setup.
-
-## MCP
-
-`claude/.mcp.json` configures the GitHub MCP server, which exposes GitHub API as tools to Claude. The binary is committed to `scripts/bin/` and updated weekly via GitHub Actions (`update-github-mcp.yml`).
-
-## GitHub Actions
-
-`update-github-mcp.yml` — checks for new `github-mcp-server` releases weekly, verifies checksums, commits updated binaries, and opens a PR.
 
 ## Working Across Layers
 
-**IMPORTANT:** This repo contains multiple architecture layers as subdirectories. When working across layers:
+**IMPORTANT:** This repo contains multiple architecture layers as subdirectories.
 
 - Before modifying any layer file, explicitly state which layer you are targeting
 - If a request could apply to more than one layer, ALWAYS ask which layer before proceeding — never infer from semantic context alone
-- When starting work on a layer, declare it: "I am working on Layer X" so all follow-up instructions are correctly scoped
+- When starting work on a layer, declare: "I am working on Layer X" so all follow-up instructions are correctly scoped

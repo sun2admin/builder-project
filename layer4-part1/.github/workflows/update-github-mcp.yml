@@ -1,0 +1,59 @@
+name: Update github-mcp-server
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get latest release version
+        id: release
+        run: |
+          VERSION=$(gh api repos/github/github-mcp-server/releases/latest --jq '.tag_name')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check current version
+        id: current
+        run: |
+          CURRENT=$(cat scripts/opt/VERSION 2>/dev/null || echo "none")
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+      - name: Download and verify binaries
+        if: steps.release.outputs.version != steps.current.outputs.current
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          VERSION_NUM=${VERSION#v}
+          curl -sL "https://github.com/github/github-mcp-server/releases/download/${VERSION}/github-mcp-server_${VERSION_NUM}_checksums.txt" -o /tmp/checksums.txt
+          curl -sL "https://github.com/github/github-mcp-server/releases/download/${VERSION}/github-mcp-server_Linux_x86_64.tar.gz" -o /tmp/linux_x86_64.tar.gz
+          curl -sL "https://github.com/github/github-mcp-server/releases/download/${VERSION}/github-mcp-server_Linux_arm64.tar.gz" -o /tmp/linux_arm64.tar.gz
+          cd /tmp
+          grep "github-mcp-server_Linux_x86_64.tar.gz" checksums.txt | sed 's/github-mcp-server_Linux_x86_64.tar.gz/linux_x86_64.tar.gz/' | sha256sum -c
+          grep "github-mcp-server_Linux_arm64.tar.gz" checksums.txt | sed 's/github-mcp-server_Linux_arm64.tar.gz/linux_arm64.tar.gz/' | sha256sum -c
+          tar -xz -f linux_x86_64.tar.gz github-mcp-server
+          mv github-mcp-server $GITHUB_WORKSPACE/scripts/opt/github-mcp-server-linux-amd64
+          tar -xz -f linux_arm64.tar.gz github-mcp-server
+          mv github-mcp-server $GITHUB_WORKSPACE/scripts/opt/github-mcp-server-linux-arm64
+          chmod +x $GITHUB_WORKSPACE/scripts/opt/github-mcp-server-linux-amd64 $GITHUB_WORKSPACE/scripts/opt/github-mcp-server-linux-arm64
+          echo "$VERSION" > $GITHUB_WORKSPACE/scripts/opt/VERSION
+      - name: Open PR if updated
+        if: steps.release.outputs.version != steps.current.outputs.current
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "update-github-mcp-${VERSION}"
+          git add scripts/opt/
+          git commit -m "Update github-mcp-server to ${VERSION}"
+          git push origin "update-github-mcp-${VERSION}"
+          gh pr create --title "Update github-mcp-server to ${VERSION}" --body "Automated update of github-mcp-server binary to ${VERSION}. Checksums verified." --base main

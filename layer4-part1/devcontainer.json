@@ -1,0 +1,42 @@
+{
+  "name": "Claude Build Container",
+  "image": "ghcr.io/sun2admin/claude-plugins-a7f3d2e8:latest",
+  "forwardPorts": [8888],
+  "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "eamodio.gitlens",
+        "ms-toolsai.jupyter"
+      ],
+      "settings": {
+        "claudeCode.useTerminal": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "remoteUser": "claude",
+  "mounts": [
+    "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=claude-code-config-${devcontainerId},target=/home/claude/.claude,type=volume",
+    "source=${localEnv:HOME}/Downloads/ClaudeFiles/SharedFiles,target=/home/claude/data,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/Downloads/ClaudeFiles/Config/gh_claude_ed25519,target=/run/credentials/gh_claude_ed25519,type=bind,readonly",
+    "source=${localEnv:HOME}/Downloads/ClaudeFiles/Config/gh_pat,target=/run/credentials/gh_pat,type=bind,readonly"
+  ],
+  "containerEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "CLAUDE_CONFIG_DIR": "/home/claude/.claude",
+    "SSH_AUTH_SOCK": "/home/claude/.ssh/agent.sock"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
+  "workspaceFolder": "/workspace",
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh && /workspace/.devcontainer/scripts/init-ssh.sh && /workspace/.devcontainer/scripts/init-gh-token.sh && /workspace/.devcontainer/scripts/init-github-mcp.sh && /workspace/.devcontainer/scripts/load-projects.sh -live sun2admin/builder-project",
+  "waitFor": "postStartCommand",
+  "postAttachCommand": "bash --login -c 'cd $(cat ~/live-project 2>/dev/null || echo ~) && claude --dangerously-skip-permissions'",
+  "shutdownAction": "stopContainer"
+}
