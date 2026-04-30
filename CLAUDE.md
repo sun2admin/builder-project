@@ -10,7 +10,7 @@ Reference Layer 4 Part 2 Claude project and single repo for all container layer 
 |---|---|---|
 | Layer 1 | `layer1-ai-depends/` | `ghcr.io/sun2admin/layer1-ai-depends` |
 | Layer 2 | `layer2-ai-install/` | `ghcr.io/sun2admin/layer2-ai-install:claude` |
-| Layer 3 | `plugins/` | `ghcr.io/sun2admin/claude-plugins-*` |
+| Layer 3 | `layer3-ai-plugins/` | `ghcr.io/sun2admin/claude-plugins-*` |
 | Layer 4 Part 1 | `layer4-part1/` | devcontainer config + init scripts |
 | Layer 4 Part 2 | *(this repo root)* | Claude project files — CLAUDE.md, .claude/, .mcp.json |
 

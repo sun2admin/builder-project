@@ -1,6 +1,6 @@
 # Layer 3: Plugin Containers
 
-**Base for all**: `ghcr.io/sun2admin/ai-install-layer:claude`
+**Base for all**: `ghcr.io/sun2admin/layer2-ai-install:claude`
 
 ## Purpose
 
@@ -44,4 +44,4 @@ Plugin definitions are tracked in `standards.json` (built images) and `plugin-li
 
 - All GHCR images must be private
 - Source files for individual plugin containers live in their own GitHub repos, not in this subdir
-- Rebuilding requires rebuilding when Layer 2 (ai-install-layer) changes
+- Rebuilding requires rebuilding when Layer 2 (layer2-ai-install) changes

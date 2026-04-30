@@ -14,7 +14,7 @@ Each layer subdirectory has its own `CLAUDE.md` with layer-specific detail:
 |---|---|
 | Layer 1 | `layer1-ai-depends/CLAUDE.md` |
 | Layer 2 | `layer2-ai-install/CLAUDE.md` |
-| Layer 3 | `plugins/CLAUDE.md` |
+| Layer 3 | `layer3-ai-plugins/CLAUDE.md` |
 | Layer 4 Part 1 | `layer4-part1/CLAUDE.md` |
 
 The root `CLAUDE.md` should contain only:

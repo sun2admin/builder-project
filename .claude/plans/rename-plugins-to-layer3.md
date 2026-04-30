@@ -36,9 +36,9 @@ plugin GitHub repos and their images are not renamed.
 ---
 
 ## Status
-- [ ] Step 1: Rename directory
-- [ ] Step 2: Update layer3-ai-plugins/CLAUDE.md
-- [ ] Step 3: Update root CLAUDE.md
-- [ ] Step 4: Update builder-project-restructure.md plan
-- [ ] Step 5: Update settings.local.json
-- [ ] Commit
+- [x] Step 1: Rename directory
+- [x] Step 2: Update layer3-ai-plugins/CLAUDE.md
+- [x] Step 3: Update root CLAUDE.md
+- [x] Step 4: Update builder-project-restructure.md plan
+- [x] Step 5: Update settings.local.json
+- [x] Complete
