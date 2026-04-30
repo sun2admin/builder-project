@@ -81,6 +81,7 @@ ARG BROWSERS=chromium
 COPY --from=playwright-builder /root/.cache/ms-playwright /tmp/playwright-cache
 
 RUN if [ "$INCLUDE_PLAYWRIGHT" = "true" ]; then \
+    rm -f /etc/apt/sources.list.d/github-cli.list && \
     mkdir -p /home/node/.cache/ms-playwright && \
     cp -r /tmp/playwright-cache/* /home/node/.cache/ms-playwright/ && \
     /opt/venv/bin/pip install --no-cache-dir playwright && \

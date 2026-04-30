@@ -1,6 +1,6 @@
-# Layer 1: base-ai-layer
+# Layer 1: layer1-ai-depends
 
-**Published image**: `ghcr.io/sun2admin/base-ai-layer`
+**Published image**: `ghcr.io/sun2admin/layer1-ai-depends`
 **Base**: `node:22-slim`
 
 ## Tag Variants
@@ -41,8 +41,20 @@ The `claude` user is granted passwordless sudo for this script only (configured 
 
 `build-and-push.yml` — matrix builds all 6 variants in parallel on push to main when `Dockerfile` or `init-firewall.sh` changes. Pushes to GHCR (private).
 
+## GHCR Package Permissions (manual step after first image build)
+
+After images are published, manually grant read access on this layer's GHCR package to the layer that directly depends on it:
+
+- **This layer's package** → grant read access to `layer2-ai-install` repo only
+
+Plugin repos do not need direct access to this layer — they pull `layer2-ai-install` which already contains all inherited layers in its own package namespace.
+
 ## Key Constraints
 
 - All GHCR images must be private
 - `gh` CLI installed via official apt repo (not snap)
 - Python venv at `/opt/venv` — PATH set system-wide
+
+## Layer Directory Rule
+
+Only modify the GitHub repo and GHCR image that exactly match this directory name (`layer1-ai-depends` / `ghcr.io/sun2admin/layer1-ai-depends`). Never modify a differently-named source repo unless explicitly instructed.

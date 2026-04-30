@@ -8,8 +8,8 @@ Reference Layer 4 Part 2 Claude project and single repo for all container layer 
 
 | Layer | Subdir | Published Image |
 |---|---|---|
-| Layer 1 | `base-ai-layer/` | `ghcr.io/sun2admin/base-ai-layer` |
-| Layer 2 | `ai-install-layer/` | `ghcr.io/sun2admin/ai-install-layer:claude` |
+| Layer 1 | `layer1-ai-depends/` | `ghcr.io/sun2admin/layer1-ai-depends` |
+| Layer 2 | `layer2-ai-install/` | `ghcr.io/sun2admin/layer2-ai-install:claude` |
 | Layer 3 | `plugins/` | `ghcr.io/sun2admin/claude-plugins-*` |
 | Layer 4 Part 1 | `layer4-part1/` | devcontainer config + init scripts |
 | Layer 4 Part 2 | *(this repo root)* | Claude project files — CLAUDE.md, .claude/, .mcp.json |
@@ -32,3 +32,11 @@ Reference Layer 4 Part 2 Claude project and single repo for all container layer 
 - Before modifying any layer file, explicitly state which layer you are targeting
 - If a request could apply to more than one layer, ALWAYS ask which layer before proceeding — never infer from semantic context alone
 - When starting work on a layer, declare: "I am working on Layer X" so all follow-up instructions are correctly scoped
+
+## Plan Building
+
+When building a plan with the user:
+
+- After each instruction the user provides, confirm you understand it and ask any clarifying questions before moving on
+- Do not proceed to the next step or start execution until the user explicitly says to proceed
+- When asking clarifying questions, state how many questions you have remaining and ask them one at a time

@@ -1,7 +1,7 @@
-# Layer 2: ai-install-layer
+# Layer 2: layer2-ai-install
 
-**Published image**: `ghcr.io/sun2admin/ai-install-layer`
-**Base**: `ghcr.io/sun2admin/base-ai-layer:latest`
+**Published image**: `ghcr.io/sun2admin/layer2-ai-install`
+**Base**: `ghcr.io/sun2admin/layer1-ai-depends:latest`
 
 ## Tag Variants
 
@@ -35,3 +35,23 @@ Single Dockerfile with conditional ARG logic:
 ## Dependency
 
 Rebuilding this layer requires rebuilding Layer 3 (plugins) to inherit the new base.
+
+## Layer Directory Rule
+
+Only modify the GitHub repo and GHCR image that exactly match this directory name (`layer2-ai-install` / `ghcr.io/sun2admin/layer2-ai-install`). Never modify a differently-named source repo unless explicitly instructed.
+
+## GHCR Package Permissions (manual step after first image build)
+
+After images are published, manually grant read access on this layer's GHCR package to all direct dependents:
+
+- **This layer's package** → grant read access to all 8 plugin repos:
+  - `claude-anthropic-base-plugins-container`
+  - `claude-anthropic-coding-plugins-container`
+  - `claude-anthropic-ext-plugins-container`
+  - `claude-anthropic-all-plugins-container`
+  - `claude-plugins-34e199d2`
+  - `claude-plugins-3f889e47`
+  - `claude-plugins-54ca621f`
+  - `claude-plugins-a7f3d2e8`
+
+Plugin repos do not need direct access to Layer 1 — all inherited layers are stored under this package's namespace in GHCR.
