@@ -1,8 +1,8 @@
-# ai-install-layer: Conditional AI tool installation (:claude, :gemini)
-# Base: ghcr.io/sun2admin/base-ai-layer:latest
+# layer2-ai-install: Conditional AI tool installation (:claude, :gemini)
+# Base: ghcr.io/sun2admin/layer1-ai-depends:latest
 # Variants: :claude (Claude Code + claude user), :gemini (Gemini CLI + gemini user)
 
-ARG BASE_IMAGE=ghcr.io/sun2admin/base-ai-layer:latest
+ARG BASE_IMAGE=ghcr.io/sun2admin/layer1-ai-depends:latest
 FROM ${BASE_IMAGE}
 
 # ─── Layer 1: Install AI tool based on variant ──
