@@ -1,4 +1,4 @@
-name: Build and Push base-ai-layer Images
+name: Build and Push layer1-ai-depends Images
 
 on:
   push:
@@ -25,26 +25,37 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # :light variant
           - tag: light
             include_extras: "false"
             include_playwright: "false"
             browsers: ""
+
+          # :latest variant
           - tag: latest
             include_extras: "true"
             include_playwright: "false"
             browsers: ""
+
+          # :playwright_with_chromium variant
           - tag: playwright_with_chromium
             include_extras: "true"
             include_playwright: "true"
             browsers: "chromium"
+
+          # :playwright_with_firefox variant
           - tag: playwright_with_firefox
             include_extras: "true"
             include_playwright: "true"
             browsers: "firefox"
+
+          # :playwright_with_safari variant
           - tag: playwright_with_safari
             include_extras: "true"
             include_playwright: "true"
             browsers: "webkit"
+
+          # :playwright_with_all variant
           - tag: playwright_with_all
             include_extras: "true"
             include_playwright: "true"
@@ -53,27 +64,40 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push
+
+      - name: Build and push ${{ matrix.tag }}
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
+            ${{ matrix.tag == 'latest' && format('{0}/{1}:latest', env.REGISTRY, env.IMAGE_NAME) || '' }}
           build-args: |
             INCLUDE_EXTRAS=${{ matrix.include_extras }}
             INCLUDE_PLAYWRIGHT=${{ matrix.include_playwright }}
             BROWSERS=${{ matrix.browsers }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Print build summary
+        run: |
+          echo "✓ Built and pushed: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}"
+          echo "  INCLUDE_EXTRAS: ${{ matrix.include_extras }}"
+          echo "  INCLUDE_PLAYWRIGHT: ${{ matrix.include_playwright }}"
+          echo "  BROWSERS: ${{ matrix.browsers }}"
