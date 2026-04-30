@@ -1,7 +1,0 @@
-{"marketplaces": [
-  "anthropics/claude-plugins-official",
-  "anthropics/skills",
-  "anthropics/knowledge-work-plugins",
-  "anthropics/financial-services-plugins",
-  "anthropics/claude-plugins-community"
-], "cache_dir": ".", "plugin_count": 1835, "timestamp": "2026-04-23T00:17:41Z"}
