@@ -1,63 +1,73 @@
 ---
 name: builder-project-context
-description: builder-project purpose, 4-layer container architecture, key repos, ongoing work, and persistence lifecycle
+description: builder-project dual role as control plane and reference project repo, 4-layer container architecture, how layers are managed and pushed
 type: project
-originSessionId: 5c59a0d5-1064-4e64-9cef-f4c77d757503
+originSessionId: 3f6f6192-aa5b-4f57-be58-35aa8808c6e4
 ---
 # builder-project Context
 
-## Purpose
+## Two Roles
 
-`builder-project` (sun2admin/builder-project) is a Layer 4 devcontainer project used to build, manage, and modify other GitHub repos using Claude Code. It is the "live project" — the project Claude runs in — not a project being built.
+`builder-project` (sun2admin/builder-project) serves two distinct roles:
 
-## 4-Layer Container Architecture
+1. **Control plane** — manages the entire 4-layer container stack. Contains source subdirectories for all 4 layers. Claude (running inside builder-project) makes changes to layer subdirs and pushes them to each layer's standalone GitHub repo, which triggers image builds via that repo's own CI/CD.
 
-All 4 layers are managed within the single `sun2admin/builder-project` GitHub repo.
-Each layer has its own subdirectory containing Dockerfiles, GitHub Actions, and config.
+2. **Reference project repo** — an example AI project (Claude project files only: CLAUDE.md, .claude/, .mcp.json, memory). Loaded into the running container by a Layer 4 devcontainer repo at startup. Has no architectural role in the container stack.
 
-| Layer | Published Image | Contents |
-|---|---|---|
-| Layer 1 | `ghcr.io/sun2admin/layer1-ai-depends:latest` | System packages, Python, graphics libs, Playwright |
-| Layer 2 | `ghcr.io/sun2admin/layer2-ai-install:claude` | Claude Code CLI, claude user, env setup |
-| Layer 3 | `ghcr.io/sun2admin/claude-plugins-*:latest` | Pre-baked Claude Code plugins |
-| Layer 4 Part 1 | devcontainer config subdir | devcontainer.json, init scripts, load-projects.sh |
-| Layer 4 Part 2 | separate standalone repos | Claude/AI project files only, cloned by load-projects.sh |
+## 4-Layer Container Stack
 
-**Layer 4 Part 2 repos are NOT inside builder-project.** They are separate repos cloned at
-container start by `load-projects.sh` into `/workspace/<ai-name>/<repo-name>`.
-`builder-project` itself is the reference implementation of a Part 2 repo.
+| Layer | Subdir in builder-project | Standalone repo | Published image |
+|---|---|---|---|
+| Layer 1 | `layer1-ai-depends/` | `sun2admin/layer1-ai-depends` | `ghcr.io/sun2admin/layer1-ai-depends` |
+| Layer 2 | `layer2-ai-install/` | `sun2admin/layer2-ai-install` | `ghcr.io/sun2admin/layer2-ai-install:claude\|gemini` |
+| Layer 3 | `layer3-ai-plugins/` (docs only) | 8 standalone plugin repos | `ghcr.io/sun2admin/claude-plugins-*` |
+| Layer 4 | `layer4-devcontainer/` | e.g. `sun2admin/build-containers-with-claude` | (devcontainer config, no image) |
+
+**Dependency cascade**: Layer 1 → Layer 2 → Layer 3 → Layer 4 inherits automatically on rebuild.
+
+## How builder-project Manages Layers
+
+Claude makes changes to a layer subdir in builder-project, then pushes those files to the standalone repo. The standalone repo's own GitHub Actions CI/CD builds and pushes the GHCR image. There is no root-level automation in builder-project — this is a manual, Claude-driven workflow.
+
+**Layer 3 exception**: The 8 plugin repos are currently edited directly (not sourced from `layer3-ai-plugins/`). Consolidation into builder-project is planned.
+
+## Project Repos (separate concept, not part of the stack)
+
+Project repos contain only Claude/AI project files (CLAUDE.md, .claude/, memory, skills, .mcp.json). They are loaded into the container at start by `load-projects.sh` in the Layer 4 devcontainer.
+
+- `builder-project` — reference example project repo
+- `build-containers-with-claude` — reference example Layer 4 devcontainer repo
 
 ## Key Repos
 
-- `sun2admin/builder-project` — **the single GitHub repo** containing all layer source files as subdirectories (Layers 1–3 and Layer 4 Part 1); also serves as the reference Part 2 Claude project
-- `/workspace/claude/builder-project/` — live project clone (loaded by load-projects.sh into the running container)
+- `sun2admin/builder-project` — the single control-plane repo; also the reference project repo
+- `/workspace/claude/builder-project/` — live clone inside the running container
 
 ## Persistence Lifecycle
 
 ```
 git repo (.claude/memory/*.md)
-    ↓  load-projects.sh: cp -n on container start  (live project only)
+    ↓  load-projects.sh: cp -n on container start
 ~/.claude/projects/<canonical-path>/memory/  (named volume)
     ↓  Claude writes auto-memory during session
-~/.claude/projects/<canonical-path>/memory/  (updated in named volume)
     ↑  /sync-prj-repos-memory skill
 git repo (.claude/memory/*.md)  (committed, portable)
 ```
 
-Named volume: `claude-code-config-${devcontainerId}` — persists across rebuilds (same devcontainerId = same workspace path).
+Named volume: `claude-code-config-${devcontainerId}` — persists across restarts, fresh on rebuild.
 
-## Key Skills and Plans
+## Key Skills
 
 - `/sync-prj-repos-memory` — syncs named volume memory → git repo, commits, pushes
-  - Plan: `.claude/plans/sync-prj-repos-memory-skill.md`
-- `load-projects.sh` — clones live repo, seeds memory, writes `~/live-project`
-  - Plan: `.claude/plans/load-projects-retroactive.md`
+- `load-projects.sh` — clones project repos, seeds memory on container start
 
 ## Canonical Path
 
-Claude Code converts `/workspace/claude/builder-project` → `-workspace-claude-builder-project` (leading dash, all `/` become `-`). Memory lives at `~/.claude/projects/-workspace-claude-builder-project/memory/`.
+`/workspace/claude/builder-project` → `-workspace-claude-builder-project`
+Memory: `~/.claude/projects/-workspace-claude-builder-project/memory/`
 
 ## Ongoing Work
 
 - Auto-restore init script for `.claude.json` backup — proposed, not yet implemented
-- Phase 3 (future): migrate `sync-prj-repos-memory` skill to `claude-global-config` repo and bake into layer2-ai-install (Layer 2)
+- Layer 3 consolidation — plugin repo sources to be brought into `layer3-ai-plugins/`
+- MCP binary + init scripts move from layer4-devcontainer to project repos — design in progress

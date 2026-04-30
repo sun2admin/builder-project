@@ -15,7 +15,7 @@ Each layer subdirectory has its own `CLAUDE.md` with layer-specific detail:
 | Layer 1 | `layer1-ai-depends/CLAUDE.md` |
 | Layer 2 | `layer2-ai-install/CLAUDE.md` |
 | Layer 3 | `layer3-ai-plugins/CLAUDE.md` |
-| Layer 4 Part 1 | `layer4-part1/CLAUDE.md` |
+| layer4-devcontainer | `layer4-part1/CLAUDE.md` |
 
 The root `CLAUDE.md` should contain only:
 - Project purpose (1–2 sentences)
@@ -32,7 +32,7 @@ The root `CLAUDE.md` should contain only:
 - Project purpose sentence + pointer to nested CLAUDE.md files
 - Architecture table
 - Dependency cascade note
-- Layer 4 Part 2 explanation
+- project repo explanation
 - Working Across Layers section
 - Plan Building section
 - Cross-Cutting Rules section

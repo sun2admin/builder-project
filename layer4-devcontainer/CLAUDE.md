@@ -1,7 +1,9 @@
-# Layer 4 Part 1: Container/Dependency Layer
+# Layer 4: layer4-devcontainer
 
-**Role**: devcontainer config and init scripts. Shaped by what Layer 4 Part 2 repos need.
+**Role**: devcontainer config and init scripts. Sets up the container environment and loads AI project repos.
 **Image referenced**: `ghcr.io/sun2admin/claude-plugins-a7f3d2e8:latest` (Layer 3)
+
+This subdir is the reference template for standalone Layer 4 devcontainer repos (e.g. `build-containers-with-claude`).
 
 ## devcontainer.json
 
@@ -28,7 +30,7 @@ Run via `postStartCommand` in order:
 2. init-ssh.sh                             ← loads SSH key from /run/credentials/
 3. init-gh-token.sh                        ← reads PAT, writes to ~/.profile (chmod 600)
 4. init-github-mcp.sh                      ← copies arch-appropriate MCP binary to ~/.local/bin/
-5. load-projects.sh -live sun2admin/builder-project  ← clones Part 2 repo
+5. load-projects.sh -live sun2admin/builder-project  ← clones project repo, seeds memory
 ```
 
 ## Init Scripts
@@ -39,7 +41,7 @@ Run via `postStartCommand` in order:
 
 **`init-github-mcp.sh`**: Detects arch (x86_64/aarch64), copies the appropriate binary from `scripts/opt/` to `/home/claude/.local/bin/github-mcp-server`.
 
-**`load-projects.sh`**: Clones Part 2 repos into `/workspace/claude/<repo-name>`. The `-live` flag designates the primary project — seeds memory from `.claude/memory/` into the named volume, writes path to `~/live-project`.
+**`load-projects.sh`**: Clones project repos into `/workspace/claude/<repo-name>`. The `-live` flag designates the primary project — seeds memory from `.claude/memory/` into the named volume, writes path to `~/live-project`.
 
 ## MCP Binary
 
@@ -50,6 +52,6 @@ Run via `postStartCommand` in order:
 
 Updated weekly via `update-github-mcp.yml` GitHub Actions workflow.
 
-## Layer 4 Part 2
+## Project Repos
 
-Part 2 repos are **separate standalone GitHub repos**, not subdirectories here. They are cloned by `load-projects.sh` into `/workspace/claude/<name>` at container start. `builder-project` is the reference Part 2 implementation.
+Project repos (e.g. `builder-project`) are separate standalone repos cloned by `load-projects.sh` at container start into `/workspace/claude/<name>`. They contain only Claude/AI project files and have no role in the container architecture.

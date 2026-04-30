@@ -1,22 +1,29 @@
 # builder-project
 
-Reference Layer 4 Part 2 Claude project and single repo for all container layer sources.
+Control plane for the 4-layer container stack, and reference AI project repo.
+
+## Two Roles
+
+1. **Control plane** — contains source subdirectories for all 4 container layers. Claude makes changes here and pushes them to each layer's standalone GitHub repo, which triggers that repo's own CI/CD to build and push GHCR images.
+
+2. **Reference project repo** — Claude project files only (CLAUDE.md, .claude/, .mcp.json, memory). Loaded into the running container by a Layer 4 devcontainer repo (e.g. `build-containers-with-claude`) at startup.
 
 ## Architecture
 
-4-layer container stack — each layer is a subdirectory with its own `CLAUDE.md`:
+4-layer container stack — each layer has its own subdir with a `CLAUDE.md`:
 
-| Layer | Subdir | Published Image |
-|---|---|---|
-| Layer 1 | `layer1-ai-depends/` | `ghcr.io/sun2admin/layer1-ai-depends` |
-| Layer 2 | `layer2-ai-install/` | `ghcr.io/sun2admin/layer2-ai-install:claude` |
-| Layer 3 | `layer3-ai-plugins/` | `ghcr.io/sun2admin/claude-plugins-*` |
-| Layer 4 Part 1 | `layer4-part1/` | devcontainer config + init scripts |
-| Layer 4 Part 2 | *(this repo root)* | Claude project files — CLAUDE.md, .claude/, .mcp.json |
+| Layer | Subdir | Standalone Repo | Published Image |
+|---|---|---|---|
+| Layer 1 | `layer1-ai-depends/` | `sun2admin/layer1-ai-depends` | `ghcr.io/sun2admin/layer1-ai-depends` |
+| Layer 2 | `layer2-ai-install/` | `sun2admin/layer2-ai-install` | `ghcr.io/sun2admin/layer2-ai-install:claude\|gemini` |
+| Layer 3 | `layer3-ai-plugins/` (docs only) | 8 standalone plugin repos | `ghcr.io/sun2admin/claude-plugins-*` |
+| Layer 4 | `layer4-devcontainer/` | e.g. `sun2admin/build-containers-with-claude` | (devcontainer config, no image) |
 
 **Dependency cascade**: Layer 1 → Layer 2 → Layer 3 → Layer 4 inherits automatically on rebuild.
 
-**Layer 4 Part 2 repos** are separate standalone GitHub repos cloned by `load-projects.sh` at container start into `/workspace/claude/<name>`. They are not subdirectories here.
+**Layer 3 note**: Plugin repos are currently edited directly in their standalone repos. Consolidation into `layer3-ai-plugins/` is planned.
+
+**Project repos** (e.g. `builder-project`) are separate standalone repos, not part of the container stack. They are cloned by `load-projects.sh` at container start into `/workspace/claude/<name>`.
 
 ## Cross-Cutting Rules
 

@@ -1,111 +1,59 @@
 ---
-name: init-projects.sh Sync Pattern - Exact Files and Directories
-description: Complete specification of what init-projects.sh must copy from /workspace/claude/project-*/ to ~/.claude/projects/<cwd-path>/ to emulate exactly what Claude Code does when starting in a project directory.
+name: load-projects.sh Sync Pattern
+description: What load-projects.sh copies from project repos into ~/.claude/projects/ to seed memory and config at container start
 type: project
-originSessionId: 5521fc77-7f4d-4824-aa67-ff980c2a58df
+originSessionId: 3f6f6192-aa5b-4f57-be58-35aa8808c6e4
 ---
-## What Claude Code Reads from Project Directory at Startup
+## What load-projects.sh Does
 
-When Claude starts with cwd=/workspace/claude/project-a/, it reads:
-- `CLAUDE.md` (from cwd, parents, and global ~/.claude/CLAUDE.md)
-- `.claude/settings.json` (project configuration)
-- `.claude/settings.local.json` (local/personal overrides)
-- `.claude/rules/*.md` (all rule markdown files)
-- `.claude/commands/` (project-level slash commands)
-- `.claude/skills/` (project skills with SKILL.md files)
-- `.claude/agents/` (subagent definitions)
-- `.mcp.json` (MCP server configuration)
-- `.claude/memory/*.md` (committed project memory for persistence)
+`load-projects.sh` (lives in `layer4-devcontainer/scripts/`) runs at container start via `postStartCommand`. It:
+1. Clones the specified project repo into `/workspace/claude/<name>`
+2. Seeds memory from the repo into the named volume
+3. Writes the live project path to `~/live-project`
 
-## What Claude Code Creates in ~/.claude/projects/<cwd-path>/
+## Memory Seeding Pattern
 
-When Claude starts, it creates/uses:
-- `memory/` directory (for auto-memory and session notes)
-- `MEMORY.md` (created when Claude saves notes, not on first startup)
-- `*.jsonl` files (session transcripts, one per session - auto-created during work)
-
-## Exact Files init-projects.sh Must Copy
-
-For each valid Claude project found at `/workspace/claude/project-X/`:
-
-### 1. Copy Entire .claude Directory Structure
-```
-/workspace/claude/project-X/.claude/
-├── settings.json → ~/.claude/projects/<path>/.claude/settings.json
-├── settings.local.json → ~/.claude/projects/<path>/.claude/settings.local.json
-├── rules/
-│ └── *.md → ~/.claude/projects/<path>/.claude/rules/*.md (all)
-├── commands/
-│ └── (all files/dirs) → ~/.claude/projects/<path>/.claude/commands/ (entire tree)
-├── skills/
-│ └── (all subdirs) → ~/.claude/projects/<path>/.claude/skills/ (entire tree)
-├── agents/
-│ └── *.md → ~/.claude/projects/<path>/.claude/agents/*.md (all)
-└── memory/
- └── *.md → ~/.claude/projects/<path>/memory/*.md (all)
+```bash
+# cp -n preserves any in-session writes already in the named volume
+cp -n /workspace/claude/builder-project/.claude/memory/*.md \
+  ~/.claude/projects/-workspace-claude-builder-project/memory/
 ```
 
-### 2. Copy Root-Level Project Files
-```
-/workspace/claude/project-X/CLAUDE.md → ~/.claude/projects/<path>/CLAUDE.md
-/workspace/claude/project-X/.mcp.json → ~/.claude/projects/<path>/.mcp.json
-```
+- **First start (empty named volume)**: copies all committed memory files
+- **Restart (existing named volume)**: `-n` flag preserves in-session writes
 
-### 3. Create Memory Directory Structure
-```
-Create: ~/.claude/projects/<path>/memory/ (directory, empty initially)
-Create: ~/.claude/projects/<path>/MEMORY.md (if not already copied from project)
-```
+## What Claude Code Reads at Startup
 
-## What NOT to Copy
+When Claude starts with cwd=`/workspace/claude/builder-project`:
+- `CLAUDE.md` (from cwd and parents)
+- `.claude/settings.json` / `.claude/settings.local.json`
+- `.claude/rules/*.md`
+- `.claude/commands/`
+- `.claude/skills/`
+- `.claude/agents/`
+- `.mcp.json`
+- Memory from `~/.claude/projects/-workspace-claude-builder-project/memory/`
 
-- Source code files (anything not in .claude/, not CLAUDE.md, not .mcp.json)
-- Session transcripts (*.jsonl files) - these are auto-created by Claude
-- Generated auto-memory notes beyond MEMORY.md - these are created during work
+## Outbound Sync (sync-prj-repos-memory skill)
+
+```bash
+cp ~/.claude/projects/-workspace-claude-builder-project/memory/*.md \
+  /workspace/claude/builder-project/.claude/memory/
+git add .claude/memory/
+git commit -m "sync: update memory from session"
+git push
+```
 
 ## Directory Path Canonicalization
 
-For `/workspace/claude/project-a/`:
-- Canonicalized path: `-workspace-claude-project-a`
-- Target directory: `~/.claude/projects/-workspace-claude-project-a/`
+`/workspace/claude/builder-project` → `-workspace-claude-builder-project`
+Target: `~/.claude/projects/-workspace-claude-builder-project/`
 
-## Important Details
+## Relationship to Multi-Project Support
 
-### Copy Flags
-Use `cp -r` for directories to preserve structure
-Copy entire subdirectories (rules/, commands/, skills/, agents/, memory/) not individual files
-
-### Memory Persistence Pattern
-- Project has committed memory: `/workspace/claude/project-a/.claude/memory/`
-- init-projects.sh copies to named volume: `~/.claude/projects/-workspace-claude-project-a/memory/`
-- On restart: memory preserved (using `-n` flag in future seeding)
-- On rebuild: memory restored from git-committed files
-
-### Verification
-After copying each project, verify:
-1. `.claude/` directory exists with all subdirectories
-2. `CLAUDE.md` exists
-3. `.mcp.json` exists (if it was in the project)
-4. `memory/` directory exists with all `.md` files copied
-5. Directory structure matches source exactly
-
-## Relationship to init-memory.sh (Current Pattern)
-
-**Current init-memory.sh (single project):**
+`load-projects.sh` accepts multiple repos:
 ```bash
-cp -n /workspace/claude/.claude/memory/MEMORY.md /workspace/claude/.claude/memory/layer2-ai-install-implementation.md /workspace/claude/.claude/memory/architecture-four-layer-stack.md /workspace/claude/.claude/memory/layer1-ai-depends-implementation.md /workspace/claude/.claude/memory/build-project-design-decisions.md /workspace/claude/.claude/memory/build-project-skill-clarifications.md /workspace/claude/.claude/memory/claude-code-config-loading-precedence.md /workspace/claude/.claude/memory/claude-code-memory-portability-architecture.md /workspace/claude/.claude/memory/claude-code-multi-project-architecture.md /workspace/claude/.claude/memory/claude-code-project-config.md /workspace/claude/.claude/memory/claude-code-project-discovery-sessions.md /workspace/claude/.claude/memory/devcontainer-claude-code-auth.md /workspace/claude/.claude/memory/devcontainer-credential-files.md /workspace/claude/.claude/memory/devcontainer-implicit-behavior.md /workspace/claude/.claude/memory/devcontainer-persistence-strategy.md /workspace/claude/.claude/memory/devcontainer-playwright.md /workspace/claude/.claude/memory/devcontainer-ssh-and-keys.md /workspace/claude/.claude/memory/devcontainer-volumes-and-mounts.md /workspace/claude/.claude/memory/feedback-auto-commit-on-success.md /workspace/claude/.claude/memory/feedback-bash-over-zsh.md /workspace/claude/.claude/memory/feedback-check-mounts-first.md /workspace/claude/.claude/memory/feedback-credentials-shell-env.md /workspace/claude/.claude/memory/feedback-ghcr-always-private.md /workspace/claude/.claude/memory/feedback-init-scripts-not-in-image.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-output.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-repo-verification.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-prebuilt-vs-build-separation.md /workspace/claude/.claude/memory/feedback-new-plugin-layer-search-bug.md /workspace/claude/.claude/memory/feedback-plugins-first-approach.md /workspace/claude/.claude/memory/feedback-use-skill-tool.md /workspace/claude/.claude/memory/init-projects-sync-pattern.md /workspace/claude/.claude/memory/plugin-layer-ai-install-migration.md /workspace/claude/.claude/memory/project-claude-code-actions-placement.md /workspace/claude/.claude/memory/project-plugin-lists.md /workspace/claude/.claude/memory/project-plugin-seed-approach.md /workspace/claude/.claude/memory/reference-plugins-vs-skills.md /workspace/claude/.claude/memory/user.md ~/.claude/projects/-workspace/memory/
+load-projects.sh -live sun2admin/builder-project sun2admin/other-repo
 ```
-
-**New init-projects.sh (multi-project):**
-```bash
-for each /workspace/claude/project-X/:
- cp -r /workspace/claude/project-X/.claude/ ~/.claude/projects/<cwd-path>/.claude/
- cp /workspace/claude/project-X/CLAUDE.md ~/.claude/projects/<cwd-path>/CLAUDE.md
- cp /workspace/claude/project-X/.mcp.json ~/.claude/projects/<cwd-path>/.mcp.json
- mkdir -p ~/.claude/projects/<cwd-path>/memory/
- cp -n /workspace/claude/project-X/.claude/memory/*.md ~/.claude/projects/<cwd-path>/memory/
-```
-
-## Key Insight
-
-init-projects.sh exactly emulates what Claude Code does when starting in a project directory and syncing configuration to `~/.claude/projects/<cwd-path>/`. The only difference is timing: Claude does it on-demand per project, init-projects.sh pre-populates all projects at container startup.
+- `-live` repo: cloned to `/workspace/claude/<name>`, memory seeded, path written to `~/live-project`
+- Additional repos: cloned to `/workspace/repos/<name>`, no memory seeding

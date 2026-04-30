@@ -12,7 +12,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/base-ai-layer
+  IMAGE_NAME: ${{ github.repository_owner }}/layer1-ai-depends
 
 jobs:
   build-matrix:
