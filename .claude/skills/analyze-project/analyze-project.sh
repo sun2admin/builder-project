@@ -835,6 +835,9 @@ for wf in Path('.').rglob('*.yml'):
         # look like command tokens to the delimiter regex but are not shell.
         for m in re.finditer(r'^\s+run:\s*[|>]?\s*\n((?:[ \t]+.+\n?)*)', content, re.MULTILINE):
             run_content = re.sub(r'\$\{\{[^}]*\}\}', ' __EXPR__ ', m.group(1))
+            # Strip inline interpreter scripts — content between quotes after -e/-c
+            # is JS/Python/etc, not shell; its keywords (await, const, self) are not tools.
+            run_content = re.sub(r'''(?:node|bun|deno|python3?|ruby|perl)\s+(?:-\w+\s+)*-[ec]\s+(?:"[^"]*"|'[^']*')''', ' __INLINE_SCRIPT__ ', run_content)
             # Only keep simple lowercase shell-style tokens (hyphens ok, no dots, no mixed caps)
             ci_tools |= {t for t in extract_commands(run_content)
                          if re.match(r'^[a-z][a-z0-9_-]+$', t)}
