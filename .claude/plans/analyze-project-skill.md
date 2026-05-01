@@ -113,14 +113,17 @@ Runtime extras (supplement, not replace):
 - `deno.json / deno.lock` → deno
 - `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn
 
-**File-scan fallback**: If GitHub API `primary_language` names a language not
-caught by root manifests (e.g. a GitHub Action repo with Python in subdirs, or
-a TS project with no `package.json`), scan for >2 language-specific files:
-- Python → `*.py` count >2
+**File-scan fallback** (always runs, regardless of `primary_language`): scan for >2
+language-specific files in the repo to catch secondary languages and repos with
+no root manifest:
+- Python → `*.py` count >2 (excluding `.git/`, `node_modules/`, `.venv/`)
 - TypeScript/JavaScript → `*.ts`/`*.js` count >2 (excluding `node_modules/`)
 - Go → `*.go` count >2
 
-This handles repos like GitHub Actions where code lives in subdirs with no root manifest.
+The `>2` threshold deliberately excludes single-file utility scripts — a repo with
+one or two `.py` image scripts is not a "Python project," but those imports still
+surface in `inferred.py_imports`. Repos with substantial Python (3+ files) get
+`python` added to languages.
 
 Runtime versions (in priority order):
 - Node: `package.json .engines.node`, then `.nvmrc`, then `.node-version` (strip leading `v`)
@@ -474,6 +477,7 @@ Test against repos representing diverse profiles:
 | `santifer/career-ops` | Node, Playwright, .env.example, data-file URLs | HTML purpose, cred dedup, domain blocklist, nvmrc |
 | `danielrosehill/claude-code-projects-index` | Astro static site, package-lock.json noise | node_modules exclusion, lock file exclusion, SSH false positive fix |
 | `anthropics/claude-code-security-review` | GitHub Action, Python+bun, no root manifests | TS stdlib filter, language file-scan fallback, Markdown table fix |
+| `peterkrueck/claude-code-development-kit` | Shell+Python utilities, no manifests | Unconditional language file-scan, py_imports for sub-threshold Python |
 | A pure Python repo | No Dockerfile, no shell scripts | py_imports, no Dockerfile fallback |
 | A Go service with docker-compose | Go, ports, DB clients | ports, go libs, DB detection |
 | A frontend React app | TS, npm, no container | TS inference, node libs |

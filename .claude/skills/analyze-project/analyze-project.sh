@@ -123,26 +123,21 @@ if printf '%s\n' "${RUNTIME_EXTRAS[@]:-}" | grep -q "^bun$"; then
   printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^node$" || LANGUAGES+=("node")
 fi
 
-# Fallback: use GitHub API primary_language + file count to catch repos with
-# no root manifest (e.g. GitHub Actions with inline Python, scattered TS files)
-_LANG_LOWER="${REPO_LANG,,}"
-case "$_LANG_LOWER" in
-  python)
-    if ! printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^python$"; then
-      _pycount=$(find . -name "*.py" -not -path "./.git/*" -not -path "*/node_modules/*" 2>/dev/null | wc -l)
-      [[ "$_pycount" -gt 2 ]] && LANGUAGES+=("python")
-    fi ;;
-  typescript|javascript)
-    if ! printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^node$"; then
-      _tscount=$(find . \( -name "*.ts" -o -name "*.js" \) -not -path "./.git/*" -not -path "*/node_modules/*" 2>/dev/null | wc -l)
-      [[ "$_tscount" -gt 2 ]] && LANGUAGES+=("node")
-    fi ;;
-  go)
-    if ! printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^go$"; then
-      _gocount=$(find . -name "*.go" -not -path "./.git/*" 2>/dev/null | wc -l)
-      [[ "$_gocount" -gt 2 ]] && LANGUAGES+=("go")
-    fi ;;
-esac
+# File-scan fallback: always run for secondary languages regardless of primary_language.
+# A Shell repo can still have substantial Python scripts, a Go repo can have TS tooling, etc.
+# Threshold >2 files avoids false positives from single utility scripts.
+if ! printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^python$"; then
+  _pycount=$(find . -name "*.py" -not -path "./.git/*" -not -path "*/node_modules/*" -not -path "*/.venv/*" 2>/dev/null | wc -l)
+  [[ "$_pycount" -gt 2 ]] && LANGUAGES+=("python")
+fi
+if ! printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^node$"; then
+  _tscount=$(find . \( -name "*.ts" -o -name "*.js" \) -not -path "./.git/*" -not -path "*/node_modules/*" 2>/dev/null | wc -l)
+  [[ "$_tscount" -gt 2 ]] && LANGUAGES+=("node")
+fi
+if ! printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^go$"; then
+  _gocount=$(find . -name "*.go" -not -path "./.git/*" 2>/dev/null | wc -l)
+  [[ "$_gocount" -gt 2 ]] && LANGUAGES+=("go")
+fi
 
 # Runtime versions (best-effort)
 NODE_VER=""

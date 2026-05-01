@@ -1,0 +1,88 @@
+{
+  "repo": "peterkrueck/claude-code-development-kit",
+  "project": "claude-code-development-kit",
+  "analyzed_at": "2026-05-01",
+  "purpose": "A lightweight starter kit for Claude Code subscribers. Gives your project a solid foundation \u2014 documentation structure, code review automation, image tools, and sensible defaults \u2014 that you extend as you go.",
+  "primary_language": "Shell",
+  "languages": [
+    "shell"
+  ],
+  "runtime_extras": [],
+  "runtime_versions": {},
+  "dockerfile_base": "",
+  "system_packages": [],
+  "extra_binaries": [],
+  "libraries": {
+    "node": [],
+    "python": [],
+    "go": [],
+    "rust": []
+  },
+  "ports": {
+    "inbound": []
+  },
+  "external_services": {
+    "domains": [
+      "aistudio.google.com"
+    ],
+    "source": "source_scan"
+  },
+  "env_vars": [],
+  "browser_tools": [],
+  "github_api_usage": false,
+  "firewall_required": false,
+  "container": {
+    "capabilities": [],
+    "volumes": [],
+    "env": {},
+    "remote_user": "",
+    "post_start": "",
+    "post_create": "",
+    "extensions": []
+  },
+  "credentials_required": {
+    "api_keys": [],
+    "tokens": [],
+    "ssh": true,
+    "other": []
+  },
+  "mcp_servers": [],
+  "claude_plugins": [],
+  "inferred": {
+    "tools": [
+      "curl",
+      "delta",
+      "git",
+      "go",
+      "jq",
+      "just",
+      "parallel",
+      "pip",
+      "task"
+    ],
+    "py_imports": [
+      "PIL",
+      "numpy"
+    ],
+    "ts_imports": [],
+    "ci_tools": [],
+    "tools_new": [
+      "curl",
+      "delta",
+      "git",
+      "go",
+      "jq",
+      "just",
+      "parallel",
+      "pip",
+      "task"
+    ],
+    "tools_confirmed": []
+  },
+  "suggested": {
+    "base_image": "latest",
+    "dockerfile_from": "",
+    "ai_install": "claude",
+    "plugin_layer": ""
+  }
+}
