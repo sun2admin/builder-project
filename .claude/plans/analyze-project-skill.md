@@ -17,6 +17,16 @@ and is also human-readable for review.
 
 ## Architecture Principles
 
+### Dynamic, not hardcoded
+The skill never maintains lists of known domains, tools, stdlib modules, or CI
+action mappings. Every such classification is determined at runtime by querying
+the environment or the repo itself. This keeps the skill accurate for repos we
+haven't seen yet and removes the maintenance burden of growing lists.
+
+The one place caching is intentional: `tool-deps.json` (stored alongside the
+skill file) memoizes `apt-cache show` results so we don't re-query apt for the
+same tool on every run.
+
 ### Dual output: JSON (machine) + Markdown (human)
 - `analysis.json` — structured, consumed by `build-workspace` layer skills
 - `analysis.md` — printed to stdout + saved, for human review
@@ -28,6 +38,11 @@ All bash-collected data is exported as `AP_*` env vars before a single
 `python3 << 'PYEOF'` block that reads them and serializes to JSON.
 Single-quoted heredoc (`<< 'PYEOF'`) prevents bash from expanding `${}` inside
 the Python code — critical since Python uses `{}` for f-strings.
+
+**Export timing:** `AP_NODE_BUILTINS` must be exported immediately after the
+`node -e "..."` call, before the `INFERRED_SOURCE` Python block at line ~715.
+`AP_SKILL_DIR` can go in the main exports block since it's only needed in the
+output Python block.
 
 ### pipefail + grep exit-1 trap
 `set -euo pipefail` makes any failing command in a pipeline abort the script.
@@ -179,42 +194,37 @@ Per-Dockerfile Python parsing (join continuation lines first):
 - `docker-compose*.yml` port mappings
 - `devcontainer.json` `forwardPorts`
 
-### 7. External Services (firewall domains)
+### 7. External Services — context-aware, no blocklist
 Priority 1 (most authoritative): `init-firewall*.sh` / `firewall*.sh` / `setup-network*.sh`
-— Extract quoted domain strings: `grep -oP '"[a-z0-9][a-z0-9.-]+\.[a-z]{2,}"'`
+— Extract quoted domain strings directly; these scripts are ground truth.
 
-Priority 2 (fallback when no firewall script): URL pattern scan across
-`*.ts *.js *.py *.go *.rs *.sh *.json *.yml *.yaml`.
+Priority 2 (fallback when no firewall script): context-aware scan across all repo files.
+Classification is by WHERE the URL appears (file type + code context), not WHAT the domain is.
+No blocklist. The only always-skip is localhost/private ranges: `127.*`, `192.168.*`, `10.*`, `0.0.0.0`, `::1`.
 
-**Excluded paths and files** (prevent dependency tree and generated file noise):
-- Directories: `node_modules/`, `vendor/`, `.venv/`, `gen/`, `generated/`
-- File extensions: `.svg`
-- Lock files by name: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `Cargo.lock`, `Gemfile.lock`, `composer.lock`
+**Source code** (`.py`, `.ts`, `.js`, `.go`, `.rs`, `.sh`, `.bash`): only non-comment lines
+that contain an HTTP call pattern (`fetch(`, `requests.get(`, `urllib.urlopen(`, `http.Get(`,
+`grpc.Dial(`, `curl`, `wget`) → **high confidence**.
 
-Domain blocklist — removes known non-runtime domains:
-- Spec/schema noise: `w3.org`, `schema.org`, `iana.org`, `rfc-editor.org`
-- Example/placeholder: `example.com`, `acme.com`, `localhost`, `127.0.*`, `0.0.0.0`
-- CI/badge services: `shields.io`, `travis-ci.*`, `codecov.io`, `badge.*`
-- Community/social: `discord.gg`, `discord.com`
-- Code hosting (links, not APIs): `github.com`, `raw.githubusercontent.com`
-- Documentation sites: `docs.*`, `readthedocs.*`
-- Package registries (install-time, not runtime): `npmjs.com`, `npmjs.org`, `pypi.org`, `crates.io`, `pkg.go.dev`, `rubygems.org`
-- npm funding/support noise: `opencollective.com`, `tidelift.com`
-- Font CDN: `fonts.googleapis.com`, `fonts.gstatic.com`, `gstatic.com`
-- Awesome list badge redirect: `awesome.re`
-- Homebrew docs: `formulae.brew.sh`, `brew.sh`, `homebrew.sh`
-- Tool documentation: `pre-commit.com`
-- Placeholder domains: `existing.com`
-- GitHub stats badge widgets: `github-readme-stats` (prefix match, covers forks on any TLD)
+**Config/env files** (`.yml`, `.yaml`, `.toml`, `.cfg`, `.ini`, `.conf`, `.env*`, `.json`):
+all URLs in these files are runtime configuration → **high confidence**.
 
-**URL noise patterns discovered in testing:**
-- `w3.org` from SVG XML namespace declarations in generated SVG files → exclude `.svg` files and `gen/` dirs
-- `acme.com` from generated Go ACME client code comments → exclude `gen/` dirs
-- `discord.gg`, `docs.renovatebot.com`, `raw.githubusercontent.com` from README/config links → added to blocklist
-- `registry.npmjs.org`, `opencollective.com`, `tidelift.com`, `fonts.googleapis.com` from `node_modules/` package metadata → exclude `node_modules/` from find
-- `paulmillr.com` (author of chokidar) from `package-lock.json` author fields → exclude lock files by name from URL scan
-- Personal/vanity domains (`danielrosehill.com`, `dsrholdings.cloud`, `santifer.io`) — hard to filter automatically; left as-is (low harm, human can discard)
-- Data-file domains (career-ops: `jobs.lever.co`, `boards-api.greenhouse.io`) — correctly preserved as external services
+**Markdown/docs** (`.md`, `.rst`, `.txt`, `.adoc`):
+- Code fences (` ``` ``` `): owner demonstrated a runtime call in docs → **medium confidence**
+- Prose lines with service-keyword context (`api`, `service`, `endpoint`, `webhook`, `connect`,
+  `host`, `server`, `baseurl`, `origin`, `remote`, `backend`): owner described a runtime dependency → **medium confidence**
+- Badge lines (`[![`) are skipped entirely — these are CI/shield widgets, not runtime services
+
+**What IS valid to skip unconditionally:**
+- Lock files (`package-lock.json`, `yarn.lock`, `Cargo.lock`, etc.) — install-time noise
+- `node_modules/`, `vendor/`, `.venv/` — third-party code, not this repo's deps
+- `.svg` files — XML namespace URLs (`w3.org`) in generated SVG
+- Localhost/internal IPs — never runtime external services
+
+**README/docs as baseline:** The owner wrote the docs to describe how the project works.
+Code fences show actual runtime API calls. Prose keywords identify services the project
+connects to. This is valuable signal — it establishes what the owner intends, before
+confirming via source code.
 
 ### 8. Credentials & Auth
 Sources (all combined, deduped by type):
@@ -227,6 +237,10 @@ Exclusive routing for all sources — each var goes to exactly one bucket:
 2. `_TOKEN$` or `_PAT$` → `tokens`
 3. Known service prefixes (`DATABASE_URL`, `REDIS_URL`, `SMTP_*`, etc.) → `other`
 4. No match → not captured (too generic to classify)
+
+These routing suffixes (`_KEY$`, `_SECRET$`, `_TOKEN$`, `_PAT$`) are industry standard
+naming conventions, not a filter list — they're defined by the credential type, not opinions
+about specific tools.
 
 **Credential dedup pitfall:** Both the `.env.example` loop AND the workflow secrets loop
 must use exclusive `if/elif` routing. If one uses additive independent `if` checks,
@@ -256,71 +270,113 @@ Union of:
 Keyword scan of `package.json / requirements.txt / Pipfile / pyproject.toml / go.mod`:
 playwright, puppeteer, selenium, cypress
 
-### 13. Source Code Inference
+### 13. Source Code Inference — fully dynamic, no hardcoded lists
+
 Runs always. Critical fallback when no Dockerfile/manifest is present.
 Scans: shell scripts (`.sh` + extensionless files with bash shebangs), GitHub
 Actions workflow `run:` blocks, and `Makefile`, `makefile`, `GNUmakefile`,
 `Taskfile.yml`, `Taskfile.yaml`, `justfile`, `Justfile`.
 
-**Note:** Both `Taskfile.yml` and `Taskfile.yaml` must be checked — different
-projects use different extensions.
+#### Shell command extraction (no KNOWN_TOOLS list)
+Extract the first token after command-position delimiters (`;`, `|`, `&`, `(`, `{`, newline)
+in shell/Makefile content. Strip comment lines first.
 
-For each file, tests presence of ~80 known installable binaries via
-`re.search(r'\b<tool>\b', content)`. KNOWN_TOOLS includes language-specific
-tools (`rustup`, `cargo`, `buf`, `protoc`, `grpc`, `task`, `valkey`) as well
-as common dev tooling.
+Filter the extracted token:
+- Must be >1 char, no `/`, not start with digit, not all-caps (env var)
+- Must not be in `SHELL_BUILTINS` — queried at runtime: `bash -c 'compgen -b; compgen -k'`
+- Must not be in `NOISE` — common English words that appear as command tokens but aren't tools
 
-Also scans:
-- Python files for non-stdlib `import` statements → `inferred.py_imports`
-  (filtered against `STDLIB_PY` — ~60 built-in module names)
-- TS/JS files (excluding `node_modules/`) for named module imports → `inferred.ts_imports`
-  (filtered against `STDLIB_TS` — Node.js built-ins: `fs`, `path`, `os`, `child_process`,
-  `crypto`, `http`, `https`, `url`, `util`, `events`, `stream`, `buffer`, etc.)
+Also detect explicit dependency checks: `command -v X`, `which X`, `type X` patterns.
+And shebangs: `#!/usr/bin/env X`.
 
-Without `STDLIB_TS`, repos that import `fs` or `child_process` would surface those
-as external packages, giving a false impression of external dependencies.
+Result: any binary/tool that the repo actually invokes, regardless of whether it's
+in a pre-compiled list.
 
-**`STDLIB_PY` coverage gaps:** Python's stdlib is ~250 modules — many non-obvious ones are
-missing from a hand-curated set. Found in testing: `difflib`, `importlib`, `pkgutil`,
-`zipfile`, `tarfile`, `readline`, `shlex`, `getpass`, `getopt`, `select`,
-`asyncio`, `concurrent`, `linecache`, `profile`, `timeit`, `doctest`, `pdb`, `filecmp`,
-`calendar`, `secrets`, `ipaddress`. When encountering an unexpected stdlib import in
-`py_imports`, add it to `STDLIB_PY`.
+#### CI/CD workflow action parsing (dynamic, no USES_MAP)
+For each `uses: owner/action-name@version` in `.github/workflows/*.yml`:
+1. Take the action repo name (second path component, lowercased)
+2. Strip standard prefixes: `setup-`, `install-`, `action-`, `run-`
+3. Strip standard suffixes: `-action`, `-toolchain`, `-cache`, `-setup`, `-runner`, `-builder`
+4. What remains is the tool name — `actions/setup-node` → `node`, `dtolnay/rust-toolchain` → `rust`
 
-**Local module false positives in `py_imports`:** `import scripts` or `import utils` refers
-to a local `scripts/` or `utils/` directory, not a PyPI package. Fix: collect root-level
-directory names and `.py` file stems before scanning:
-`LOCAL_MODULES = {p.name for p in Path('.').iterdir() if p.is_dir() and not p.name.startswith('.')} | {p.stem for p in Path('.').glob('*.py')}`
-Then exclude: `if pkg not in STDLIB_PY and not pkg.startswith('_') and pkg not in LOCAL_MODULES`
+This derives the tool dynamically from naming conventions, not a lookup table.
+Also extracts commands from `run:` blocks using the same delimiter-pattern approach.
 
-**GitHub Actions `uses:` step detection:**
-Maps known CI action prefixes to the tool they install. Added to
-`inferred.ci_tools` (separate from `tools` to preserve provenance):
+#### Python stdlib — queried from Python, not hardcoded
+```python
+stdlib_py = frozenset(getattr(sys, 'stdlib_module_names', frozenset()))  # Python 3.10+
+if not stdlib_py:
+    stdlib_path = sysconfig.get_python_lib(standard_lib=True)
+    stdlib_py = frozenset(m.name for m in pkgutil.iter_modules([stdlib_path]))
+    stdlib_py = stdlib_py | frozenset(sys.builtin_module_names)
 ```
-dtolnay/rust-toolchain → rust
-actions-rs/toolchain   → rust
-arduino/setup-protoc   → protoc
-bufbuild/buf-setup-action → buf
-actions/setup-node     → node
-actions/setup-python   → python3
-actions/setup-go       → go
-actions/setup-java     → java
-ruby/setup-ruby        → ruby
-Swatinem/rust-cache    → rust
-PyO3/maturin-action    → rust
+`sys.stdlib_module_names` is the authoritative list for the running Python version.
+The fallback uses `pkgutil.iter_modules` to enumerate the stdlib path on disk.
+Never hardcoded — no maintenance, no gaps.
+
+#### Node.js builtins — queried from Node, not hardcoded
+```bash
+NODE_BUILTINS_JSON=$(node -e "console.log(JSON.stringify(require('module').builtinModules))" 2>/dev/null || echo "[]")
+export AP_NODE_BUILTINS="$NODE_BUILTINS_JSON"
 ```
+Exported immediately after the node call so the INFERRED_SOURCE Python block can read
+`os.environ.get('AP_NODE_BUILTINS', '[]')`. If Node is unavailable, falls back to empty
+set (no filtering — conservative: better to include a builtin than miss a real dep).
+
+#### Local module filter
+Before scanning Python files, collect root-level directory names and `.py` stems:
+```python
+LOCAL_MODULES = (
+    {p.name for p in Path('.').iterdir() if p.is_dir() and not p.name.startswith('.')}
+    | {p.stem for p in Path('.').glob('*.py')}
+)
+```
+This prevents `import scripts` (local `scripts/` dir) or `import utils` from appearing
+as external packages. Determined by the repo's own structure, not a hardcoded list.
 
 **Dedup logic:**
 - `inferred.tools_new` = inferred tools NOT in `system_packages` (net-new gaps)
 - `inferred.tools_confirmed` = inferred tools already in `system_packages` (validation)
 - Markdown highlights only `tools_new` as actionable items
 
-### 14. Firewall Flag
+### 14. System Dependency Resolution — apt-cache + tool-deps.json cache
+
+For each discovered tool (from `inferred.tools` + `inferred.ci_tools`), resolve what
+system packages it needs in Layer 1. This is a key function — the analysis directly
+informs what goes into the Layer 1 Dockerfile.
+
+**Resolution flow:**
+1. Load `tool-deps.json` from the skill directory (alongside `analyze-project.sh`)
+2. For each tool not already cached:
+   a. Try `apt-cache show <tool>` — if the tool name is itself a Debian package, extract `Depends:` field
+   b. If not a direct package, try `dpkg -S */bin/<tool>` to find what package provides the binary
+   c. Store result: `{"apt_package": "pkg-name", "apt_depends": ["dep1", ...]}`
+   d. If neither resolves → `{"apt_package": null, "apt_depends": []}`
+3. Write updated cache back to `tool-deps.json`
+4. Surface in `system_deps` field: only tools that resolved to a known package
+
+**tool-deps.json format:**
+```json
+{
+  "jq": {"apt_package": "jq", "apt_depends": ["libjq1", "libonig5"]},
+  "gh": {"apt_package": null, "apt_depends": []},
+  "myunknowntool": {"apt_package": null, "apt_depends": []}
+}
+```
+
+`gh` is a good example of a tool that won't resolve via apt (it's installed via a
+custom apt source or binary download) — the null result is correct and cached.
+
+**Cache behavior:** Once a tool is in the cache (even as null), it won't be re-queried.
+The cache grows as new tools are discovered. Results in `system_deps` are written to
+`analysis.json` and shown in the Markdown report.
+
+### 15. Firewall Flag
 Set `firewall_required: true` if:
 - Any `init-firewall*` / `firewall*.sh` script found in repo
 - `devcontainer.json` `runArgs` includes `NET_ADMIN` or `NET_RAW`
 
-### 15. Suggested Stack
+### 16. Suggested Stack
 - `base_image`: layer1 variant tag — `playwright_with_chromium` if browser tools detected, else `latest`
 - `dockerfile_from`: ideal `FROM` for a dedicated Dockerfile — derived from existing `dockerfile_base`
   if present, otherwise inferred from language + `runtime_versions`:
@@ -351,13 +407,13 @@ Set `firewall_required: true` if:
     "node":   [],
     "python": [],
     "go":     [],
-    "rust":   ["axum", "tokio", "serde", ...]
+    "rust":   ["axum", "tokio", "serde"]
   },
   "ports": {
     "inbound": []
   },
   "external_services": {
-    "domains": ["demo.connectrpc.com", "github.com"],
+    "domains": ["api.example.com"],
     "source":  "source_scan"
   },
   "env_vars": [],
@@ -375,19 +431,23 @@ Set `firewall_required: true` if:
   },
   "credentials_required": {
     "api_keys": [],
-    "tokens":   ["CARGO_REGISTRY_TOKEN", "GITHUB_TOKEN"],
+    "tokens":   ["GITHUB_TOKEN"],
     "ssh":      false,
     "other":    []
   },
   "mcp_servers":    [],
   "claude_plugins": [],
   "inferred": {
-    "tools":           ["buf", "cargo", "curl", "docker", "gh", ...],
-    "tools_new":       ["buf", "cargo", "curl", "docker", "gh", ...],
+    "tools":           ["buf", "cargo", "curl", "docker", "gh"],
+    "tools_new":       ["buf", "cargo", "curl", "docker", "gh"],
     "tools_confirmed": [],
     "py_imports":      [],
     "ts_imports":      [],
-    "ci_tools":        ["rust", "protoc", "buf"]
+    "ci_tools":        ["rust", "node"]
+  },
+  "system_deps": {
+    "curl": {"apt_package": "curl", "apt_depends": ["libcurl4", "libssl3"]},
+    "jq":   {"apt_package": "jq",   "apt_depends": ["libjq1", "libonig5"]}
   },
   "suggested": {
     "base_image":      "latest",
@@ -439,26 +499,7 @@ but are currently missed unless they appear in `package.json` or `requirements.t
 - `pip install <pkg>` one-liners
 - `go install <pkg>@<version>`
 
-### Gap 5: Inferred tool list noise from comments/prose
-Some tools in `KNOWN_TOOLS` appear in comments or README text, not actual
-invocations — e.g., a repo that mentions `gradle` in a comparison table.
-Current implementation does `re.search(r'\bgradle\b', content)` which matches
-anywhere including prose.
-
-**Fix:** For shell scripts, restrict search to lines that are NOT comments
-(strip `#`-prefixed lines before scanning). For prose files like README.md,
-exclude from tool scanning entirely.
-
-### Gap 6: No Dockerfile + no shell scripts (pure Python repos)
-Pure Python repo with only `.py` files and `requirements.txt`. Currently
-`system_packages` will be empty and `inferred.tools` will also be empty.
-The `py_imports` will be populated.
-
-**Fix:** For Python projects without a Dockerfile, add a mapping from common
-third-party imports to their system prerequisites — e.g., `cv2` → `libopencv`,
-`psycopg2` → `libpq-dev`, `Pillow` → `libjpeg-dev`. Small curated lookup table.
-
-### Gap 7: TS/JS import dedup vs package.json
+### Gap 5: TS/JS import dedup vs package.json
 `inferred.ts_imports` will list packages like `@anthropic-ai/sdk` that are
 already in `libraries.node`. Same dedup logic as tools vs system_packages
 should apply here.
@@ -479,6 +520,7 @@ When `analyze-project` feeds `build-workspace`, the consumer mapping is:
 | `suggested.ai_install` | Layer 2 | Pre-select claude vs gemini |
 | `suggested.plugin_layer` | Layer 3 | Pre-select plugin layer (if known) |
 | `system_packages` + `inferred.tools_new` | Layer 1 Dockerfile | apt-get packages to add |
+| `system_deps` | Layer 1 Dockerfile | Resolved apt packages for inferred tools |
 | `external_services.domains` | Layer 1 init-firewall.sh | Allowlist domains |
 | `container.capabilities` | Layer 4 devcontainer.json `runArgs` | `--cap-add` flags |
 | `container.volumes` | Layer 4 devcontainer.json `mounts` | Named volumes + credential mounts |
@@ -504,14 +546,11 @@ Test against repos representing diverse profiles:
 | `sun2admin/build-containers-with-claude` | Shell-only, no Dockerfile, credential mounts | Inference, SSH, volumes |
 | `sun2admin/builder-project` | Multi-layer, mixed shell+YAML | Cross-file inference |
 | `anthropics/connect-rust` | Rust, Cargo workspace, Taskfile, no Dockerfile | Rust libs, CI tools, suggested FROM |
-| `santifer/career-ops` | Node, Playwright, .env.example, data-file URLs | HTML purpose, cred dedup, domain blocklist, nvmrc |
-| `danielrosehill/claude-code-projects-index` | Astro static site, package-lock.json noise | node_modules exclusion, lock file exclusion, SSH false positive fix |
-| `anthropics/claude-code-security-review` | GitHub Action, Python+bun, no root manifests | TS stdlib filter, language file-scan fallback, Markdown table fix |
-| `peterkrueck/claude-code-development-kit` | Shell+Python utilities, no manifests | Unconditional language file-scan, py_imports for sub-threshold Python |
-| `hesreallyhim/awesome-claude-code` | Python automation, awesome list README in flux | Blockquote skip, README short-snippet fallback to REPO_DESC, local module filter, STDLIB_PY gaps, domain blocklist: awesome.re/pre-commit.com/github-readme-stats, python:3 fallback |
-| A pure Python repo | No Dockerfile, no shell scripts | py_imports, no Dockerfile fallback |
-| A Go service with docker-compose | Go, ports, DB clients | ports, go libs, DB detection |
-| A frontend React app | TS, npm, no container | TS inference, node libs |
+| `santifer/career-ops` | Node, Playwright, .env.example, data-file URLs | HTML purpose, cred dedup, nvmrc |
+| `danielrosehill/claude-code-projects-index` | Astro static site, package-lock.json noise | node_modules exclusion, lock file exclusion |
+| `anthropics/claude-code-security-review` | GitHub Action, Python+bun, no root manifests | TS stdlib filter, language file-scan fallback |
+| `peterkrueck/claude-code-development-kit` | Shell+Python utilities, no manifests | Unconditional language file-scan |
+| `hesreallyhim/awesome-claude-code` | Python automation, awesome list README | Blockquote skip, README short-snippet fallback, local module filter |
 
 For each test: verify JSON parses cleanly, all known facts appear in the right
 field, no false positives from comment/prose scanning.
@@ -556,4 +595,11 @@ The `builds/` dir is gitignored for generated artifacts but `analysis.json` and
 Rust projects often have a root workspace `Cargo.toml` plus per-crate `Cargo.toml`
 files in subdirectories. Always use `Path('.').rglob('Cargo.toml')` to scan all of
 them. The `TOML_SECTIONS` set filters keyword section names that look like
-dependency names in naive regex (`workspace`, `package`, `lib`, etc.).
+dependency names in naive regex (`workspace`, `package`, `lib`, etc.). TOML_SECTIONS
+is a legitimate hardcoded set — it's defined by Cargo's fixed schema, not opinions.
+
+### tool-deps.json
+Stored at `.claude/skills/analyze-project/tool-deps.json` alongside the skill.
+Initial state: `{}`. Grows over time as new tools are discovered across analyzed repos.
+Committed to version control so it persists across sessions and containers.
+The file is written only when new tools are encountered (cache_updated flag).

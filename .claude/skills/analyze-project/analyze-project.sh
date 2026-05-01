@@ -60,6 +60,13 @@ echo "" >&2
 
 cd "$TEMP_DIR"
 
+# Query Node.js for its own builtin module list (used later to filter ts_imports)
+NODE_BUILTINS_JSON="[]"
+if command -v node >/dev/null 2>&1; then
+  NODE_BUILTINS_JSON=$(node -e "console.log(JSON.stringify(require('module').builtinModules))" 2>/dev/null || echo "[]")
+fi
+export AP_NODE_BUILTINS="$NODE_BUILTINS_JSON"
+
 # ============================================================================
 # Project purpose (README first paragraph + repo description)
 # ============================================================================
@@ -436,26 +443,98 @@ done < <(find . -name "init-firewall*" -o -name "firewall*.sh" -o -name "setup-n
 
 [[ ${#EXT_DOMAINS[@]} -gt 0 ]] && EXT_SOURCE="init-firewall.sh"
 
-# Priority 2: URL patterns in source files (supplement if firewall not found)
-# Exclude generated dirs, SVG/image files, and well-known non-runtime domains
+# Priority 2: context-aware scan — classify by file type and code context, no blocklist
+# Docs (README/md) provide the owner's stated baseline; source code confirms runtime usage
 if [[ ${#EXT_DOMAINS[@]} -eq 0 ]]; then
-  DOMAIN_BLOCKLIST="example\.\|localhost\|127\.0\.\|0\.0\.0\.0\|w3\.org\|schema\.org\|iana\.org\|rfc-editor\.org\|acme\.com\|shields\.io\|travis-ci\.\|codecov\.io\|badge\.\|discord\.gg\|discord\.com\|github\.com\|raw\.githubusercontent\.com\|docs\.\|readthedocs\.\|pkg\.go\.dev\|crates\.io\|npmjs\.com\|npmjs\.org\|pypi\.org\|rubygems\.org\|opencollective\.com\|tidelift\.com\|fonts\.googleapis\.com\|fonts\.gstatic\.com\|gstatic\.com\|awesome\.re\|formulae\.brew\.sh\|pre-commit\.com\|existing\.com\|homebrew\.sh\|brew\.sh\|github-readme-stats"
   while IFS= read -r domain; do
     [[ -n "$domain" ]] && EXT_DOMAINS+=("$domain")
-  done < <(find . \
-    -not -path "./.git/*" -not -path "*/node_modules/*" \
-    -not -path "*/vendor/*" -not -path "*/.venv/*" \
-    -not -path "*/gen/*" -not -path "*/generated/*" \
-    \( -name "*.ts" -o -name "*.js" -o -name "*.py" -o -name "*.go" -o -name "*.rs" \
-       -o -name "*.sh" -o -name "*.json" -o -name "*.yml" -o -name "*.yaml" \) \
-    -not -name "*.svg" \
-    -not -name "package-lock.json" -not -name "yarn.lock" \
-    -not -name "pnpm-lock.yaml" -not -name "Cargo.lock" \
-    -not -name "Gemfile.lock" -not -name "composer.lock" 2>/dev/null \
-    | xargs grep -h "https\?://" 2>/dev/null \
-    | grep -oP 'https?://\K[a-z0-9][a-z0-9.-]+\.[a-z]{2,}' \
-    | { grep -v "$DOMAIN_BLOCKLIST" || true; } \
-    | sort -u | head -30 || true)
+  done < <(python3 << 'PYEOF_DOMAINS'
+import re
+from pathlib import Path
+
+domain_re   = re.compile(r'https?://([a-z0-9][a-z0-9.-]+\.[a-z]{2,})', re.IGNORECASE)
+badge_re    = re.compile(r'\[!\[')                         # [![alt](img)](url) badge lines
+comment_re  = re.compile(r'^\s*(?://|#|\*|<!--)')          # comment lines in source files
+code_fence  = re.compile(r'```[\s\S]*?```', re.DOTALL)     # fenced code blocks in markdown
+
+SERVICE_KW  = {'api', 'service', 'endpoint', 'webhook', 'connect', 'host',
+               'server', 'baseurl', 'base_url', 'origin', 'remote', 'backend'}
+HTTP_CALL   = re.compile(
+    r'(?:fetch|axios\s*\.\s*(?:get|post|put|delete|patch|request)'
+    r'|requests\s*\.\s*(?:get|post|put|delete|patch|head)'
+    r'|urllib(?:\.request)?\s*\.\s*(?:urlopen|Request)'
+    r'|http(?:s)?\.(?:Get|Post|Do|NewRequest)'
+    r'|grpc\.(?:Dial|NewClient)'
+    r'|curl\b|wget\b'
+    r')\s*[\s(\'"]', re.IGNORECASE
+)
+
+SKIP_DIRS   = {'.git', 'node_modules', 'vendor', '.venv', '__pycache__', 'gen', 'generated'}
+SKIP_FILES  = {'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
+               'Cargo.lock', 'Gemfile.lock', 'composer.lock'}
+ALWAYS_SKIP = re.compile(r'^(?:localhost|127\.|192\.168\.|10\.|0\.0\.0\.0|::1)')
+
+domains_high   = set()  # source HTTP calls, config files, env files
+domains_medium = set()  # README code blocks, service-keyword prose
+
+for f in Path('.').rglob('*'):
+    if not f.is_file():
+        continue
+    if any(d in SKIP_DIRS for d in f.parts):
+        continue
+    if f.name in SKIP_FILES or f.suffix == '.svg':
+        continue
+
+    try:
+        content = f.read_text(errors='ignore')
+    except Exception:
+        continue
+
+    # ── Markdown / docs: owner-stated baseline ──────────────────────────────
+    if f.suffix in {'.md', '.rst', '.txt', '.adoc'}:
+        # Code fences: owner demonstrated runtime usage → medium confidence
+        for block in code_fence.findall(content):
+            for m in domain_re.finditer(block):
+                d = m.group(1).lower()
+                if not ALWAYS_SKIP.match(d):
+                    domains_medium.add(d)
+        # Prose: lines with service-related keywords, skip badge lines
+        prose = code_fence.sub('', content)
+        for line in prose.splitlines():
+            if badge_re.search(line):
+                continue
+            if any(kw in line.lower() for kw in SERVICE_KW):
+                for m in domain_re.finditer(line):
+                    d = m.group(1).lower()
+                    if not ALWAYS_SKIP.match(d):
+                        domains_medium.add(d)
+        continue
+
+    # ── Source code: only non-comment lines with HTTP call patterns ──────────
+    if f.suffix in {'.py', '.ts', '.js', '.go', '.rs', '.sh', '.bash'}:
+        for line in content.splitlines():
+            if comment_re.match(line):
+                continue
+            if HTTP_CALL.search(line):
+                for m in domain_re.finditer(line):
+                    d = m.group(1).lower()
+                    if not ALWAYS_SKIP.match(d):
+                        domains_high.add(d)
+        continue
+
+    # ── Config / env files: all URLs are runtime config ─────────────────────
+    if (f.suffix in {'.yml', '.yaml', '.toml', '.cfg', '.ini', '.conf'}
+            or f.name.startswith('.env') or f.suffix == '.json'):
+        for m in domain_re.finditer(content):
+            d = m.group(1).lower()
+            if not ALWAYS_SKIP.match(d):
+                domains_high.add(d)
+
+# Emit: high-confidence first, then medium; sorted, deduplicated
+for d in sorted(domains_high | domains_medium):
+    print(d)
+PYEOF_DOMAINS
+  )
 fi
 
 EXT_DOMAINS=($(printf '%s\n' "${EXT_DOMAINS[@]:-}" | sort -u))
@@ -635,177 +714,188 @@ echo "$ALL_TEXT" | grep -q "cypress"     && BROWSER_TOOLS+=("cypress")
 echo "  → source inference..." >&2
 
 INFERRED_SOURCE=$(python3 << 'PYEOF'
-import re, sys
+import re, subprocess, sys, sysconfig, pkgutil, json, os
 from pathlib import Path
 
-KNOWN_TOOLS = {
-    'jq', 'yq', 'jo', 'fx',
-    'curl', 'wget', 'nc', 'ncat', 'nmap', 'rsync', 'scp', 'socat',
-    'gh', 'gcloud', 'gsutil', 'bq', 'aws', 'az', 'kubectl', 'helm',
-    'terraform', 'vault', 'consul', 'vercel', 'netlify',
-    'python3', 'python', 'pip3', 'pip', 'pipenv', 'poetry', 'uv',
-    'node', 'npm', 'npx', 'yarn', 'pnpm', 'bun', 'deno',
-    'ruby', 'gem', 'bundle', 'go', 'cargo', 'rustc', 'rustup',
-    'java', 'mvn', 'gradle', 'kotlin', 'php', 'composer', 'dotnet',
-    'make', 'cmake', 'ninja', 'meson', 'bazel', 'just', 'task',
-    'buf', 'protoc', 'grpc',
-    'docker', 'podman', 'buildah', 'skopeo',
-    'fzf', 'bat', 'rg', 'ripgrep', 'fd', 'delta', 'eza',
-    'ag', 'pv', 'parallel',
-    'openssl', 'gpg', 'gpg2', 'ssh-keygen', 'ssh-agent', 'ssh-add',
-    'age', 'sops',
-    'zip', 'unzip', '7z', 'gzip', 'bzip2', 'xz', 'zstd',
-    'psql', 'pg_dump', 'mysql', 'sqlite3', 'redis-cli', 'valkey',
-    'htop', 'btop', 'ncdu', 'strace',
-    'vim', 'nano',
-    'git', 'svn',
-    'sudo', 'tee', 'xargs', 'watch', 'crontab',
-    'inotifywait', 'entr', 'tmux', 'screen',
-    'ffmpeg', 'convert', 'graphviz', 'dot',
-    'playwright', 'puppeteer', 'chromium',
-    'nginx', 'caddy', 'traefik',
-}
+# ── Shell builtins + keywords — queried from bash, not hardcoded ─────────────
+try:
+    _builtins_raw = subprocess.check_output(
+        ['bash', '-c', 'compgen -b; compgen -k'],
+        text=True, stderr=subprocess.DEVNULL)
+    SHELL_BUILTINS = set(_builtins_raw.split())
+except Exception:
+    SHELL_BUILTINS = {'if','then','else','elif','fi','for','while','until',
+                      'do','done','case','esac','in','function','time',
+                      'echo','cd','export','source','read','return','exit',
+                      'break','continue','eval','exec','set','unset','local',
+                      'declare','typeset','readonly','shift','getopts','trap',
+                      'wait','jobs','fg','bg','kill','umask','ulimit','alias',
+                      'unalias','hash','help','let','printf','test','true','false'}
 
-STDLIB_PY = {
-    'os', 'sys', 're', 'json', 'time', 'datetime', 'math', 'random', 'string',
-    'io', 'collections', 'functools', 'itertools', 'pathlib', 'subprocess',
-    'threading', 'multiprocessing', 'logging', 'argparse', 'typing',
-    'abc', 'copy', 'dataclasses', 'enum', 'hashlib', 'hmac', 'http',
-    'urllib', 'socket', 'ssl', 'struct', 'tempfile', 'shutil', 'glob',
-    'fnmatch', 'base64', 'binascii', 'csv', 'configparser', 'textwrap',
-    'traceback', 'inspect', 'ast', 'tokenize',
-    'sqlite3', 'xml', 'html', 'email', 'mimetypes', 'uuid', 'decimal',
-    'fractions', 'statistics', 'operator', 'contextlib', 'weakref',
-    'gc', 'platform', 'signal', 'ctypes', 'warnings', 'unittest',
-    '__future__', 'builtins', 'types', 'pprint', 'queue', 'heapq',
-    'bisect', 'array', 'codecs', 'locale', 'gettext', 'atexit',
-    'shelve', 'dbm', 'zlib', 'gzip', 'bz2', 'lzma',
-    'difflib', 'importlib', 'pkgutil', 'zipfile', 'tarfile', 'pickle',
-    'copyreg', 'dis', 'readline', 'shlex', 'getpass', 'getopt',
-    'select', 'asyncio', 'concurrent', 'linecache', 'profile',
-    'timeit', 'doctest', 'pdb', 'cProfile', 'pstats', 'cmd',
-    'filecmp', 'fnmatch', 'calendar', 'secrets', 'ipaddress',
-    'urllib3',
-}
+# Words that appear in command position but are not installable tools
+NOISE = {'true','false','null','yes','no','on','off','ok','all','none',
+         'default','main','not','new','get','set','add','push','pull',
+         'run','build','test','clean','init','use','with','from','to',
+         'at','by','as','of','is','it','do','done','pass','fail','skip',
+         'start','stop','restart','status','check','list','show','help',
+         'version','install','uninstall','update','upgrade','config',
+         'create','delete','remove','apply','deploy','release','tag'}
 
-tools_found = set()
-py_imports_found = set()
-ts_imports_found = set()
+DELIMITERS_RE   = re.compile(
+    r'(?:^|[;|&({`\n])\s*(?:sudo\s+|env\s+(?:[A-Z_]+=\S+\s+)*)?'
+    r'([a-zA-Z][a-zA-Z0-9_.-]*)',
+    re.MULTILINE)
+EXPLICIT_DEP_RE = re.compile(r'(?:command\s+-[vV]|which|type)\s+([a-zA-Z][a-zA-Z0-9_.-]*)')
+SHEBANG_RE      = re.compile(r'#!/usr/bin/env\s+([a-zA-Z][a-zA-Z0-9_.-]*)')
+COMMENT_RE      = re.compile(r'^\s*#')
 
-shell_files = list(Path('.').rglob('*.sh'))
+def extract_commands(content):
+    lines = [l for l in content.splitlines() if not COMMENT_RE.match(l)]
+    clean = '\n'.join(lines)
+    cmds = set()
+    for m in DELIMITERS_RE.finditer(clean):
+        cmd = m.group(1)
+        if (cmd and len(cmd) > 1
+                and cmd not in SHELL_BUILTINS
+                and cmd not in NOISE
+                and not cmd.isupper()
+                and '/' not in cmd
+                and not cmd[0].isdigit()):
+            cmds.add(cmd)
+    for m in EXPLICIT_DEP_RE.finditer(clean):
+        cmd = m.group(1)
+        if cmd and len(cmd) > 1 and cmd not in SHELL_BUILTINS:
+            cmds.add(cmd)
+    return cmds
+
+# ── Collect shell script files ────────────────────────────────────────────────
+SKIP_DIRS = {'.git', 'node_modules', 'vendor', '.venv', '__pycache__'}
+shell_files = []
 for f in Path('.').rglob('*'):
-    if f.suffix or '.git' in str(f) or not f.is_file():
+    if not f.is_file() or any(d in SKIP_DIRS for d in f.parts):
         continue
+    if f.suffix in {'.sh', '.bash'}:
+        shell_files.append(f)
+    elif not f.suffix:
+        try:
+            hdr = f.read_bytes()[:100]
+            if any(s in hdr for s in [b'#!/bin/bash', b'#!/bin/sh',
+                                       b'#!/usr/bin/env bash', b'#!/usr/bin/env sh']):
+                shell_files.append(f)
+        except Exception:
+            pass
+
+task_files = [Path(n) for n in
+              ['Makefile','makefile','GNUmakefile','Taskfile.yml','Taskfile.yaml',
+               'justfile','Justfile']
+              if Path(n).exists()]
+
+MAKEFILE_NAMES = {'Makefile', 'makefile', 'GNUmakefile'}
+
+def makefile_recipes_only(content):
+    """Return only tab-indented recipe lines from a Makefile.
+    Target lines (start at column 0 before ':') are not installable tools;
+    only the shell commands they invoke (indented with TAB) are.
+    """
+    return '\n'.join(l for l in content.splitlines() if l.startswith('\t'))
+
+# ── Dynamic tool extraction ───────────────────────────────────────────────────
+tools_found = set()
+for f in shell_files + task_files:
     try:
-        header = f.open('rb').read(64)
-        if header.startswith((b'#!/bin/bash', b'#!/usr/bin/env bash', b'#!/bin/sh')):
-            shell_files.append(f)
-    except:
+        content = f.read_text(errors='ignore')
+        parse_content = makefile_recipes_only(content) if f.name in MAKEFILE_NAMES else content
+        tools_found |= extract_commands(parse_content)
+        for m in SHEBANG_RE.finditer(content):
+            cmd = m.group(1)
+            if cmd not in SHELL_BUILTINS:
+                tools_found.add(cmd)
+    except Exception:
         pass
 
-for sh in shell_files:
-    if '.git' in str(sh):
-        continue
-    try:
-        content = sh.read_text(errors='ignore')
-        for tool in KNOWN_TOOLS:
-            if re.search(r'\b' + re.escape(tool) + r'\b', content):
-                tools_found.add(tool)
-    except:
-        pass
-
+# ── CI workflows: uses: actions + run: blocks ─────────────────────────────────
+ci_tools = set()
+STRIP_RE = re.compile(r'^(?:setup|install|action|run)-|-(?:action|toolchain|cache|setup|runner|builder)$')
 for wf in Path('.').rglob('*.yml'):
-    if '.git' in str(wf) or '.github' not in str(wf):
+    if '.github' not in str(wf) or any(d in SKIP_DIRS for d in wf.parts):
         continue
     try:
         content = wf.read_text(errors='ignore')
-        for tool in KNOWN_TOOLS:
-            if re.search(r'\b' + re.escape(tool) + r'\b', content):
-                tools_found.add(tool)
-    except:
+        # Derive tool name dynamically from action name
+        for m in re.finditer(r'uses:\s*([^\s@\n]+)', content):
+            parts = m.group(1).lower().split('/')
+            if len(parts) >= 2:
+                tool = STRIP_RE.sub('', parts[1]).strip('-')
+                if tool and len(tool) > 1 and re.match(r'^[a-z][a-z0-9_.-]+$', tool):
+                    ci_tools.add(tool)
+        # Extract commands from run: blocks.
+        # Strip ${{ ... }} GitHub Actions expressions first — they contain
+        # context variable paths (github.event.issue.body, secrets.TOKEN) that
+        # look like command tokens to the delimiter regex but are not shell.
+        for m in re.finditer(r'^\s+run:\s*[|>]?\s*\n((?:[ \t]+.+\n?)*)', content, re.MULTILINE):
+            run_content = re.sub(r'\$\{\{[^}]*\}\}', ' __EXPR__ ', m.group(1))
+            # Only keep simple lowercase shell-style tokens (hyphens ok, no dots, no mixed caps)
+            ci_tools |= {t for t in extract_commands(run_content)
+                         if re.match(r'^[a-z][a-z0-9_-]+$', t)}
+    except Exception:
         pass
 
-for mf in ['Makefile', 'makefile', 'GNUmakefile', 'Taskfile.yml', 'Taskfile.yaml', 'justfile', 'Justfile']:
-    p = Path(mf)
-    if p.exists():
-        try:
-            content = p.read_text(errors='ignore')
-            for tool in KNOWN_TOOLS:
-                if re.search(r'\b' + re.escape(tool) + r'\b', content):
-                    tools_found.add(tool)
-        except:
-            pass
+# ── Python imports — stdlib from Python itself, not a hardcoded list ──────────
+stdlib_py = frozenset(getattr(sys, 'stdlib_module_names', frozenset()))
+if not stdlib_py:
+    try:
+        stdlib_path = sysconfig.get_python_lib(standard_lib=True)
+        stdlib_py = frozenset(m.name for m in pkgutil.iter_modules([stdlib_path]))
+    except Exception:
+        stdlib_py = frozenset()
+    stdlib_py = stdlib_py | frozenset(sys.builtin_module_names)
 
-LOCAL_MODULES = {p.name for p in Path('.').iterdir() if p.is_dir() and not p.name.startswith('.')} | \
-               {p.stem for p in Path('.').glob('*.py')}
+LOCAL_MODULES = (
+    {p.name for p in Path('.').iterdir() if p.is_dir() and not p.name.startswith('.')}
+    | {p.stem for p in Path('.').glob('*.py')}
+)
 
+py_imports_found = set()
 for py in Path('.').rglob('*.py'):
-    if '.git' in str(py):
+    if any(d in SKIP_DIRS for d in py.parts):
         continue
     try:
         content = py.read_text(errors='ignore')
         for m in re.finditer(r'^(?:import|from)\s+([a-zA-Z_][a-zA-Z0-9_]*)', content, re.MULTILINE):
             pkg = m.group(1).split('.')[0]
-            if pkg not in STDLIB_PY and not pkg.startswith('_') and pkg not in LOCAL_MODULES:
+            if pkg and pkg not in stdlib_py and not pkg.startswith('_') and pkg not in LOCAL_MODULES:
                 py_imports_found.add(pkg)
-    except:
+    except Exception:
         pass
 
-STDLIB_TS = {
-    'fs', 'path', 'os', 'child_process', 'crypto', 'http', 'https', 'url',
-    'util', 'events', 'stream', 'buffer', 'readline', 'net', 'tls', 'dns',
-    'assert', 'process', 'cluster', 'worker_threads', 'perf_hooks', 'inspector',
-    'module', 'v8', 'vm', 'zlib', 'querystring', 'string_decoder', 'timers',
-    'domain', 'punycode', 'console', 'constants', 'dgram', 'sys',
-}
+# ── TS/JS imports — Node builtins from Node itself, not a hardcoded list ──────
+try:
+    node_builtins_raw = os.environ.get('AP_NODE_BUILTINS', '[]')
+    _node_list = json.loads(node_builtins_raw)
+    node_builtins = frozenset(m.replace('node:', '') for m in _node_list)
+except Exception:
+    node_builtins = frozenset()
 
+ts_imports_found = set()
 for tsf in list(Path('.').rglob('*.ts')) + list(Path('.').rglob('*.js')):
-    if '.git' in str(tsf) or 'node_modules' in str(tsf):
+    if any(d in SKIP_DIRS for d in tsf.parts):
         continue
     try:
         content = tsf.read_text(errors='ignore')
         for m in re.finditer(r'''(?:import|require)\s*(?:\(['"]|from\s+['"])([@a-zA-Z][^'"]+)['"]''', content):
             pkg = m.group(1).split('/')[0]
-            if pkg and not pkg.startswith('.') and pkg not in STDLIB_TS:
+            if pkg and not pkg.startswith('.') and pkg not in node_builtins:
                 ts_imports_found.add(pkg)
-    except:
+    except Exception:
         pass
 
+# ── Emit ──────────────────────────────────────────────────────────────────────
 for t in sorted(tools_found):
     print('TOOL:' + t)
 for p in sorted(py_imports_found):
     print('PYIMP:' + p)
 for t in sorted(ts_imports_found):
     print('TSIMP:' + t)
-
-# ---- GitHub Actions uses: toolchain steps ----
-# Map known action patterns to the tool they install
-USES_MAP = {
-    'dtolnay/rust-toolchain': 'rust',
-    'actions-rs/toolchain':   'rust',
-    'arduino/setup-protoc':   'protoc',
-    'bufbuild/buf-setup-action': 'buf',
-    'actions/setup-node':     'node',
-    'actions/setup-python':   'python3',
-    'actions/setup-go':       'go',
-    'actions/setup-java':     'java',
-    'ruby/setup-ruby':        'ruby',
-    'Swatinem/rust-cache':    'rust',
-    'PyO3/maturin-action':    'rust',
-}
-ci_tools = set()
-for wf in Path('.').rglob('*.yml'):
-    if '.git' in str(wf) or '.github' not in str(wf):
-        continue
-    try:
-        content = wf.read_text(errors='ignore')
-        for m in re.finditer(r'uses:\s*([^\s@]+)', content):
-            action = m.group(1)
-            for prefix, tool in USES_MAP.items():
-                if action.startswith(prefix):
-                    ci_tools.add(tool)
-    except:
-        pass
 for t in sorted(ci_tools):
     print('CITOOL:' + t)
 PYEOF
@@ -901,6 +991,7 @@ INFERRED_PY_JSON=$(_to_json_arr "${INFERRED_PY_IMPORTS[@]:-}")
 INFERRED_TS_JSON=$(_to_json_arr "${INFERRED_TS_IMPORTS[@]:-}")
 INFERRED_CI_TOOLS_JSON=$(_to_json_arr "${INFERRED_CI_TOOLS[@]:-}")
 
+export AP_SKILL_DIR="$SKILL_DIR"
 export AP_REPO="$REPO" AP_PROJECT="$REPO_NAME" AP_TODAY="$TODAY"
 export AP_PURPOSE="$PURPOSE" AP_REPO_LANG="$REPO_LANG"
 export AP_DOCKERFILE_BASE="$DOCKERFILE_BASE"
@@ -931,11 +1022,67 @@ export AP_SUGGESTED_DOCKERFILE_FROM="$SUGGESTED_DOCKERFILE_FROM"
 export AP_JSON_FILE="$JSON_FILE" AP_MD_FILE="$MD_FILE"
 
 python3 << 'PYEOF'
-import json, os
+import json, os, subprocess
 
 def e(key, fallback="[]"):   return json.loads(os.environ.get(key, fallback))
 def s(key, fallback=""):     return os.environ.get(key, fallback)
 def b(key):                  return os.environ.get(key, "false") == "true"
+
+# ── Dependency resolution: map discovered tools → apt packages ────────────────
+# Uses tool-deps.json as a persistent cache alongside the skill to avoid
+# re-querying apt on every run.
+skill_dir = s("AP_SKILL_DIR")
+tool_deps_path = os.path.join(skill_dir, "tool-deps.json") if skill_dir else None
+
+tool_deps_cache = {}
+if tool_deps_path and os.path.exists(tool_deps_path):
+    try:
+        tool_deps_cache = json.load(open(tool_deps_path))
+    except Exception:
+        pass
+
+all_tools = set(e("AP_INFERRED_TOOLS") + e("AP_INFERRED_CI_TOOLS"))
+
+def _apt_resolve(tool):
+    """Return {'apt_package': str|None, 'apt_depends': [str]} for a tool name."""
+    try:
+        r = subprocess.run(['apt-cache', 'show', tool],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode == 0:
+            deps = []
+            for line in r.stdout.splitlines():
+                if line.startswith('Depends:'):
+                    for dep in line[len('Depends:'):].strip().split(','):
+                        name = dep.strip().split()[0].rstrip(',')
+                        if name and not name.startswith('$') and '|' not in name:
+                            deps.append(name)
+            return {'apt_package': tool, 'apt_depends': deps}
+        # Not a direct package name — try to find what provides the binary
+        r2 = subprocess.run(['dpkg', '-S', f'*/bin/{tool}'],
+                            capture_output=True, text=True, timeout=5)
+        if r2.returncode == 0:
+            pkg = r2.stdout.split(':')[0].strip()
+            return {'apt_package': pkg, 'apt_depends': []}
+    except Exception:
+        pass
+    return {'apt_package': None, 'apt_depends': []}
+
+cache_updated = False
+for tool in sorted(all_tools):
+    if tool not in tool_deps_cache:
+        tool_deps_cache[tool] = _apt_resolve(tool)
+        cache_updated = True
+
+if cache_updated and tool_deps_path:
+    try:
+        with open(tool_deps_path, 'w') as f:
+            json.dump(tool_deps_cache, f, indent=2, sort_keys=True)
+    except Exception:
+        pass
+
+# Build system_deps: only tools that resolved to a known apt package
+system_deps = {t: tool_deps_cache[t] for t in sorted(all_tools)
+               if tool_deps_cache.get(t, {}).get('apt_package')}
 
 rv = {}
 for lang, vk in [("node", "AP_NODE_VER"), ("go", "AP_GO_VER"), ("python", "AP_PYTHON_VER"), ("rust", "AP_RUST_VER")]:
@@ -994,6 +1141,7 @@ data = {
         "ts_imports": e("AP_INFERRED_TS"),
         "ci_tools":   e("AP_INFERRED_CI_TOOLS"),
     },
+    "system_deps":   system_deps,
     "suggested": {
         "base_image":       s("AP_BASE"),
         "dockerfile_from":  s("AP_SUGGESTED_DOCKERFILE_FROM"),
@@ -1114,6 +1262,15 @@ elif inf['tools_confirmed']:
     md += f"  - all detected tools already declared in Dockerfile: {fmt(inf['tools_confirmed'])}\n"
 else:
     md += "  none detected\n"
+
+sys_deps = data.get('system_deps', {})
+if sys_deps:
+    md += "\n## System Dependencies *(tools → apt packages, via tool-deps.json cache)*\n"
+    for tool, info in sys_deps.items():
+        pkg = info.get('apt_package', tool)
+        deps = info.get('apt_depends', [])
+        dep_str = f" (needs: {', '.join(deps[:5])})" if deps else ""
+        md += f"  - `{tool}` → `{pkg}`{dep_str}\n"
 
 dockerfile_from = data['suggested'].get('dockerfile_from') or ''
 stack_rows = [

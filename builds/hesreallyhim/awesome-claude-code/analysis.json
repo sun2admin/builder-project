@@ -24,7 +24,18 @@
   "external_services": {
     "domains": [
       "api.anthropic.com",
-      "claude.com"
+      "api.github.com",
+      "author.example",
+      "awesome.re",
+      "docs.claude.com",
+      "example.com",
+      "formulae.brew.sh",
+      "github-readme-stats-fork-orpin.vercel.app",
+      "github-readme-stats-plus-theta.vercel.app",
+      "github.com",
+      "img.shields.io",
+      "pre-commit.com",
+      "www.anthropic.com"
     ],
     "source": "source_scan"
   },
@@ -60,11 +71,24 @@
   "claude_plugins": [],
   "inferred": {
     "tools": [
+      "after",
+      "allow_diff",
+      "backup",
+      "checks",
+      "cp",
+      "d",
+      "f",
+      "failure",
       "git",
+      "keep_outputs",
+      "ls",
       "make",
-      "pip",
-      "python",
-      "python3"
+      "mktemp",
+      "near",
+      "restore",
+      "restoring",
+      "rm",
+      "skipping"
     ],
     "py_imports": [
       "dotenv",
@@ -74,15 +98,155 @@
       "yaml"
     ],
     "ts_imports": [],
-    "ci_tools": [],
-    "tools_new": [
+    "ci_tools": [
+      "await",
+      "body",
+      "changes",
+      "checkout",
+      "comment_body",
+      "comment_id",
+      "const",
+      "contains",
+      "content",
+      "cp",
+      "data",
+      "env",
+      "event_type",
+      "first",
       "git",
+      "github-api-usage-monitor",
+      "github-script",
+      "github_url",
+      "has_broken_links",
+      "https",
+      "id",
+      "is_github_repo",
+      "issue_number",
+      "jq",
+      "labels",
+      "maintainer",
       "make",
+      "max_tokens",
+      "messages",
+      "model",
+      "open",
+      "owner",
+      "payload",
       "pip",
+      "pr_url",
+      "print",
       "python",
-      "python3"
+      "python3",
+      "reason",
+      "repo",
+      "repo_url",
+      "resource_name",
+      "rm",
+      "role",
+      "script",
+      "state",
+      "state_reason",
+      "success",
+      "system",
+      "tail",
+      "upload-artifact",
+      "uses"
+    ],
+    "tools_new": [
+      "after",
+      "allow_diff",
+      "backup",
+      "checks",
+      "cp",
+      "d",
+      "f",
+      "failure",
+      "git",
+      "keep_outputs",
+      "ls",
+      "make",
+      "mktemp",
+      "near",
+      "restore",
+      "restoring",
+      "rm",
+      "skipping"
     ],
     "tools_confirmed": []
+  },
+  "system_deps": {
+    "cp": {
+      "apt_package": "coreutils",
+      "apt_depends": []
+    },
+    "env": {
+      "apt_package": "coreutils",
+      "apt_depends": []
+    },
+    "git": {
+      "apt_package": "git",
+      "apt_depends": [
+        "libc6",
+        "libcurl3-gnutls",
+        "libexpat1",
+        "libpcre2-8-0",
+        "zlib1g",
+        "perl",
+        "liberror-perl",
+        "git-man",
+        "git-man"
+      ]
+    },
+    "id": {
+      "apt_package": "coreutils",
+      "apt_depends": []
+    },
+    "jq": {
+      "apt_package": "jq",
+      "apt_depends": [
+        "libjq1",
+        "libc6"
+      ]
+    },
+    "ls": {
+      "apt_package": "coreutils",
+      "apt_depends": []
+    },
+    "make": {
+      "apt_package": "make",
+      "apt_depends": []
+    },
+    "mktemp": {
+      "apt_package": "coreutils",
+      "apt_depends": []
+    },
+    "pip": {
+      "apt_package": "pip",
+      "apt_depends": []
+    },
+    "python": {
+      "apt_package": "python",
+      "apt_depends": []
+    },
+    "python3": {
+      "apt_package": "python3",
+      "apt_depends": [
+        "python3.11",
+        "libpython3-stdlib"
+      ]
+    },
+    "rm": {
+      "apt_package": "coreutils",
+      "apt_depends": []
+    },
+    "script": {
+      "apt_package": "bsdutils",
+      "apt_depends": []
+    },
+    "tail": {
+      "apt_package": "coreutils",
+      "apt_depends": []
+    }
   },
   "suggested": {
     "base_image": "latest",
