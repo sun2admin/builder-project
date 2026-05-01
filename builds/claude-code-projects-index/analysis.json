@@ -1,0 +1,77 @@
+{
+  "repo": "danielrosehill/claude-code-projects-index",
+  "project": "claude-code-projects-index",
+  "analyzed_at": "2026-05-01",
+  "purpose": "A curated collection of Claude Code projects, agent workspace blueprints, and related resources \u2014 organized by use case. Most patterns here adapt to other agentic AI CLIs and frameworks.",
+  "primary_language": "Astro",
+  "languages": [
+    "node",
+    "shell"
+  ],
+  "runtime_extras": [],
+  "runtime_versions": {},
+  "dockerfile_base": "",
+  "system_packages": [],
+  "extra_binaries": [],
+  "libraries": {
+    "node": [
+      "astro"
+    ],
+    "python": [],
+    "go": [],
+    "rust": []
+  },
+  "ports": {
+    "inbound": []
+  },
+  "external_services": {
+    "domains": [
+      "anthropic.com",
+      "claude.com",
+      "danielrosehill.com",
+      "dsrholdings.cloud"
+    ],
+    "source": "source_scan"
+  },
+  "env_vars": [],
+  "browser_tools": [],
+  "github_api_usage": false,
+  "firewall_required": false,
+  "container": {
+    "capabilities": [],
+    "volumes": [],
+    "env": {},
+    "remote_user": "",
+    "post_start": "",
+    "post_create": "",
+    "extensions": []
+  },
+  "credentials_required": {
+    "api_keys": [],
+    "tokens": [],
+    "ssh": true,
+    "other": []
+  },
+  "mcp_servers": [],
+  "claude_plugins": [],
+  "inferred": {
+    "tools": [
+      "git",
+      "python3"
+    ],
+    "py_imports": [],
+    "ts_imports": [],
+    "ci_tools": [],
+    "tools_new": [
+      "git",
+      "python3"
+    ],
+    "tools_confirmed": []
+  },
+  "suggested": {
+    "base_image": "latest",
+    "dockerfile_from": "node:lts",
+    "ai_install": "claude",
+    "plugin_layer": ""
+  }
+}

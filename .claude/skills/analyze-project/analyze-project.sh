@@ -415,12 +415,19 @@ done < <(find . -name "init-firewall*" -o -name "firewall*.sh" -o -name "setup-n
 # Priority 2: URL patterns in source files (supplement if firewall not found)
 # Exclude generated dirs, SVG/image files, and well-known non-runtime domains
 if [[ ${#EXT_DOMAINS[@]} -eq 0 ]]; then
-  DOMAIN_BLOCKLIST="example\.\|localhost\|127\.0\.\|0\.0\.0\.0\|w3\.org\|schema\.org\|iana\.org\|rfc-editor\.org\|acme\.com\|shields\.io\|travis-ci\.\|codecov\.io\|badge\.\|discord\.gg\|discord\.com\|github\.com\|raw\.githubusercontent\.com\|docs\.\|readthedocs\.\|pkg\.go\.dev\|crates\.io\|npmjs\.com\|pypi\.org\|rubygems\.org"
+  DOMAIN_BLOCKLIST="example\.\|localhost\|127\.0\.\|0\.0\.0\.0\|w3\.org\|schema\.org\|iana\.org\|rfc-editor\.org\|acme\.com\|shields\.io\|travis-ci\.\|codecov\.io\|badge\.\|discord\.gg\|discord\.com\|github\.com\|raw\.githubusercontent\.com\|docs\.\|readthedocs\.\|pkg\.go\.dev\|crates\.io\|npmjs\.com\|npmjs\.org\|pypi\.org\|rubygems\.org\|opencollective\.com\|tidelift\.com\|fonts\.googleapis\.com\|fonts\.gstatic\.com\|gstatic\.com"
   while IFS= read -r domain; do
     [[ -n "$domain" ]] && EXT_DOMAINS+=("$domain")
-  done < <(find . -not -path "./.git/*" -not -path "*/gen/*" -not -path "*/generated/*" \
+  done < <(find . \
+    -not -path "./.git/*" -not -path "*/node_modules/*" \
+    -not -path "*/vendor/*" -not -path "*/.venv/*" \
+    -not -path "*/gen/*" -not -path "*/generated/*" \
     \( -name "*.ts" -o -name "*.js" -o -name "*.py" -o -name "*.go" -o -name "*.rs" \
-       -o -name "*.sh" -o -name "*.json" -o -name "*.yml" -o -name "*.yaml" \) 2>/dev/null \
+       -o -name "*.sh" -o -name "*.json" -o -name "*.yml" -o -name "*.yaml" \) \
+    -not -name "*.svg" \
+    -not -name "package-lock.json" -not -name "yarn.lock" \
+    -not -name "pnpm-lock.yaml" -not -name "Cargo.lock" \
+    -not -name "Gemfile.lock" -not -name "composer.lock" 2>/dev/null \
     | xargs grep -h "https\?://" 2>/dev/null \
     | grep -oP 'https?://\K[a-z0-9][a-z0-9.-]+\.[a-z]{2,}' \
     | { grep -v "$DOMAIN_BLOCKLIST" || true; } \
@@ -468,23 +475,28 @@ done < <(find . -path "*/.github/workflows/*.yml" -o -path "*/.github/workflows/
   | grep -oP '(?<=secrets\.)[A-Z_]+' | sort -u || true)
 
 # From source code environment variable reads
+# Exclude dependency trees — they contain env var patterns from unrelated packages
+_EXCL="--exclude-dir=node_modules --exclude-dir=vendor --exclude-dir=.venv --exclude-dir=__pycache__"
 while IFS= read -r var; do
   [[ -n "$var" ]] || continue
   [[ "$var" =~ _KEY$ ]] && CRED_API_KEYS+=("$var") || true
   [[ "$var" =~ _TOKEN$ ]] && CRED_TOKENS+=("$var") || true
 done < <(
-  grep -rh "process\.env\." . --include="*.ts" --include="*.js" 2>/dev/null \
+  grep -rh "process\.env\." . --include="*.ts" --include="*.js" $_EXCL 2>/dev/null \
     | grep -oP '(?<=process\.env\.)[A-Z_]+(?:KEY|TOKEN|SECRET|PAT)' || true
-  grep -rh "os\.environ" . --include="*.py" 2>/dev/null \
+  grep -rh "os\.environ" . --include="*.py" $_EXCL 2>/dev/null \
     | grep -oP '(?<=os\.environ\.get\(.|os\.environ\[.)[A-Z_]+' || true
-  grep -rh "os\.Getenv" . --include="*.go" 2>/dev/null \
+  grep -rh "os\.Getenv" . --include="*.go" $_EXCL 2>/dev/null \
     | grep -oP '(?<=os\.Getenv\(")[A-Z_]+' || true
 )
 
-# SSH detection
+# SSH detection — exclude dependency dirs and lock files to avoid false positives
 if grep -rq "ssh\|id_rsa\|known_hosts\|ssh-keygen\|ssh-agent\|SSH_AUTH_SOCK" . \
     --include="*.sh" --include="*.ts" --include="*.js" --include="*.py" \
-    --include="*.json" --include="*.yml" --include="*.yaml" 2>/dev/null; then
+    --include="*.json" --include="*.yml" --include="*.yaml" \
+    --exclude="package-lock.json" --exclude="yarn.lock" --exclude="pnpm-lock.yaml" \
+    --exclude="Cargo.lock" --exclude="Gemfile.lock" --exclude="composer.lock" \
+    $_EXCL 2>/dev/null; then
   CRED_SSH=true
 fi
 # SSH outbound port as strong signal too
@@ -779,7 +791,8 @@ done <<< "$INFERRED_SOURCE"
 GITHUB_API="false"
 if grep -rq "@octokit\|PyGithub\|go-github\|Octokit\|github\.rest\.\|gh api " . \
     --include="*.json" --include="*.txt" --include="*.py" \
-    --include="*.go" --include="*.ts" --include="*.js" --include="*.sh" 2>/dev/null; then
+    --include="*.go" --include="*.ts" --include="*.js" --include="*.sh" \
+    $_EXCL 2>/dev/null; then
   GITHUB_API="true"
 fi
 

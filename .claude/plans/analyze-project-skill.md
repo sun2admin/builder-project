@@ -47,9 +47,20 @@ appends another `[]`, producing `[]\n[]` which fails `json.loads()`.
 list is on backslash-continuation lines. Always use Python to join `\`-continued
 lines before extracting packages, base images, or binary downloads.
 
-### find patterns: always exclude .git
+### find patterns: always exclude .git and dependency trees
 Use `-not -path "./.git/*"` in all `find` calls. `grep -v ".git"` is
 insufficient when paths contain `.git` as a directory component.
+
+For URL scans, SSH detection, and all broad `grep -r` calls also exclude:
+- **Dependency dirs**: `node_modules/`, `vendor/`, `.venv/`, `__pycache__/`
+  — use `--exclude-dir=` flags on grep, or `-not -path "*/node_modules/*"` on find
+- **Lock files by name**: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`,
+  `Cargo.lock`, `Gemfile.lock`, `composer.lock`
+  — lock files contain full transitive dependency metadata (author URLs, funding
+  links, `git+ssh://` repository URLs) that are install-time noise, not runtime deps
+
+Without this, a shallow clone of any npm project floods the URL list with author
+homepages, CDN references, and funding platforms from hundreds of packages.
 
 ### Variable-length lookbehind in grep
 GNU grep's `-P` (PCRE) does not support variable-length lookbehinds like
@@ -134,7 +145,12 @@ Priority 1 (most authoritative): `init-firewall*.sh` / `firewall*.sh` / `setup-n
 — Extract quoted domain strings: `grep -oP '"[a-z0-9][a-z0-9.-]+\.[a-z]{2,}"'`
 
 Priority 2 (fallback when no firewall script): URL pattern scan across
-`*.ts *.js *.py *.go *.rs *.sh *.json *.yml *.yaml` (excluding `gen/`, `generated/` dirs and `.svg` files).
+`*.ts *.js *.py *.go *.rs *.sh *.json *.yml *.yaml`.
+
+**Excluded paths and files** (prevent dependency tree and generated file noise):
+- Directories: `node_modules/`, `vendor/`, `.venv/`, `gen/`, `generated/`
+- File extensions: `.svg`
+- Lock files by name: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `Cargo.lock`, `Gemfile.lock`, `composer.lock`
 
 Domain blocklist — removes known non-runtime domains:
 - Spec/schema noise: `w3.org`, `schema.org`, `iana.org`, `rfc-editor.org`
@@ -143,14 +159,18 @@ Domain blocklist — removes known non-runtime domains:
 - Community/social: `discord.gg`, `discord.com`
 - Code hosting (links, not APIs): `github.com`, `raw.githubusercontent.com`
 - Documentation sites: `docs.*`, `readthedocs.*`
-- Package registries (install-time, not runtime): `npmjs.com`, `pypi.org`, `crates.io`, `pkg.go.dev`, `rubygems.org`
+- Package registries (install-time, not runtime): `npmjs.com`, `npmjs.org`, `pypi.org`, `crates.io`, `pkg.go.dev`, `rubygems.org`
+- npm funding/support noise: `opencollective.com`, `tidelift.com`
+- Font CDN: `fonts.googleapis.com`, `fonts.gstatic.com`, `gstatic.com`
 
 **URL noise patterns discovered in testing:**
-- `w3.org` from SVG XML namespace declarations in generated SVG files → exclude `gen/`, `generated/` dirs, skip `.svg` files
+- `w3.org` from SVG XML namespace declarations in generated SVG files → exclude `.svg` files and `gen/` dirs
 - `acme.com` from generated Go ACME client code comments → exclude `gen/` dirs
 - `discord.gg`, `docs.renovatebot.com`, `raw.githubusercontent.com` from README/config links → added to blocklist
-- `janesmith.dev`, personal vanity domains — hard to filter automatically; left as-is (low harm, human can discard)
-- Data-file domains (career-ops: `jobs.lever.co`, `boards-api.greenhouse.io`) — correctly preserved as external services even though they're scraping targets, not called APIs
+- `registry.npmjs.org`, `opencollective.com`, `tidelift.com`, `fonts.googleapis.com` from `node_modules/` package metadata → exclude `node_modules/` from find
+- `paulmillr.com` (author of chokidar) from `package-lock.json` author fields → exclude lock files by name from URL scan
+- Personal/vanity domains (`danielrosehill.com`, `dsrholdings.cloud`, `santifer.io`) — hard to filter automatically; left as-is (low harm, human can discard)
+- Data-file domains (career-ops: `jobs.lever.co`, `boards-api.greenhouse.io`) — correctly preserved as external services
 
 ### 8. Credentials & Auth
 Sources (all combined, deduped by type):
@@ -170,7 +190,9 @@ a var like `GEMINI_API_KEY` matches both `_KEY$` (api_keys) and `^GEMINI` (other
 appearing in both. Fix applied to both loops.
 
 SSH detection: keyword scan for `ssh / id_rsa / known_hosts / ssh-keygen / ssh-agent / SSH_AUTH_SOCK`
-in shell, TS, JS, Python, YAML files.
+in shell, TS, JS, Python, JSON, YAML files. Excludes `node_modules/`, `vendor/`, `.venv/`, `__pycache__/`
+and all lock files — otherwise `package-lock.json` (which contains `git+ssh://` URLs for git-sourced npm
+deps) and npm package JSONs trigger false positives on non-SSH repos.
 
 ### 9. MCP Servers
 - `.mcp.json` / `.claude/mcp.json` / `.claude/settings.json` → `mcpServers` keys
@@ -418,6 +440,7 @@ Test against repos representing diverse profiles:
 | `sun2admin/builder-project` | Multi-layer, mixed shell+YAML | Cross-file inference |
 | `anthropics/connect-rust` | Rust, Cargo workspace, Taskfile, no Dockerfile | Rust libs, CI tools, suggested FROM |
 | `santifer/career-ops` | Node, Playwright, .env.example, data-file URLs | HTML purpose, cred dedup, domain blocklist, nvmrc |
+| `danielrosehill/claude-code-projects-index` | Astro static site, package-lock.json noise | node_modules exclusion, lock file exclusion, SSH false positive fix |
 | A pure Python repo | No Dockerfile, no shell scripts | py_imports, no Dockerfile fallback |
 | A Go service with docker-compose | Go, ports, DB clients | ports, go libs, DB detection |
 | A frontend React app | TS, npm, no container | TS inference, node libs |
