@@ -46,7 +46,14 @@ For `gh` CLI and other binaries in `scripts/bin/` to be callable by name in bash
 4. Does `gh` CLI (system package) move to project repo via pre-built binary in `scripts/bin/`, or stay as layer4-devcontainer apt install?
 5. Should `scripts/bin/` be gitignored in builder-project (download at runtime) or committed (current layer4-devcontainer approach)?
 
+## Version Status (checked 2026-04-30)
+- `github-mcp-server`: committed `v1.0.0`, latest available `v1.0.3` (3 patch releases behind, released 2026-04-24)
+  - Weekly update workflow (`update-github-mcp.yml`) handles detection but requires manual PR merge
+- `gh` CLI: no pinned version — installed via apt in layer1 at image build time; latest available `v2.92.0`
+  - Exact version in current running image unknown without `gh --version` inside container
+
 ## Status
 - [x] Relative path in `.mcp.json` tested and confirmed working
 - [ ] Pending clarification on open questions above
+- [ ] github-mcp-server needs update to v1.0.3 (deferred pending plan resolution)
 - [ ] Implementation not started
