@@ -1,7 +1,7 @@
 #!/bin/bash
 # analyze-project: Deep scan a GitHub repo for all container stack dependencies
 # Usage: analyze-project.sh [owner/repo]
-# stdout: path to builds/<project>/analysis.json
+# stdout: path to builds/<owner>/<repo>/analysis.json
 # exit 0=success, 1=error
 
 set -euo pipefail
@@ -31,7 +31,8 @@ if [[ ! "$REPO" =~ ^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ ]]; then
   exit 1
 fi
 
-PROJECT="${REPO##*/}"
+REPO_OWNER="${REPO%%/*}"
+REPO_NAME="${REPO##*/}"
 
 # ============================================================================
 # Clone
@@ -47,7 +48,7 @@ REPO_DESC=$(echo "$REPO_META" | python3 -c "import sys,json; d=json.load(sys.std
 REPO_LANG=$(echo "$REPO_META" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('language','') or '')" 2>/dev/null || echo "")
 
 echo "Cloning (shallow)..." >&2
-TEMP_DIR=$(mktemp -d "/tmp/analyze-${PROJECT}-XXXXX")
+TEMP_DIR=$(mktemp -d "/tmp/analyze-${REPO_NAME}-XXXXX")
 
 if ! gh repo clone "$REPO" "$TEMP_DIR" -- --depth=1 --quiet 2>/dev/null; then
   echo -e "${RED}✘ Clone failed. Check repo name and access.${NC}" >&2
@@ -864,9 +865,9 @@ fi
 echo "" >&2
 echo "Generating report..." >&2
 
-mkdir -p "${BUILDS_DIR}/${PROJECT}"
-JSON_FILE="${BUILDS_DIR}/${PROJECT}/analysis.json"
-MD_FILE="${BUILDS_DIR}/${PROJECT}/analysis.md"
+mkdir -p "${BUILDS_DIR}/${REPO_OWNER}/${REPO_NAME}"
+JSON_FILE="${BUILDS_DIR}/${REPO_OWNER}/${REPO_NAME}/analysis.json"
+MD_FILE="${BUILDS_DIR}/${REPO_OWNER}/${REPO_NAME}/analysis.md"
 TODAY=$(date +%Y-%m-%d)
 
 # Serialize bash arrays to JSON
@@ -889,7 +890,7 @@ INFERRED_PY_JSON=$(_to_json_arr "${INFERRED_PY_IMPORTS[@]:-}")
 INFERRED_TS_JSON=$(_to_json_arr "${INFERRED_TS_IMPORTS[@]:-}")
 INFERRED_CI_TOOLS_JSON=$(_to_json_arr "${INFERRED_CI_TOOLS[@]:-}")
 
-export AP_REPO="$REPO" AP_PROJECT="$PROJECT" AP_TODAY="$TODAY"
+export AP_REPO="$REPO" AP_PROJECT="$REPO_NAME" AP_TODAY="$TODAY"
 export AP_PURPOSE="$PURPOSE" AP_REPO_LANG="$REPO_LANG"
 export AP_DOCKERFILE_BASE="$DOCKERFILE_BASE"
 export AP_LANGS="$LANGS_JSON" AP_RUNTIME_EXTRAS="$RUNTIME_EXTRAS_JSON"

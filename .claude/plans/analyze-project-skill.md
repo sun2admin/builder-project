@@ -1,7 +1,7 @@
 # analyze-project Skill Plan
 
 **Skill path:** `.claude/skills/analyze-project/analyze-project.sh`
-**Output path:** `builds/<project>/analysis.json` + `builds/<project>/analysis.md`
+**Output path:** `builds/<owner>/<repo>/analysis.json` + `builds/<owner>/<repo>/analysis.md`
 **Status:** Active development — core working, iterating on coverage
 
 ---
@@ -490,7 +490,7 @@ field, no false positives from comment/prose scanning.
 ## Implementation Notes
 
 ### Temp clone lifecycle
-`TEMP_DIR=$(mktemp -d "/tmp/analyze-${PROJECT}-XXXXX")`
+`TEMP_DIR=$(mktemp -d "/tmp/analyze-${REPO_NAME}-XXXXX")`
 `trap cleanup EXIT` — guaranteed cleanup even on error exit.
 Caller never sees the clone path; stdout gets only `analysis.json` path.
 
@@ -504,8 +504,20 @@ Sources `../build-workspace/lib.sh` for `read_input`, color vars (`$BLUE`, `$GRE
 JSON file path for capture: `result=$(bash analyze-project.sh repo 2>/dev/tty)`.
 
 ### Builds registry
-Results saved to `builds/<project>/analysis.json` inside the builder-project repo.
-This means analysis results are version-controlled and can be compared across runs.
+Results saved to `builds/<owner>/<repo>/analysis.json` inside the builder-project repo,
+mirroring the GitHub `owner/repo` hierarchy. This organizes builds by user/org at the
+top level — `builds/anthropics/`, `builds/sun2admin/`, etc.
+
+**Two-level navigation for build-workspace:**
+When a user asks to load or resume an existing analysis, the flow is:
+1. List unique owners: `ls builds/` → show as menu
+2. User picks an owner → list that owner's repos: `ls builds/<owner>/`
+3. User picks a repo → load `builds/<owner>/<repo>/analysis.json`
+
+This replaces the previous flat list of all repo names, which becomes hard to
+read when multiple owners have repos with similar names.
+
+Results are version-controlled and can be compared across runs.
 The `builds/` dir is gitignored for generated artifacts but `analysis.json` and
 `analysis.md` are committed intentionally.
 
