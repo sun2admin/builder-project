@@ -1,5 +1,5 @@
 #!/bin/bash
-# analyze-project: Scan a GitHub repo for container stack dependencies
+# analyze-project: Deep scan a GitHub repo for all container stack dependencies
 # Usage: analyze-project.sh [owner/repo]
 # stdout: path to builds/<project>/analysis.json
 # exit 0=success, 1=error
@@ -12,7 +12,6 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SKILL_DIR}/../../.." && pwd)"
 BUILDS_DIR="${REPO_ROOT}/builds"
 
-# Guaranteed temp dir cleanup
 TEMP_DIR=""
 cleanup() { [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"; }
 trap cleanup EXIT
@@ -40,32 +39,83 @@ PROJECT="${REPO##*/}"
 
 echo -e "\n${BLUE}=== analyze-project: ${REPO} ===${NC}" >&2
 echo "" >&2
-echo "Cloning (shallow)..." >&2
 
+# Fetch repo metadata from GitHub API before cloning
+echo "Fetching repo metadata..." >&2
+REPO_META=$(gh api "repos/${REPO}" --jq '{description: .description, language: .language, topics: .topics}' 2>/dev/null || echo '{}')
+REPO_DESC=$(echo "$REPO_META" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('description','') or '')" 2>/dev/null || echo "")
+REPO_LANG=$(echo "$REPO_META" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('language','') or '')" 2>/dev/null || echo "")
+
+echo "Cloning (shallow)..." >&2
 TEMP_DIR=$(mktemp -d "/tmp/analyze-${PROJECT}-XXXXX")
 
 if ! gh repo clone "$REPO" "$TEMP_DIR" -- --depth=1 --quiet 2>/dev/null; then
-  echo -e "${RED}✘ Clone failed. Check repo name and that you have access.${NC}" >&2
+  echo -e "${RED}✘ Clone failed. Check repo name and access.${NC}" >&2
   exit 1
 fi
 
 echo -e "${GREEN}✓ Cloned${NC}" >&2
-echo "Scanning..." >&2
+echo "" >&2
 
 cd "$TEMP_DIR"
 
 # ============================================================================
-# Detect languages
+# Project purpose (README first paragraph + repo description)
 # ============================================================================
 
+echo "  → purpose..." >&2
+PURPOSE=""
+if [[ -f "README.md" ]]; then
+  PURPOSE=$(python3 -c "
+import re, sys
+txt = open('README.md').read()
+# Strip badges, HTML, headings — get first real paragraph
+lines = txt.splitlines()
+paras = []
+buf = []
+for l in lines:
+    stripped = l.strip()
+    if not stripped:
+        if buf:
+            paras.append(' '.join(buf))
+            buf = []
+    elif not stripped.startswith(('#', '!', '<', '|', '[')):
+        clean = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', stripped)
+        clean = re.sub(r'[*_\`]', '', clean)
+        if len(clean) > 20:
+            buf.append(clean)
+if buf:
+    paras.append(' '.join(buf))
+print(next((p for p in paras if len(p) > 30), '')[:300])
+" 2>/dev/null || echo "")
+fi
+[[ -z "$PURPOSE" && -n "$REPO_DESC" ]] && PURPOSE="$REPO_DESC"
+
+# ============================================================================
+# Languages and runtime
+# ============================================================================
+
+echo "  → languages..." >&2
 LANGUAGES=()
-[[ -f "package.json" ]]                                                                 && LANGUAGES+=("node")
-[[ -f "requirements.txt" || -f "setup.py" || -f "Pipfile" || -f "pyproject.toml" ]]    && LANGUAGES+=("python")
-[[ -f "Gemfile" ]]                                                                       && LANGUAGES+=("ruby")
-[[ -f "go.mod" ]]                                                                        && LANGUAGES+=("go")
-[[ -f "Cargo.toml" ]]                                                                    && LANGUAGES+=("rust")
-[[ -f "pom.xml" || -f "build.gradle" || -f "build.gradle.kts" ]]                       && LANGUAGES+=("java")
-[[ -f "composer.json" ]]                                                                 && LANGUAGES+=("php")
+[[ -f "package.json" ]]                                                              && LANGUAGES+=("node")
+[[ -f "requirements.txt" || -f "setup.py" || -f "Pipfile" || -f "pyproject.toml" ]] && LANGUAGES+=("python")
+[[ -f "Gemfile" ]]                                                                    && LANGUAGES+=("ruby")
+[[ -f "go.mod" ]]                                                                     && LANGUAGES+=("go")
+[[ -f "Cargo.toml" ]]                                                                 && LANGUAGES+=("rust")
+[[ -f "pom.xml" || -f "build.gradle" || -f "build.gradle.kts" ]]                    && LANGUAGES+=("java")
+[[ -f "composer.json" ]]                                                              && LANGUAGES+=("php")
+[[ -n "$(find . -name '*.sh' -not -path './.git/*' | head -1)" ]]                   && LANGUAGES+=("shell")
+
+# Alternate runtimes / package managers
+RUNTIME_EXTRAS=()
+if grep -rl "#!/usr/bin/env bun" . --include="*.ts" --include="*.js" --include="*.sh" 2>/dev/null | head -1 | grep -q .; then
+  RUNTIME_EXTRAS+=("bun")
+fi
+[[ -f "bun.lockb" || -f "bun.lock" ]] && RUNTIME_EXTRAS+=("bun")
+[[ -f "deno.json" || -f "deno.lock" || -f "deno.jsonc" ]] && RUNTIME_EXTRAS+=("deno")
+[[ -f "pnpm-lock.yaml" ]] && RUNTIME_EXTRAS+=("pnpm")
+[[ -f "yarn.lock" ]] && RUNTIME_EXTRAS+=("yarn")
+RUNTIME_EXTRAS=($(printf '%s\n' "${RUNTIME_EXTRAS[@]:-}" | sort -u))
 
 # Runtime versions (best-effort)
 NODE_VER=""
@@ -77,125 +127,434 @@ fi
 if [[ -f "go.mod" ]]; then
   GO_VER=$(grep "^go " go.mod 2>/dev/null | awk '{print $2}' | head -1 || true)
 fi
-if [[ -f "pyproject.toml" ]]; then
-  PYTHON_VER=$(grep "python_requires\|python-requires" pyproject.toml 2>/dev/null | grep -oP '[\d.]+' | head -1 || true)
+
+# ============================================================================
+# Devcontainer — authoritative source for packages, capabilities, env, volumes
+# ============================================================================
+
+echo "  → devcontainer..." >&2
+DC_SYSTEM_PACKAGES="[]"
+DC_CAPABILITIES="[]"
+DC_VOLUMES="[]"
+DC_CONTAINER_ENV="{}"
+DC_POST_START=""
+DC_POST_CREATE=""
+DC_EXTENSIONS="[]"
+DC_FORWARD_PORTS="[]"
+DC_REMOTE_USER=""
+DC_BASE_IMAGE=""
+
+if [[ -f ".devcontainer/devcontainer.json" ]]; then
+  DC_DATA=$(python3 << 'PYEOF'
+import json, re, sys, os
+
+def parse_jsonc(text):
+    # Strip // line comments and /* */ block comments
+    text = re.sub(r'//[^\n]*', '', text)
+    text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
+    return json.loads(text)
+
+try:
+    raw = open('.devcontainer/devcontainer.json').read()
+    d = parse_jsonc(raw)
+
+    caps = [a.replace('--cap-add=','').replace('--cap-add ','').strip()
+            for a in d.get('runArgs', [])
+            if '--cap-add' in a]
+
+    mounts = []
+    for m in d.get('mounts', []):
+        if isinstance(m, str) and 'source=' in m:
+            parts = dict(p.split('=',1) for p in m.split(',') if '=' in p)
+            mounts.append({'name': parts.get('source',''), 'target': parts.get('target',''), 'type': parts.get('type','volume')})
+        elif isinstance(m, dict):
+            mounts.append({'name': m.get('source',''), 'target': m.get('target',''), 'type': m.get('type','volume')})
+
+    exts = (d.get('customizations',{}).get('vscode',{}).get('extensions') or [])
+    ports = d.get('forwardPorts', [])
+
+    result = {
+        'capabilities': caps,
+        'volumes': mounts,
+        'container_env': d.get('containerEnv', {}),
+        'post_start': d.get('postStartCommand', ''),
+        'post_create': d.get('postCreateCommand', ''),
+        'extensions': exts,
+        'forward_ports': ports,
+        'remote_user': d.get('remoteUser', ''),
+    }
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({'error': str(e), 'capabilities': [], 'volumes': [], 'container_env': {}, 'post_start': '', 'post_create': '', 'extensions': [], 'forward_ports': [], 'remote_user': ''}))
+PYEOF
+)
+  DC_CAPABILITIES=$(echo "$DC_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('capabilities',[])))" 2>/dev/null || echo "[]")
+  DC_VOLUMES=$(echo "$DC_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('volumes',[])))" 2>/dev/null || echo "[]")
+  DC_CONTAINER_ENV=$(echo "$DC_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('container_env',{})))" 2>/dev/null || echo "{}")
+  DC_POST_START=$(echo "$DC_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('post_start',''))" 2>/dev/null || echo "")
+  DC_POST_CREATE=$(echo "$DC_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('post_create',''))" 2>/dev/null || echo "")
+  DC_EXTENSIONS=$(echo "$DC_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('extensions',[])))" 2>/dev/null || echo "[]")
+  DC_FORWARD_PORTS=$(echo "$DC_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('forward_ports',[])))" 2>/dev/null || echo "[]")
+  DC_REMOTE_USER=$(echo "$DC_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('remote_user',''))" 2>/dev/null || echo "")
+fi
+
+# VS Code extensions from .vscode/extensions.json (supplement devcontainer)
+if [[ -f ".vscode/extensions.json" ]]; then
+  VSCODE_EXTS=$(python3 -c "
+import json, re
+raw = open('.vscode/extensions.json').read()
+raw = re.sub(r'//[^\n]*','',raw)
+d = json.loads(raw)
+print(json.dumps(d.get('recommendations', [])))
+" 2>/dev/null || echo "[]")
+  # Merge with DC_EXTENSIONS
+  DC_EXTENSIONS=$(python3 -c "
+import json, sys
+a = json.loads('${DC_EXTENSIONS}')
+b = json.loads('${VSCODE_EXTS}')
+merged = list(dict.fromkeys(a + b))
+print(json.dumps(merged))
+" 2>/dev/null || echo "$DC_EXTENSIONS")
 fi
 
 # ============================================================================
-# Detect libraries
+# Dockerfile — authoritative system packages, base image, extra binaries
 # ============================================================================
 
+echo "  → system packages..." >&2
+SYS_PACKAGES_RAW=""
+DOCKERFILE_BASE=""
+EXTRA_BINARIES=()
+
+while IFS= read -r dockerfile; do
+  # Use Python to join backslash-continuation lines before parsing
+  parsed=$(python3 - "$dockerfile" << 'PYEOF'
+import sys, re
+
+path = sys.argv[1]
+try:
+    lines = open(path).readlines()
+except:
+    sys.exit(0)
+
+# Join continuation lines
+joined = []
+buf = ""
+for line in lines:
+    stripped = line.rstrip()
+    if stripped.endswith("\\"):
+        buf += stripped[:-1] + " "
+    else:
+        buf += stripped
+        joined.append(buf)
+        buf = ""
+if buf:
+    joined.append(buf)
+
+# Base image
+for l in joined:
+    m = re.match(r'FROM\s+(\S+)', l)
+    if m:
+        print("BASE:" + m.group(1))
+        break
+
+# apt-get/apt/apk packages
+for l in joined:
+    if re.search(r'apt-get install|apt install|apk add', l):
+        # strip flags and commands
+        pkgs = re.sub(r'.*(?:install|add)\s+', '', l)
+        pkgs = re.sub(r'&&.*', '', pkgs)
+        for p in pkgs.split():
+            if re.match(r'^[a-z][a-z0-9._+-]{1,}$', p) and p not in ('apt-get','apt','apk'):
+                print("PKG:" + p)
+
+# wget/curl binary downloads
+for l in joined:
+    if re.search(r'wget|curl\s+-[oL]', l):
+        m = re.search(r'releases/download/[^/\s]+/([^\s"\'\\]+)', l)
+        if m:
+            print("BIN:" + m.group(1))
+PYEOF
+)
+
+  while IFS= read -r pline; do
+    case "$pline" in
+      BASE:*) [[ -z "$DOCKERFILE_BASE" ]] && DOCKERFILE_BASE="${pline#BASE:}" ;;
+      PKG:*)  SYS_PACKAGES_RAW+=" ${pline#PKG:}" ;;
+      BIN:*)  EXTRA_BINARIES+=("${pline#BIN:}") ;;
+    esac
+  done <<< "$parsed"
+
+done < <(find . \( -name "Dockerfile" -o -name "Dockerfile.*" -o -name "*.dockerfile" \) -not -path "./.git/*" 2>/dev/null)
+
+SYS_PACKAGES=$(echo "$SYS_PACKAGES_RAW" | tr ' ' '\n' \
+  | { grep -E '^[a-z][a-z0-9._+-]{1,}$' || true; } | sort -u \
+  | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines))" \
+  2>/dev/null || echo "[]")
+
+# ============================================================================
+# Libraries
+# ============================================================================
+
+echo "  → libraries..." >&2
 NODE_LIBS="[]"
 PYTHON_LIBS="[]"
 GO_LIBS="[]"
 
 if [[ -f "package.json" ]]; then
   NODE_LIBS=$(python3 -c "
-import json, sys
+import json
 try:
   d = json.load(open('package.json'))
   deps = list((d.get('dependencies') or {}).keys()) + list((d.get('devDependencies') or {}).keys())
-  print(json.dumps(deps[:50]))
-except Exception as e:
-  print('[]')
+  print(json.dumps(deps[:60]))
+except: print('[]')
 " 2>/dev/null || echo "[]")
 fi
 
 if [[ -f "requirements.txt" ]]; then
-  PYTHON_LIBS=$(grep -v "^#\|^$\|^-" requirements.txt 2>/dev/null \
-    | sed 's/[>=<!=;].*//' \
+  PYTHON_LIBS=$({ grep -v "^#\|^$\|^-" requirements.txt || true; } 2>/dev/null \
+    | sed 's/[>=<!=;[].*//' \
     | tr '[:upper:]' '[:lower:]' \
-    | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines[:50]))" \
+    | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines[:60]))" \
     2>/dev/null || echo "[]")
 fi
 
 if [[ -f "go.mod" ]]; then
   GO_LIBS=$(grep "^\s" go.mod 2>/dev/null \
-    | awk '{print $1}' \
-    | grep "/" \
-    | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines[:50]))" \
+    | awk '{print $1}' | grep "/" \
+    | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines[:60]))" \
     2>/dev/null || echo "[]")
 fi
 
 # ============================================================================
-# Detect system packages
+# Ports (inbound: EXPOSE/listen; outbound: derived from external services)
 # ============================================================================
 
-SYS_PKGS_RAW=""
-while IFS= read -r dockerfile; do
-  SYS_PKGS_RAW+=$(grep -h "RUN.*apt-get install\|RUN.*apt install\|RUN.*apk add" "$dockerfile" 2>/dev/null \
-    | sed 's/.*install[[:space:]]*//' \
-    | sed 's/&&.*//' \
-    | sed 's/\\$//' \
-    | tr ' ' '\n' \
-    | grep -v "^-\|^$\|=\|RUN\|apt\|apk" \
-    | tr '\n' ' ' || true)
-done < <(find . -name "Dockerfile" -o -name "Dockerfile.*" -o -name "*.dockerfile" 2>/dev/null)
+echo "  → ports..." >&2
+INBOUND_PORTS_RAW=""
+INBOUND_PORTS_RAW+=$(find . \( -name "Dockerfile" -o -name "Dockerfile.*" \) -not -path "./.git/*" 2>/dev/null \
+  | xargs grep -h "^EXPOSE" 2>/dev/null | grep -oP '\d+' || true)
+INBOUND_PORTS_RAW+=" "
+INBOUND_PORTS_RAW+=$(find . -name "docker-compose*.yml" -o -name "docker-compose*.yaml" 2>/dev/null \
+  | xargs grep -h "^\s*-\s*['\"]?[0-9]*:[0-9]" 2>/dev/null | grep -oP '\b[0-9]{2,5}\b' | head -20 || true)
+# forward ports from devcontainer
+INBOUND_PORTS_RAW+=$(echo "$DC_FORWARD_PORTS" | python3 -c "import sys,json; ports=json.load(sys.stdin); print(' '.join(str(p) for p in ports))" 2>/dev/null || echo "")
 
-SYS_PACKAGES=$(echo "$SYS_PKGS_RAW" | tr ' ' '\n' | sort -u \
-  | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines))" \
-  2>/dev/null || echo "[]")
-
-# ============================================================================
-# Detect ports
-# ============================================================================
-
-PORTS_RAW=""
-# Dockerfile EXPOSE
-PORTS_RAW+=$(find . -name "Dockerfile" -o -name "Dockerfile.*" 2>/dev/null \
-  | xargs grep -h "^EXPOSE" 2>/dev/null \
-  | grep -oP '\d+' || true)
-PORTS_RAW+=" "
-# docker-compose ports
-PORTS_RAW+=$(find . -name "docker-compose*.yml" -o -name "docker-compose*.yaml" 2>/dev/null \
-  | xargs grep -h "^\s*-\s*['\"]?[0-9]*:[0-9]" 2>/dev/null \
-  | grep -oP '(?<=- ['"'"'"]?)\d+' || true)
-
-PORTS=$(echo "$PORTS_RAW" | tr ' ' '\n' | grep -E '^[0-9]+$' | sort -un \
+INBOUND_PORTS=$(echo "$INBOUND_PORTS_RAW" | tr ' ' '\n' \
+  | { grep -E '^[0-9]{2,5}$' || true; } | sort -un \
   | python3 -c "import sys,json; print(json.dumps([int(l) for l in sys.stdin if l.strip()]))" \
   2>/dev/null || echo "[]")
 
 # ============================================================================
-# Detect env vars
+# External services — firewall scripts are the most authoritative source
 # ============================================================================
 
-ENV_VARS_RAW=""
+echo "  → external services..." >&2
+EXT_DOMAINS=()
+EXT_SOURCE="source_scan"
+
+# Priority 1: firewall/network init scripts
+while IFS= read -r script; do
+  # Extract quoted domain strings
+  while IFS= read -r domain; do
+    [[ "$domain" =~ \. ]] && EXT_DOMAINS+=("$domain")
+  done < <(grep -oP '"[a-z0-9][a-z0-9.-]+\.[a-z]{2,}"' "$script" 2>/dev/null | tr -d '"' || true)
+done < <(find . -name "init-firewall*" -o -name "firewall*.sh" -o -name "setup-network*.sh" -o -name "init-network*.sh" 2>/dev/null | grep -v ".git")
+
+[[ ${#EXT_DOMAINS[@]} -gt 0 ]] && EXT_SOURCE="init-firewall.sh"
+
+# Priority 2: URL patterns in source files (supplement if firewall not found)
+if [[ ${#EXT_DOMAINS[@]} -eq 0 ]]; then
+  while IFS= read -r domain; do
+    [[ -n "$domain" ]] && EXT_DOMAINS+=("$domain")
+  done < <(grep -rh "https\?://[a-z0-9][a-z0-9.-]*\.[a-z]\{2,\}" . \
+    --include="*.ts" --include="*.js" --include="*.py" --include="*.go" --include="*.sh" \
+    --include="*.json" --include="*.yml" --include="*.yaml" 2>/dev/null \
+    | grep -oP 'https?://\K[a-z0-9][a-z0-9.-]+\.[a-z]{2,}' \
+    | grep -v "example\.\|localhost\|127\.0\." \
+    | sort -u | head -30 || true)
+fi
+
+EXT_DOMAINS=($(printf '%s\n' "${EXT_DOMAINS[@]:-}" | sort -u))
+
+# ============================================================================
+# Credentials and auth requirements
+# ============================================================================
+
+echo "  → credentials..." >&2
+CRED_API_KEYS=()
+CRED_TOKENS=()
+CRED_SSH=false
+CRED_OTHER=()
+
+# From .env.example and similar
 for f in .env.example .env.sample .env.template .env.test .env.development; do
+  [[ -f "$f" ]] && while IFS= read -r line; do
+    key="${line%%=*}"
+    [[ "$key" =~ _KEY$ ]] && CRED_API_KEYS+=("$key")
+    [[ "$key" =~ _TOKEN$|_PAT$ ]] && CRED_TOKENS+=("$key")
+    [[ "$key" =~ ^(ANTHROPIC|OPENAI|GEMINI|AWS|GCP|AZURE|STRIPE|SENDGRID|TWILIO|DATADOG|SENTRY) ]] && CRED_OTHER+=("$key")
+  done < <(grep -oP '^[A-Z_][A-Z0-9_]*' "$f" 2>/dev/null || true)
+done
+
+# From GitHub Actions workflow secrets
+while IFS= read -r secret; do
+  [[ -n "$secret" ]] || continue
+  [[ "$secret" =~ _KEY$ ]] && CRED_API_KEYS+=("$secret") || true
+  [[ "$secret" =~ _TOKEN$|GITHUB_TOKEN ]] && CRED_TOKENS+=("$secret") || true
+  CRED_OTHER+=("$secret")
+done < <(find . -path "*/.github/workflows/*.yml" -o -path "*/.github/workflows/*.yaml" 2>/dev/null \
+  | xargs grep -h "secrets\." 2>/dev/null \
+  | grep -oP '(?<=secrets\.)[A-Z_]+' | sort -u || true)
+
+# From source code environment variable reads
+while IFS= read -r var; do
+  [[ -n "$var" ]] || continue
+  [[ "$var" =~ _KEY$ ]] && CRED_API_KEYS+=("$var") || true
+  [[ "$var" =~ _TOKEN$ ]] && CRED_TOKENS+=("$var") || true
+done < <(
+  grep -rh "process\.env\." . --include="*.ts" --include="*.js" 2>/dev/null \
+    | grep -oP '(?<=process\.env\.)[A-Z_]+(?:KEY|TOKEN|SECRET|PAT)' || true
+  grep -rh "os\.environ" . --include="*.py" 2>/dev/null \
+    | grep -oP '(?<=os\.environ\.get\(.|os\.environ\[.)[A-Z_]+' || true
+  grep -rh "os\.Getenv" . --include="*.go" 2>/dev/null \
+    | grep -oP '(?<=os\.Getenv\(")[A-Z_]+' || true
+)
+
+# SSH detection
+if grep -rq "ssh\|id_rsa\|known_hosts\|ssh-keygen\|ssh-agent\|SSH_AUTH_SOCK" . \
+    --include="*.sh" --include="*.ts" --include="*.js" --include="*.py" \
+    --include="*.json" --include="*.yml" --include="*.yaml" 2>/dev/null; then
+  CRED_SSH=true
+fi
+# SSH outbound port as strong signal too
+echo "$INBOUND_PORTS_RAW $SYS_PACKAGES_RAW" | grep -q "openssh\|ssh " && CRED_SSH=true || true
+
+# Deduplicate
+CRED_API_KEYS=($(printf '%s\n' "${CRED_API_KEYS[@]:-}" | sort -u))
+CRED_TOKENS=($(printf '%s\n' "${CRED_TOKENS[@]:-}" | sort -u))
+CRED_OTHER=($(printf '%s\n' "${CRED_OTHER[@]:-}" | sort -u))
+
+# ============================================================================
+# MCP servers
+# ============================================================================
+
+echo "  → MCP servers..." >&2
+MCP_SERVERS=()
+
+# .mcp.json at root or .claude/
+for f in .mcp.json .claude/mcp.json .claude/settings.json .claude/settings.local.json; do
+  [[ -f "$f" ]] && while IFS= read -r srv; do
+    [[ -n "$srv" ]] && MCP_SERVERS+=("$srv")
+  done < <(python3 -c "
+import json
+d = json.load(open('$f'))
+servers = d.get('mcpServers', {})
+for name in servers.keys():
+    print(name)
+" 2>/dev/null || true)
+done
+
+# @modelcontextprotocol/* packages in package.json
+if [[ -f "package.json" ]]; then
+  while IFS= read -r pkg; do
+    [[ -n "$pkg" ]] && MCP_SERVERS+=("$pkg")
+  done < <(python3 -c "
+import json
+d = json.load(open('package.json'))
+all_deps = {**d.get('dependencies',{}), **d.get('devDependencies',{})}
+for k in all_deps:
+    if '@modelcontextprotocol' in k or 'mcp-server' in k:
+        print(k)
+" 2>/dev/null || true)
+fi
+
+MCP_SERVERS=($(printf '%s\n' "${MCP_SERVERS[@]:-}" | sort -u))
+
+# ============================================================================
+# Claude plugins
+# ============================================================================
+
+echo "  → Claude plugins..." >&2
+CLAUDE_PLUGINS=()
+
+if [[ -f ".claude-plugin/marketplace.json" ]]; then
+  while IFS= read -r plugin; do
+    [[ -n "$plugin" ]] && CLAUDE_PLUGINS+=("$plugin")
+  done < <(python3 -c "
+import json
+d = json.load(open('.claude-plugin/marketplace.json'))
+for p in d.get('plugins', []):
+    print(p.get('name',''))
+" 2>/dev/null || true)
+fi
+
+# Count plugin directories too
+plugin_count=$(find . -maxdepth 2 -name "SKILL.md" -o -name "PLUGIN.md" 2>/dev/null | wc -l | tr -d ' ')
+
+# ============================================================================
+# Env vars (combined: .env.example + devcontainer containerEnv + source patterns)
+# ============================================================================
+
+echo "  → env vars..." >&2
+ENV_VARS_RAW=""
+for f in .env.example .env.sample .env.template .env.test; do
   [[ -f "$f" ]] && ENV_VARS_RAW+=$(grep -oP '^[A-Z_][A-Z0-9_]*(?==)' "$f" 2>/dev/null | tr '\n' ' ' || true)
 done
 
 # Dockerfile ENV
-ENV_VARS_RAW+=$(find . -name "Dockerfile" -o -name "Dockerfile.*" 2>/dev/null \
+ENV_VARS_RAW+=$(find . \( -name "Dockerfile" -o -name "Dockerfile.*" \) -not -path "./.git/*" 2>/dev/null \
   | xargs grep -h "^ENV " 2>/dev/null \
-  | awk '{print $2}' \
-  | grep -oP '^[A-Z_][A-Z0-9_]*' \
-  | tr '\n' ' ' || true)
+  | awk '{print $2}' | grep -oP '^[A-Z_][A-Z0-9_]*' | tr '\n' ' ' || true)
 
-ENV_VARS=$(echo "$ENV_VARS_RAW" | tr ' ' '\n' | grep -E '^[A-Z_][A-Z0-9_]+$' | sort -u \
+# containerEnv from devcontainer
+ENV_VARS_RAW+=$(echo "$DC_CONTAINER_ENV" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+print(' '.join(d.keys()))
+" 2>/dev/null || echo "")
+
+ENV_VARS=$(echo "$ENV_VARS_RAW" | tr ' ' '\n' \
+  | { grep -E '^[A-Z_][A-Z0-9_]{1,}$' || true; } | sort -u \
   | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines))" \
   2>/dev/null || echo "[]")
 
 # ============================================================================
-# Detect browser tools + GitHub API usage
+# Browser / test tools
 # ============================================================================
 
+echo "  → browser tools..." >&2
 BROWSER_TOOLS=()
-ALL_TEXT=$(cat package.json requirements.txt Pipfile pyproject.toml go.mod Cargo.toml 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
+ALL_TEXT=$(cat package.json requirements.txt Pipfile pyproject.toml go.mod 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
 echo "$ALL_TEXT" | grep -q "playwright"  && BROWSER_TOOLS+=("playwright")
 echo "$ALL_TEXT" | grep -q "puppeteer"   && BROWSER_TOOLS+=("puppeteer")
 echo "$ALL_TEXT" | grep -q "selenium"    && BROWSER_TOOLS+=("selenium")
 echo "$ALL_TEXT" | grep -q "cypress"     && BROWSER_TOOLS+=("cypress")
 
+# ============================================================================
+# GitHub API usage
+# ============================================================================
+
 GITHUB_API="false"
-if grep -rq "@octokit\|PyGithub\|go-github\|Octokit\|github\.rest\." . \
+if grep -rq "@octokit\|PyGithub\|go-github\|Octokit\|github\.rest\.\|gh api " . \
     --include="*.json" --include="*.txt" --include="*.py" \
-    --include="*.go" --include="*.ts" --include="*.js" \
-    --include="*.rb" --include="*.toml" 2>/dev/null; then
+    --include="*.go" --include="*.ts" --include="*.js" --include="*.sh" 2>/dev/null; then
   GITHUB_API="true"
 fi
 
 # ============================================================================
-# Derive suggested settings
+# Firewall requirements
+# ============================================================================
+
+FIREWALL_REQUIRED="false"
+if [[ -n "$(find . -name "init-firewall*" -o -name "firewall*.sh" 2>/dev/null | head -1)" ]]; then
+  FIREWALL_REQUIRED="true"
+fi
+echo "$DC_CAPABILITIES" | grep -qi "NET_ADMIN\|NET_RAW" && FIREWALL_REQUIRED="true" || true
+
+# ============================================================================
+# Suggested stack settings
 # ============================================================================
 
 SUGGESTED_BASE="latest"
@@ -205,125 +564,203 @@ SUGGESTED_BASE="latest"
 # Serialize to JSON + Markdown
 # ============================================================================
 
+echo "" >&2
+echo "Generating report..." >&2
+
 mkdir -p "${BUILDS_DIR}/${PROJECT}"
 JSON_FILE="${BUILDS_DIR}/${PROJECT}/analysis.json"
 MD_FILE="${BUILDS_DIR}/${PROJECT}/analysis.md"
 TODAY=$(date +%Y-%m-%d)
 
-BROWSER_JSON=$(printf '%s\n' "${BROWSER_TOOLS[@]:-}" \
-  | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines))" \
-  2>/dev/null || echo "[]")
+# Serialize bash arrays to JSON
+_to_json_arr() {
+  printf '%s\n' "$@" | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines))" 2>/dev/null || echo "[]"
+}
 
-LANGS_JSON=$(printf '%s\n' "${LANGUAGES[@]:-}" \
-  | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines))" \
-  2>/dev/null || echo "[]")
+LANGS_JSON=$(_to_json_arr "${LANGUAGES[@]:-}" )
+RUNTIME_EXTRAS_JSON=$(_to_json_arr "${RUNTIME_EXTRAS[@]:-}")
+EXT_DOMAINS_JSON=$(_to_json_arr "${EXT_DOMAINS[@]:-}")
+CRED_KEYS_JSON=$(_to_json_arr "${CRED_API_KEYS[@]:-}")
+CRED_TOKENS_JSON=$(_to_json_arr "${CRED_TOKENS[@]:-}")
+CRED_OTHER_JSON=$(_to_json_arr "${CRED_OTHER[@]:-}")
+MCP_JSON=$(_to_json_arr "${MCP_SERVERS[@]:-}")
+CLAUDE_PLUGINS_JSON=$(_to_json_arr "${CLAUDE_PLUGINS[@]:-}")
+BROWSER_JSON=$(_to_json_arr "${BROWSER_TOOLS[@]:-}")
+EXTRA_BIN_JSON=$(_to_json_arr "${EXTRA_BINARIES[@]:-}")
 
-export AP_REPO="$REPO"
-export AP_PROJECT="$PROJECT"
-export AP_TODAY="$TODAY"
-export AP_LANGS="$LANGS_JSON"
-export AP_SYS_PKGS="$SYS_PACKAGES"
-export AP_PORTS="$PORTS"
+export AP_REPO="$REPO" AP_PROJECT="$PROJECT" AP_TODAY="$TODAY"
+export AP_PURPOSE="$PURPOSE" AP_REPO_LANG="$REPO_LANG"
+export AP_DOCKERFILE_BASE="$DOCKERFILE_BASE"
+export AP_LANGS="$LANGS_JSON" AP_RUNTIME_EXTRAS="$RUNTIME_EXTRAS_JSON"
+export AP_NODE_VER="$NODE_VER" AP_GO_VER="$GO_VER" AP_PYTHON_VER="$PYTHON_VER"
+export AP_SYS_PKGS="$SYS_PACKAGES" AP_EXTRA_BINS="$EXTRA_BIN_JSON"
+export AP_NODE_LIBS="$NODE_LIBS" AP_PYTHON_LIBS="$PYTHON_LIBS" AP_GO_LIBS="$GO_LIBS"
+export AP_INBOUND_PORTS="$INBOUND_PORTS"
+export AP_EXT_DOMAINS="$EXT_DOMAINS_JSON" AP_EXT_SOURCE="$EXT_SOURCE"
 export AP_ENV_VARS="$ENV_VARS"
-export AP_BROWSER="$BROWSER_JSON"
-export AP_GITHUB_API="$GITHUB_API"
-export AP_NODE_LIBS="$NODE_LIBS"
-export AP_PYTHON_LIBS="$PYTHON_LIBS"
-export AP_GO_LIBS="$GO_LIBS"
-export AP_NODE_VER="$NODE_VER"
-export AP_GO_VER="$GO_VER"
-export AP_PYTHON_VER="$PYTHON_VER"
+export AP_BROWSER="$BROWSER_JSON" AP_GITHUB_API="$GITHUB_API"
+export AP_FIREWALL_REQUIRED="$FIREWALL_REQUIRED"
+export AP_DC_CAPS="$DC_CAPABILITIES" AP_DC_VOLUMES="$DC_VOLUMES"
+export AP_DC_CONTAINER_ENV="$DC_CONTAINER_ENV"
+export AP_DC_POST_START="$DC_POST_START" AP_DC_POST_CREATE="$DC_POST_CREATE"
+export AP_DC_EXTENSIONS="$DC_EXTENSIONS" AP_DC_REMOTE_USER="$DC_REMOTE_USER"
+export AP_CRED_KEYS="$CRED_KEYS_JSON" AP_CRED_TOKENS="$CRED_TOKENS_JSON"
+export AP_CRED_SSH="$CRED_SSH" AP_CRED_OTHER="$CRED_OTHER_JSON"
+export AP_MCP_SERVERS="$MCP_JSON" AP_CLAUDE_PLUGINS="$CLAUDE_PLUGINS_JSON"
+export AP_PLUGIN_COUNT="$plugin_count"
 export AP_BASE="$SUGGESTED_BASE"
-export AP_JSON_FILE="$JSON_FILE"
-export AP_MD_FILE="$MD_FILE"
+export AP_JSON_FILE="$JSON_FILE" AP_MD_FILE="$MD_FILE"
 
 python3 << 'PYEOF'
 import json, os
 
-def env(key, fallback="[]"):
-    return json.loads(os.environ.get(key, fallback))
-
-def env_str(key, fallback=""):
-    return os.environ.get(key, fallback)
-
-def env_bool(key):
-    return os.environ.get(key, "false") == "true"
+def e(key, fallback="[]"):   return json.loads(os.environ.get(key, fallback))
+def s(key, fallback=""):     return os.environ.get(key, fallback)
+def b(key):                  return os.environ.get(key, "false") == "true"
 
 rv = {}
-for lang, ver_key in [("node", "AP_NODE_VER"), ("go", "AP_GO_VER"), ("python", "AP_PYTHON_VER")]:
-    v = env_str(ver_key)
-    if v:
-        rv[lang] = v
+for lang, vk in [("node", "AP_NODE_VER"), ("go", "AP_GO_VER"), ("python", "AP_PYTHON_VER")]:
+    v = s(vk)
+    if v: rv[lang] = v
 
 data = {
-    "repo":             env_str("AP_REPO"),
-    "project":          env_str("AP_PROJECT"),
-    "analyzed_at":      env_str("AP_TODAY"),
-    "languages":        env("AP_LANGS"),
-    "system_packages":  env("AP_SYS_PKGS"),
+    "repo":             s("AP_REPO"),
+    "project":          s("AP_PROJECT"),
+    "analyzed_at":      s("AP_TODAY"),
+    "purpose":          s("AP_PURPOSE"),
+    "primary_language": s("AP_REPO_LANG"),
+    "languages":        e("AP_LANGS"),
+    "runtime_extras":   e("AP_RUNTIME_EXTRAS"),
     "runtime_versions": rv,
+    "dockerfile_base":  s("AP_DOCKERFILE_BASE"),
+    "system_packages":  e("AP_SYS_PKGS"),
+    "extra_binaries":   e("AP_EXTRA_BINS"),
     "libraries": {
-        "node":   env("AP_NODE_LIBS"),
-        "python": env("AP_PYTHON_LIBS"),
-        "go":     env("AP_GO_LIBS"),
+        "node":   e("AP_NODE_LIBS"),
+        "python": e("AP_PYTHON_LIBS"),
+        "go":     e("AP_GO_LIBS"),
     },
-    "ports":             env("AP_PORTS"),
-    "env_vars":          env("AP_ENV_VARS"),
-    "browser_tools":     env("AP_BROWSER"),
-    "github_api_usage":  env_bool("AP_GITHUB_API"),
+    "ports": {
+        "inbound":  e("AP_INBOUND_PORTS"),
+    },
+    "external_services": {
+        "domains": e("AP_EXT_DOMAINS"),
+        "source":  s("AP_EXT_SOURCE"),
+    },
+    "env_vars":          e("AP_ENV_VARS"),
+    "browser_tools":     e("AP_BROWSER"),
+    "github_api_usage":  b("AP_GITHUB_API"),
+    "firewall_required": b("AP_FIREWALL_REQUIRED"),
+    "container": {
+        "capabilities":  e("AP_DC_CAPS"),
+        "volumes":       e("AP_DC_VOLUMES"),
+        "env":           e("AP_DC_CONTAINER_ENV", "{}"),
+        "remote_user":   s("AP_DC_REMOTE_USER"),
+        "post_start":    s("AP_DC_POST_START"),
+        "post_create":   s("AP_DC_POST_CREATE"),
+        "extensions":    e("AP_DC_EXTENSIONS"),
+    },
+    "credentials_required": {
+        "api_keys": e("AP_CRED_KEYS"),
+        "tokens":   e("AP_CRED_TOKENS"),
+        "ssh":      b("AP_CRED_SSH"),
+        "other":    e("AP_CRED_OTHER"),
+    },
+    "mcp_servers":    e("AP_MCP_SERVERS"),
+    "claude_plugins": e("AP_CLAUDE_PLUGINS"),
     "suggested": {
-        "base_image":   env_str("AP_BASE"),
+        "base_image":   s("AP_BASE"),
         "ai_install":   "claude",
         "plugin_layer": "",
     }
 }
 
-with open(env_str("AP_JSON_FILE"), "w") as f:
+with open(os.environ["AP_JSON_FILE"], "w") as f:
     json.dump(data, f, indent=2)
 
-# ---- Markdown ----
+# ---- Markdown report ----
 def fmt(items, empty="none detected"):
     return ", ".join(str(i) for i in items) if items else empty
 
-def fmt_libs(libs):
-    lines = []
-    for lang, pkgs in libs.items():
-        if pkgs:
-            preview = pkgs[:10]
-            more = f" ... ({len(pkgs) - 10} more)" if len(pkgs) > 10 else ""
-            lines.append(f"  - **{lang}**: {', '.join(preview)}{more}")
-    return "\n".join(lines) if lines else "  none detected"
+def fmt_creds(c):
+    parts = []
+    if c.get("api_keys"):   parts.append(f"API keys: {', '.join(c['api_keys'])}")
+    if c.get("tokens"):     parts.append(f"Tokens: {', '.join(c['tokens'])}")
+    if c.get("ssh"):        parts.append("SSH key required")
+    if c.get("other"):      parts.append(f"Other: {', '.join(c['other'])}")
+    return "\n".join(f"  - {p}" for p in parts) if parts else "  none detected"
 
-rv_str = ", ".join(f"{k} {v}" for k,v in data["runtime_versions"].items()) or "none detected"
+def fmt_container(c):
+    lines = []
+    if c.get("capabilities"):  lines.append(f"  - Docker caps: {', '.join(c['capabilities'])}")
+    if c.get("remote_user"):   lines.append(f"  - User: {c['remote_user']}")
+    if c.get("post_start"):    lines.append(f"  - postStartCommand: `{c['post_start']}`")
+    if c.get("post_create"):   lines.append(f"  - postCreateCommand: `{c['post_create']}`")
+    if c.get("volumes"):
+        for v in c["volumes"]:
+            lines.append(f"  - Volume: `{v.get('name','')}` → `{v.get('target','')}`")
+    if c.get("env"):
+        for k in c["env"]:
+            lines.append(f"  - ENV: `{k}`")
+    return "\n".join(lines) if lines else "  standard (no special requirements)"
 
 md = f"""# Dependency Analysis: {data['project']}
 
 **Repo:** {data['repo']}
 **Analyzed:** {data['analyzed_at']}
+**Purpose:** {data['purpose'] or 'see README'}
 
-## Languages
-{fmt(data['languages'])}
+---
 
-## Runtime Versions
-{rv_str}
+## Languages & Runtimes
+- Languages: {fmt(data['languages'])}
+- Runtime extras: {fmt(data['runtime_extras'])}
+- Versions: {fmt(list(f'{k} {v}' for k,v in data['runtime_versions'].items()))}
+- Base image: `{data['dockerfile_base'] or 'not specified'}`
 
 ## System Packages
 {fmt(data['system_packages'])}
 
 ## Libraries
-{fmt_libs(data['libraries'])}
+"""
+for lang, libs in data["libraries"].items():
+    if libs:
+        preview = libs[:12]
+        more = f" ... ({len(libs)-12} more)" if len(libs) > 12 else ""
+        md += f"  - **{lang}**: {', '.join(preview)}{more}\n"
+if not any(data["libraries"].values()):
+    md += "  none detected\n"
 
+md += f"""
 ## Ports
-{fmt([str(p) for p in data['ports']])}
+- Inbound: {fmt([str(p) for p in data['ports']['inbound']])}
+
+## External Services *(source: {data['external_services']['source']})*
+{fmt(data['external_services']['domains'])}
 
 ## Environment Variables
 {fmt(data['env_vars'])}
+
+## Container Requirements
+{fmt_container(data['container'])}
+
+## Credentials Required
+{fmt_creds(data['credentials_required'])}
+
+## MCP Servers
+{fmt(data['mcp_servers'])}
+
+## Claude Plugins
+{fmt(data['claude_plugins'])}
 
 ## Browser / Test Tools
 {fmt(data['browser_tools'])}
 
 ## GitHub API Usage
 {'Yes' if data['github_api_usage'] else 'No'}
+
+## Firewall Required
+{'Yes — NET_ADMIN/NET_RAW capabilities needed' if data['firewall_required'] else 'No'}
 
 ## Suggested Stack
 | Setting | Value |
@@ -333,17 +770,16 @@ md = f"""# Dependency Analysis: {data['project']}
 | Plugin layer | {data['suggested']['plugin_layer'] or '(query dynamically at build time)'} |
 """
 
-with open(env_str("AP_MD_FILE"), "w") as f:
+with open(os.environ["AP_MD_FILE"], "w") as f:
     f.write(md)
 
 print(md)
 PYEOF
 
 echo "" >&2
-echo -e "${GREEN}✓ Analysis saved:${NC}" >&2
+echo -e "${GREEN}✓ Saved:${NC}" >&2
 echo -e "  JSON: ${JSON_FILE}" >&2
 echo -e "  MD:   ${MD_FILE}" >&2
 echo "" >&2
 
-# Echo JSON path to stdout for skill-to-skill consumption
 echo "$JSON_FILE"

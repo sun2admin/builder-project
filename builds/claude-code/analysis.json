@@ -1,0 +1,147 @@
+{
+  "repo": "anthropics/claude-code",
+  "project": "claude-code",
+  "analyzed_at": "2026-04-30",
+  "purpose": "Claude Code is an agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster by executing routine tasks, explaining complex code, and handling git workflows -- all through natural language commands. Use it in your terminal, IDE, or tag @claude on Github.",
+  "primary_language": "Shell",
+  "languages": [
+    "shell"
+  ],
+  "runtime_extras": [
+    "bun"
+  ],
+  "runtime_versions": {},
+  "dockerfile_base": "node:20",
+  "system_packages": [
+    "aggregate",
+    "dnsutils",
+    "fzf",
+    "gh",
+    "git",
+    "gnupg2",
+    "iproute2",
+    "ipset",
+    "iptables",
+    "jq",
+    "less",
+    "man-db",
+    "nano",
+    "procps",
+    "sudo",
+    "unzip",
+    "vim",
+    "zsh"
+  ],
+  "extra_binaries": [
+    "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb",
+    "zsh-in-docker.sh)"
+  ],
+  "libraries": {
+    "node": [],
+    "python": [],
+    "go": []
+  },
+  "ports": {
+    "inbound": []
+  },
+  "external_services": {
+    "domains": [
+      "api.anthropic.com",
+      "marketplace.visualstudio.com",
+      "registry.npmjs.org",
+      "sentry.io",
+      "statsig.anthropic.com",
+      "statsig.com",
+      "update.code.visualstudio.com",
+      "vscode.blob.core.windows.net"
+    ],
+    "source": "init-firewall.sh"
+  },
+  "env_vars": [
+    "CLAUDE_CONFIG_DIR",
+    "DEVCONTAINER",
+    "EDITOR",
+    "NODE_OPTIONS",
+    "NPM_CONFIG_PREFIX",
+    "PATH",
+    "POWERLEVEL9K_DISABLE_GITSTATUS",
+    "SHELL",
+    "TZ",
+    "VISUAL"
+  ],
+  "browser_tools": [],
+  "github_api_usage": false,
+  "firewall_required": true,
+  "container": {
+    "capabilities": [
+      "NET_ADMIN",
+      "NET_RAW"
+    ],
+    "volumes": [
+      {
+        "name": "claude-code-bashhistory-${devcontainerId}",
+        "target": "/commandhistory",
+        "type": "volume"
+      },
+      {
+        "name": "claude-code-config-${devcontainerId}",
+        "target": "/home/node/.claude",
+        "type": "volume"
+      }
+    ],
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=4096",
+      "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+      "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
+    },
+    "remote_user": "node",
+    "post_start": "sudo /usr/local/bin/init-firewall.sh",
+    "post_create": "",
+    "extensions": [
+      "anthropic.claude-code",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "eamodio.gitlens",
+      "ms-vscode-remote.remote-containers"
+    ]
+  },
+  "credentials_required": {
+    "api_keys": [
+      "ANTHROPIC_API_KEY",
+      "STATSIG_API_KEY"
+    ],
+    "tokens": [
+      "GITHUB_TOKEN",
+      "ISSUE_OPENED_DISPATCH_TOKEN"
+    ],
+    "ssh": true,
+    "other": [
+      "ANTHROPIC_API_KEY",
+      "GITHUB_TOKEN",
+      "ISSUE_OPENED_DISPATCH_TARGET_REPO",
+      "ISSUE_OPENED_DISPATCH_TOKEN",
+      "STATSIG_API_KEY"
+    ]
+  },
+  "mcp_servers": [],
+  "claude_plugins": [
+    "agent-sdk-dev",
+    "claude-opus-4-5-migration",
+    "code-review",
+    "commit-commands",
+    "explanatory-output-style",
+    "feature-dev",
+    "frontend-design",
+    "hookify",
+    "learning-output-style",
+    "plugin-dev",
+    "pr-review-toolkit",
+    "ralph-wiggum",
+    "security-guidance"
+  ],
+  "suggested": {
+    "base_image": "latest",
+    "ai_install": "claude",
+    "plugin_layer": ""
+  }
+}
