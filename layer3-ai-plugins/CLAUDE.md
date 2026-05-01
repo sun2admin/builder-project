@@ -20,10 +20,10 @@ Plugins cached at `/opt/claude-custom-plugins` inside the image.
 
 | Image | Contents |
 |---|---|
-| `claude-anthropic-base-plugins-container` | 10 base plugins (any project) |
-| `claude-anthropic-coding-plugins-container` | 10 base + 22 coding plugins |
-| `claude-anthropic-ext-plugins-container` | 10 base + 15 external plugins |
-| `claude-anthropic-all-plugins-container` | 10 base + 22 coding + 15 external (47 total) |
+| `claude-anthropic-base-plugins-container` | 11 base plugins (any project) |
+| `claude-anthropic-coding-plugins-container` | 11 base + 22 coding plugins |
+| `claude-anthropic-ext-plugins-container` | 11 base + 15 external plugins |
+| `claude-anthropic-all-plugins-container` | 11 base + 22 coding + 15 external (48 total) |
 | `claude-plugins-a7f3d2e8` | build-with-claude variant (18 plugins) |
 | `claude-plugins-3f889e47` | base + document-skills (11 plugins) |
 | `claude-plugins-34e199d2` | base + document-skills + 15 external (26 plugins) |
