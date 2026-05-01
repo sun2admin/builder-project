@@ -36,3 +36,9 @@ Each layer has its own subdir with a `CLAUDE.md` containing layer-specific detai
 - After each instruction, confirm understanding and ask clarifying questions before moving on
 - Do not proceed until the user explicitly says to
 - State how many questions remain and ask one at a time
+
+## Plugin Usage Policy
+
+- Always check available plugins (MCP servers, skills, and agents) first.
+- Utilize relevant plugins, tools, or slash commands to solve tasks instead of attempting to solve them with built-in Bash/Write tools, whenever a plugin is available.
+- Prioritize using `/plugin-name:skill` over manual implementation.
