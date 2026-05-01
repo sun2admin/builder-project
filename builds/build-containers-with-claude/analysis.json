@@ -1,0 +1,104 @@
+{
+  "repo": "sun2admin/build-containers-with-claude",
+  "project": "build-containers-with-claude",
+  "analyzed_at": "2026-04-30",
+  "purpose": "Layer 4 Part 1 devcontainer config for building containers with Claude Code",
+  "primary_language": "Shell",
+  "languages": [
+    "shell"
+  ],
+  "runtime_extras": [],
+  "runtime_versions": {},
+  "dockerfile_base": "",
+  "system_packages": [],
+  "extra_binaries": [],
+  "libraries": {
+    "node": [],
+    "python": [],
+    "go": []
+  },
+  "ports": {
+    "inbound": [
+      8888
+    ]
+  },
+  "external_services": {
+    "domains": [
+      "github.com"
+    ],
+    "source": "source_scan"
+  },
+  "env_vars": [
+    "CLAUDE_CONFIG_DIR",
+    "NODE_OPTIONS",
+    "SSH_AUTH_SOCK"
+  ],
+  "browser_tools": [],
+  "github_api_usage": false,
+  "firewall_required": true,
+  "container": {
+    "capabilities": [
+      "NET_ADMIN",
+      "NET_RAW"
+    ],
+    "volumes": [
+      {
+        "name": "claude-code-bashhistory-${devcontainerId}",
+        "target": "/commandhistory",
+        "type": "volume"
+      },
+      {
+        "name": "claude-code-config-${devcontainerId}",
+        "target": "/home/claude/.claude",
+        "type": "volume"
+      },
+      {
+        "name": "${localEnv:HOME}/Downloads/ClaudeFiles/SharedFiles",
+        "target": "/home/claude/data",
+        "type": "bind"
+      },
+      {
+        "name": "${localEnv:HOME}/Downloads/ClaudeFiles/Config/gh_claude_ed25519",
+        "target": "/run/credentials/gh_claude_ed25519",
+        "type": "bind"
+      },
+      {
+        "name": "${localEnv:HOME}/Downloads/ClaudeFiles/Config/gh_pat",
+        "target": "/run/credentials/gh_pat",
+        "type": "bind"
+      }
+    ],
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=4096",
+      "CLAUDE_CONFIG_DIR": "/home/claude/.claude",
+      "SSH_AUTH_SOCK": "/home/claude/.ssh/agent.sock"
+    },
+    "remote_user": "claude",
+    "post_start": "sudo /usr/local/bin/init-firewall.sh && /workspace/.devcontainer/scripts/init-ssh.sh && /workspace/.devcontainer/scripts/init-gh-token.sh && /workspace/.devcontainer/scripts/init-github-mcp.sh && /workspace/.devcontainer/scripts/load-projects.sh -live sun2admin/builder-project",
+    "post_create": "",
+    "extensions": [
+      "anthropic.claude-code",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "eamodio.gitlens",
+      "ms-toolsai.jupyter"
+    ]
+  },
+  "credentials_required": {
+    "api_keys": [],
+    "tokens": [
+      "GITHUB_TOKEN"
+    ],
+    "ssh": true,
+    "other": [
+      "GITHUB_TOKEN"
+    ]
+  },
+  "mcp_servers": [],
+  "claude_plugins": [],
+  "suggested": {
+    "base_image": "latest",
+    "ai_install": "claude",
+    "plugin_layer": ""
+  }
+}
