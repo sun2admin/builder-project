@@ -96,6 +96,15 @@
   },
   "mcp_servers": [],
   "claude_plugins": [],
+  "inferred": {
+    "tools": [
+      "git",
+      "ssh-add",
+      "ssh-agent"
+    ],
+    "py_imports": [],
+    "ts_imports": []
+  },
   "suggested": {
     "base_image": "latest",
     "ai_install": "claude",

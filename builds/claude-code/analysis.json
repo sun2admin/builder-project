@@ -139,6 +139,25 @@
     "ralph-wiggum",
     "security-guidance"
   ],
+  "inferred": {
+    "tools": [
+      "curl",
+      "gh",
+      "git",
+      "go",
+      "gradle",
+      "java",
+      "jq",
+      "just",
+      "python",
+      "sudo",
+      "xargs"
+    ],
+    "py_imports": [
+      "hookify"
+    ],
+    "ts_imports": []
+  },
   "suggested": {
     "base_image": "latest",
     "ai_install": "claude",

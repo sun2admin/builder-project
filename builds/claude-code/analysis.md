@@ -58,6 +58,10 @@ No
 ## Firewall Required
 Yes — NET_ADMIN/NET_RAW capabilities needed
 
+## Inferred from Source *(tools/commands found in repo files)*
+  - **Tools/binaries**: curl, gh, git, go, gradle, java, jq, just, python, sudo, xargs
+  - **Python imports**: hookify
+
 ## Suggested Stack
 | Setting | Value |
 |---|---|

@@ -533,6 +533,153 @@ echo "$ALL_TEXT" | grep -q "selenium"    && BROWSER_TOOLS+=("selenium")
 echo "$ALL_TEXT" | grep -q "cypress"     && BROWSER_TOOLS+=("cypress")
 
 # ============================================================================
+# Source-code inference: tools/commands used in repo files
+# Runs always; critical when no Dockerfile is present
+# ============================================================================
+
+echo "  → source inference..." >&2
+
+INFERRED_SOURCE=$(python3 << 'PYEOF'
+import re, sys
+from pathlib import Path
+
+KNOWN_TOOLS = {
+    'jq', 'yq', 'jo', 'fx',
+    'curl', 'wget', 'nc', 'ncat', 'nmap', 'rsync', 'scp', 'socat',
+    'gh', 'gcloud', 'gsutil', 'bq', 'aws', 'az', 'kubectl', 'helm',
+    'terraform', 'vault', 'consul', 'vercel', 'netlify',
+    'python3', 'python', 'pip3', 'pip', 'pipenv', 'poetry', 'uv',
+    'node', 'npm', 'npx', 'yarn', 'pnpm', 'bun', 'deno',
+    'ruby', 'gem', 'bundle', 'go', 'cargo', 'rustc',
+    'java', 'mvn', 'gradle', 'kotlin', 'php', 'composer', 'dotnet',
+    'make', 'cmake', 'ninja', 'meson', 'bazel', 'just',
+    'docker', 'podman', 'buildah', 'skopeo',
+    'fzf', 'bat', 'rg', 'ripgrep', 'fd', 'delta', 'eza',
+    'ag', 'pv', 'parallel',
+    'openssl', 'gpg', 'gpg2', 'ssh-keygen', 'ssh-agent', 'ssh-add',
+    'age', 'sops',
+    'zip', 'unzip', '7z', 'gzip', 'bzip2', 'xz', 'zstd',
+    'psql', 'pg_dump', 'mysql', 'sqlite3', 'redis-cli',
+    'htop', 'btop', 'ncdu', 'strace',
+    'vim', 'nano',
+    'git', 'svn',
+    'sudo', 'tee', 'xargs', 'watch', 'crontab',
+    'inotifywait', 'entr', 'tmux', 'screen',
+    'ffmpeg', 'convert', 'graphviz', 'dot',
+    'playwright', 'puppeteer', 'chromium',
+    'nginx', 'caddy', 'traefik',
+}
+
+STDLIB_PY = {
+    'os', 'sys', 're', 'json', 'time', 'datetime', 'math', 'random', 'string',
+    'io', 'collections', 'functools', 'itertools', 'pathlib', 'subprocess',
+    'threading', 'multiprocessing', 'logging', 'argparse', 'typing',
+    'abc', 'copy', 'dataclasses', 'enum', 'hashlib', 'hmac', 'http',
+    'urllib', 'socket', 'ssl', 'struct', 'tempfile', 'shutil', 'glob',
+    'fnmatch', 'base64', 'binascii', 'csv', 'configparser', 'textwrap',
+    'traceback', 'inspect', 'ast', 'tokenize',
+    'sqlite3', 'xml', 'html', 'email', 'mimetypes', 'uuid', 'decimal',
+    'fractions', 'statistics', 'operator', 'contextlib', 'weakref',
+    'gc', 'platform', 'signal', 'ctypes', 'warnings', 'unittest',
+    '__future__', 'builtins', 'types', 'pprint', 'queue', 'heapq',
+    'bisect', 'array', 'codecs', 'locale', 'gettext', 'atexit',
+    'shelve', 'dbm', 'zlib', 'gzip', 'bz2', 'lzma',
+}
+
+tools_found = set()
+py_imports_found = set()
+ts_imports_found = set()
+
+shell_files = list(Path('.').rglob('*.sh'))
+for f in Path('.').rglob('*'):
+    if f.suffix or '.git' in str(f) or not f.is_file():
+        continue
+    try:
+        header = f.open('rb').read(64)
+        if header.startswith((b'#!/bin/bash', b'#!/usr/bin/env bash', b'#!/bin/sh')):
+            shell_files.append(f)
+    except:
+        pass
+
+for sh in shell_files:
+    if '.git' in str(sh):
+        continue
+    try:
+        content = sh.read_text(errors='ignore')
+        for tool in KNOWN_TOOLS:
+            if re.search(r'\b' + re.escape(tool) + r'\b', content):
+                tools_found.add(tool)
+    except:
+        pass
+
+for wf in Path('.').rglob('*.yml'):
+    if '.git' in str(wf) or '.github' not in str(wf):
+        continue
+    try:
+        content = wf.read_text(errors='ignore')
+        for tool in KNOWN_TOOLS:
+            if re.search(r'\b' + re.escape(tool) + r'\b', content):
+                tools_found.add(tool)
+    except:
+        pass
+
+for mf in ['Makefile', 'makefile', 'GNUmakefile', 'Taskfile.yml', 'justfile', 'Justfile']:
+    p = Path(mf)
+    if p.exists():
+        try:
+            content = p.read_text(errors='ignore')
+            for tool in KNOWN_TOOLS:
+                if re.search(r'\b' + re.escape(tool) + r'\b', content):
+                    tools_found.add(tool)
+        except:
+            pass
+
+for py in Path('.').rglob('*.py'):
+    if '.git' in str(py):
+        continue
+    try:
+        content = py.read_text(errors='ignore')
+        for m in re.finditer(r'^(?:import|from)\s+([a-zA-Z_][a-zA-Z0-9_]*)', content, re.MULTILINE):
+            pkg = m.group(1).split('.')[0]
+            if pkg not in STDLIB_PY and not pkg.startswith('_'):
+                py_imports_found.add(pkg)
+    except:
+        pass
+
+for tsf in list(Path('.').rglob('*.ts')) + list(Path('.').rglob('*.js')):
+    if '.git' in str(tsf) or 'node_modules' in str(tsf):
+        continue
+    try:
+        content = tsf.read_text(errors='ignore')
+        for m in re.finditer(r'''(?:import|require)\s*(?:\(['"]|from\s+['"])([@a-zA-Z][^'"]+)['"]''', content):
+            pkg = m.group(1).split('/')[0]
+            if pkg and not pkg.startswith('.'):
+                ts_imports_found.add(pkg)
+    except:
+        pass
+
+for t in sorted(tools_found):
+    print('TOOL:' + t)
+for p in sorted(py_imports_found):
+    print('PYIMP:' + p)
+for t in sorted(ts_imports_found):
+    print('TSIMP:' + t)
+PYEOF
+)
+
+INFERRED_TOOLS=()
+INFERRED_PY_IMPORTS=()
+INFERRED_TS_IMPORTS=()
+
+while IFS= read -r line; do
+  case "$line" in
+    TOOL:*)   INFERRED_TOOLS+=("${line#TOOL:}") ;;
+    PYIMP:*)  INFERRED_PY_IMPORTS+=("${line#PYIMP:}") ;;
+    TSIMP:*)  INFERRED_TS_IMPORTS+=("${line#TSIMP:}") ;;
+  esac
+done <<< "$INFERRED_SOURCE"
+
+# ============================================================================
 # GitHub API usage
 # ============================================================================
 
@@ -587,6 +734,9 @@ MCP_JSON=$(_to_json_arr "${MCP_SERVERS[@]:-}")
 CLAUDE_PLUGINS_JSON=$(_to_json_arr "${CLAUDE_PLUGINS[@]:-}")
 BROWSER_JSON=$(_to_json_arr "${BROWSER_TOOLS[@]:-}")
 EXTRA_BIN_JSON=$(_to_json_arr "${EXTRA_BINARIES[@]:-}")
+INFERRED_TOOLS_JSON=$(_to_json_arr "${INFERRED_TOOLS[@]:-}")
+INFERRED_PY_JSON=$(_to_json_arr "${INFERRED_PY_IMPORTS[@]:-}")
+INFERRED_TS_JSON=$(_to_json_arr "${INFERRED_TS_IMPORTS[@]:-}")
 
 export AP_REPO="$REPO" AP_PROJECT="$PROJECT" AP_TODAY="$TODAY"
 export AP_PURPOSE="$PURPOSE" AP_REPO_LANG="$REPO_LANG"
@@ -609,6 +759,9 @@ export AP_CRED_SSH="$CRED_SSH" AP_CRED_OTHER="$CRED_OTHER_JSON"
 export AP_MCP_SERVERS="$MCP_JSON" AP_CLAUDE_PLUGINS="$CLAUDE_PLUGINS_JSON"
 export AP_PLUGIN_COUNT="$plugin_count"
 export AP_BASE="$SUGGESTED_BASE"
+export AP_INFERRED_TOOLS="$INFERRED_TOOLS_JSON"
+export AP_INFERRED_PY="$INFERRED_PY_JSON"
+export AP_INFERRED_TS="$INFERRED_TS_JSON"
 export AP_JSON_FILE="$JSON_FILE" AP_MD_FILE="$MD_FILE"
 
 python3 << 'PYEOF'
@@ -668,6 +821,11 @@ data = {
     },
     "mcp_servers":    e("AP_MCP_SERVERS"),
     "claude_plugins": e("AP_CLAUDE_PLUGINS"),
+    "inferred": {
+        "tools":      e("AP_INFERRED_TOOLS"),
+        "py_imports": e("AP_INFERRED_PY"),
+        "ts_imports": e("AP_INFERRED_TS"),
+    },
     "suggested": {
         "base_image":   s("AP_BASE"),
         "ai_install":   "claude",
@@ -762,6 +920,21 @@ md += f"""
 ## Firewall Required
 {'Yes — NET_ADMIN/NET_RAW capabilities needed' if data['firewall_required'] else 'No'}
 
+## Inferred from Source *(tools/commands found in repo files)*
+"""
+inf = data['inferred']
+has_inferred = inf['tools'] or inf['py_imports'] or inf['ts_imports']
+if has_inferred:
+    if inf['tools']:
+        md += f"  - **Tools/binaries**: {fmt(inf['tools'])}\n"
+    if inf['py_imports']:
+        md += f"  - **Python imports**: {fmt(inf['py_imports'])}\n"
+    if inf['ts_imports']:
+        md += f"  - **TS/JS imports**: {fmt(inf['ts_imports'])}\n"
+else:
+    md += "  none detected\n"
+
+md += f"""
 ## Suggested Stack
 | Setting | Value |
 |---|---|

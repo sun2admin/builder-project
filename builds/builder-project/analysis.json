@@ -1,0 +1,104 @@
+{
+  "repo": "sun2admin/builder-project",
+  "project": "builder-project",
+  "analyzed_at": "2026-04-30",
+  "purpose": "Example Layer 4 Claude project demonstrating the multi-project workspace architecture.",
+  "primary_language": "Shell",
+  "languages": [
+    "shell"
+  ],
+  "runtime_extras": [],
+  "runtime_versions": {},
+  "dockerfile_base": "node:22-slim",
+  "system_packages": [
+    "gh",
+    "ipykernel",
+    "jupyterlab",
+    "numpy",
+    "pandas",
+    "pdfplumber",
+    "pymupdf",
+    "pypdf",
+    "python3-pip",
+    "reportlab",
+    "weasyprint"
+  ],
+  "extra_binaries": [],
+  "libraries": {
+    "node": [],
+    "python": [],
+    "go": []
+  },
+  "ports": {
+    "inbound": []
+  },
+  "external_services": {
+    "domains": [
+      "api.anthropic.com",
+      "claude.ai",
+      "marketplace.visualstudio.com",
+      "registry.npmjs.org",
+      "sentry.io",
+      "statsig.anthropic.com",
+      "statsig.com",
+      "update.code.visualstudio.com",
+      "vscode.blob.core.windows.net"
+    ],
+    "source": "init-firewall.sh"
+  },
+  "env_vars": [
+    "DEVCONTAINER",
+    "PATH",
+    "PLAYWRIGHT_BROWSERS_PATH",
+    "PLAYWRIGHT_CHROMIUM_SANDBOX",
+    "TZ"
+  ],
+  "browser_tools": [],
+  "github_api_usage": true,
+  "firewall_required": true,
+  "container": {
+    "capabilities": [],
+    "volumes": [],
+    "env": {},
+    "remote_user": "",
+    "post_start": "",
+    "post_create": "",
+    "extensions": []
+  },
+  "credentials_required": {
+    "api_keys": [],
+    "tokens": [
+      "GITHUB_TOKEN"
+    ],
+    "ssh": true,
+    "other": [
+      "GITHUB_TOKEN"
+    ]
+  },
+  "mcp_servers": [
+    "github"
+  ],
+  "claude_plugins": [],
+  "inferred": {
+    "tools": [
+      "curl",
+      "docker",
+      "gh",
+      "git",
+      "jq",
+      "playwright",
+      "python",
+      "rsync",
+      "ssh-add",
+      "ssh-agent",
+      "xargs"
+    ],
+    "py_imports": [],
+    "ts_imports": []
+  },
+  "suggested": {
+    "base_image": "latest",
+    "ai_install": "claude",
+    "plugin_layer": ""
+  }
+}

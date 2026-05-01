@@ -60,6 +60,9 @@ No
 ## Firewall Required
 Yes — NET_ADMIN/NET_RAW capabilities needed
 
+## Inferred from Source *(tools/commands found in repo files)*
+  - **Tools/binaries**: git, ssh-add, ssh-agent
+
 ## Suggested Stack
 | Setting | Value |
 |---|---|
