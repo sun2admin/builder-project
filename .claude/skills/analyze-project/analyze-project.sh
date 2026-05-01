@@ -300,6 +300,47 @@ echo "  → libraries..." >&2
 NODE_LIBS="[]"
 PYTHON_LIBS="[]"
 GO_LIBS="[]"
+RUST_LIBS="[]"
+RUST_VER=""
+
+# Rust: scan all Cargo.toml files (workspace + member crates)
+if [[ -n "$(find . -name "Cargo.toml" -not -path "./.git/*" 2>/dev/null | head -1)" ]]; then
+  RUST_DATA=$(python3 << 'PYEOF'
+import re, json
+from pathlib import Path
+
+TOML_SECTIONS = {'workspace', 'package', 'lib', 'bin', 'features', 'profile', 'patch', 'replace', 'badges', 'lints'}
+
+deps = set()
+rust_ver = ''
+
+for cargo in Path('.').rglob('Cargo.toml'):
+    if '.git' in str(cargo):
+        continue
+    try:
+        content = cargo.read_text(errors='ignore')
+        # rust-version from any Cargo.toml
+        if not rust_ver:
+            m = re.search(r'rust-version\s*=\s*["\']([^"\']+)["\']', content)
+            if m:
+                rust_ver = m.group(1)
+        # deps: name = "version" or name = { version = ...}
+        for m in re.finditer(r'^([a-z][a-z0-9_-]+)\s*=\s*[\{"\'0-9]', content, re.MULTILINE):
+            name = m.group(1)
+            if name not in TOML_SECTIONS:
+                deps.add(name)
+        # [dependencies.name] table form
+        for m in re.finditer(r'^\[(?:workspace\.)?(?:dev-|build-)?dependencies\.([a-z][a-z0-9_-]+)\]', content, re.MULTILINE):
+            deps.add(m.group(1))
+    except:
+        pass
+
+print(json.dumps({'rust_version': rust_ver, 'deps': sorted(deps)[:80]}))
+PYEOF
+)
+  RUST_VER=$(echo "$RUST_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('rust_version',''))" 2>/dev/null || echo "")
+  RUST_LIBS=$(echo "$RUST_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('deps',[])))" 2>/dev/null || echo "[]")
+fi
 
 if [[ -f "package.json" ]]; then
   NODE_LIBS=$(python3 -c "
@@ -365,14 +406,17 @@ done < <(find . -name "init-firewall*" -o -name "firewall*.sh" -o -name "setup-n
 [[ ${#EXT_DOMAINS[@]} -gt 0 ]] && EXT_SOURCE="init-firewall.sh"
 
 # Priority 2: URL patterns in source files (supplement if firewall not found)
+# Exclude generated dirs, SVG/image files, and well-known non-runtime domains
 if [[ ${#EXT_DOMAINS[@]} -eq 0 ]]; then
+  DOMAIN_BLOCKLIST="example\.\|localhost\|127\.0\.\|0\.0\.0\.0\|w3\.org\|schema\.org\|iana\.org\|rfc-editor\.org\|acme\.com\|shields\.io\|travis-ci\.\|codecov\.io\|badge\."
   while IFS= read -r domain; do
     [[ -n "$domain" ]] && EXT_DOMAINS+=("$domain")
-  done < <(grep -rh "https\?://[a-z0-9][a-z0-9.-]*\.[a-z]\{2,\}" . \
-    --include="*.ts" --include="*.js" --include="*.py" --include="*.go" --include="*.sh" \
-    --include="*.json" --include="*.yml" --include="*.yaml" 2>/dev/null \
+  done < <(find . -not -path "./.git/*" -not -path "*/gen/*" -not -path "*/generated/*" \
+    \( -name "*.ts" -o -name "*.js" -o -name "*.py" -o -name "*.go" -o -name "*.rs" \
+       -o -name "*.sh" -o -name "*.json" -o -name "*.yml" -o -name "*.yaml" \) 2>/dev/null \
+    | xargs grep -h "https\?://" 2>/dev/null \
     | grep -oP 'https?://\K[a-z0-9][a-z0-9.-]+\.[a-z]{2,}' \
-    | grep -v "example\.\|localhost\|127\.0\." \
+    | { grep -v "$DOMAIN_BLOCKLIST" || true; } \
     | sort -u | head -30 || true)
 fi
 
@@ -401,9 +445,13 @@ done
 # From GitHub Actions workflow secrets
 while IFS= read -r secret; do
   [[ -n "$secret" ]] || continue
-  [[ "$secret" =~ _KEY$ ]] && CRED_API_KEYS+=("$secret") || true
-  [[ "$secret" =~ _TOKEN$|GITHUB_TOKEN ]] && CRED_TOKENS+=("$secret") || true
-  CRED_OTHER+=("$secret")
+  if [[ "$secret" =~ _KEY$ ]]; then
+    CRED_API_KEYS+=("$secret")
+  elif [[ "$secret" =~ _TOKEN$|^GITHUB_TOKEN$ ]]; then
+    CRED_TOKENS+=("$secret")
+  else
+    CRED_OTHER+=("$secret")
+  fi
 done < <(find . -path "*/.github/workflows/*.yml" -o -path "*/.github/workflows/*.yaml" 2>/dev/null \
   | xargs grep -h "secrets\." 2>/dev/null \
   | grep -oP '(?<=secrets\.)[A-Z_]+' | sort -u || true)
@@ -550,16 +598,17 @@ KNOWN_TOOLS = {
     'terraform', 'vault', 'consul', 'vercel', 'netlify',
     'python3', 'python', 'pip3', 'pip', 'pipenv', 'poetry', 'uv',
     'node', 'npm', 'npx', 'yarn', 'pnpm', 'bun', 'deno',
-    'ruby', 'gem', 'bundle', 'go', 'cargo', 'rustc',
+    'ruby', 'gem', 'bundle', 'go', 'cargo', 'rustc', 'rustup',
     'java', 'mvn', 'gradle', 'kotlin', 'php', 'composer', 'dotnet',
-    'make', 'cmake', 'ninja', 'meson', 'bazel', 'just',
+    'make', 'cmake', 'ninja', 'meson', 'bazel', 'just', 'task',
+    'buf', 'protoc', 'grpc',
     'docker', 'podman', 'buildah', 'skopeo',
     'fzf', 'bat', 'rg', 'ripgrep', 'fd', 'delta', 'eza',
     'ag', 'pv', 'parallel',
     'openssl', 'gpg', 'gpg2', 'ssh-keygen', 'ssh-agent', 'ssh-add',
     'age', 'sops',
     'zip', 'unzip', '7z', 'gzip', 'bzip2', 'xz', 'zstd',
-    'psql', 'pg_dump', 'mysql', 'sqlite3', 'redis-cli',
+    'psql', 'pg_dump', 'mysql', 'sqlite3', 'redis-cli', 'valkey',
     'htop', 'btop', 'ncdu', 'strace',
     'vim', 'nano',
     'git', 'svn',
@@ -623,7 +672,7 @@ for wf in Path('.').rglob('*.yml'):
     except:
         pass
 
-for mf in ['Makefile', 'makefile', 'GNUmakefile', 'Taskfile.yml', 'justfile', 'Justfile']:
+for mf in ['Makefile', 'makefile', 'GNUmakefile', 'Taskfile.yml', 'Taskfile.yaml', 'justfile', 'Justfile']:
     p = Path(mf)
     if p.exists():
         try:
@@ -664,18 +713,51 @@ for p in sorted(py_imports_found):
     print('PYIMP:' + p)
 for t in sorted(ts_imports_found):
     print('TSIMP:' + t)
+
+# ---- GitHub Actions uses: toolchain steps ----
+# Map known action patterns to the tool they install
+USES_MAP = {
+    'dtolnay/rust-toolchain': 'rust',
+    'actions-rs/toolchain':   'rust',
+    'arduino/setup-protoc':   'protoc',
+    'bufbuild/buf-setup-action': 'buf',
+    'actions/setup-node':     'node',
+    'actions/setup-python':   'python3',
+    'actions/setup-go':       'go',
+    'actions/setup-java':     'java',
+    'ruby/setup-ruby':        'ruby',
+    'Swatinem/rust-cache':    'rust',
+    'PyO3/maturin-action':    'rust',
+}
+ci_tools = set()
+for wf in Path('.').rglob('*.yml'):
+    if '.git' in str(wf) or '.github' not in str(wf):
+        continue
+    try:
+        content = wf.read_text(errors='ignore')
+        for m in re.finditer(r'uses:\s*([^\s@]+)', content):
+            action = m.group(1)
+            for prefix, tool in USES_MAP.items():
+                if action.startswith(prefix):
+                    ci_tools.add(tool)
+    except:
+        pass
+for t in sorted(ci_tools):
+    print('CITOOL:' + t)
 PYEOF
 )
 
 INFERRED_TOOLS=()
 INFERRED_PY_IMPORTS=()
 INFERRED_TS_IMPORTS=()
+INFERRED_CI_TOOLS=()
 
 while IFS= read -r line; do
   case "$line" in
     TOOL:*)   INFERRED_TOOLS+=("${line#TOOL:}") ;;
     PYIMP:*)  INFERRED_PY_IMPORTS+=("${line#PYIMP:}") ;;
     TSIMP:*)  INFERRED_TS_IMPORTS+=("${line#TSIMP:}") ;;
+    CITOOL:*) INFERRED_CI_TOOLS+=("${line#CITOOL:}") ;;
   esac
 done <<< "$INFERRED_SOURCE"
 
@@ -704,8 +786,23 @@ echo "$DC_CAPABILITIES" | grep -qi "NET_ADMIN\|NET_RAW" && FIREWALL_REQUIRED="tr
 # Suggested stack settings
 # ============================================================================
 
+# Layer 1 variant (our GHCR image tags): latest | playwright_with_chromium
 SUGGESTED_BASE="latest"
 [[ ${#BROWSER_TOOLS[@]} -gt 0 ]] && SUGGESTED_BASE="playwright_with_chromium"
+
+# Ideal Dockerfile FROM when creating a dedicated stack for this project
+SUGGESTED_DOCKERFILE_FROM="${DOCKERFILE_BASE:-}"
+if [[ -z "$SUGGESTED_DOCKERFILE_FROM" ]]; then
+  if printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^rust$"; then
+    SUGGESTED_DOCKERFILE_FROM="rust:${RUST_VER:-latest}"
+  elif printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^go$"; then
+    SUGGESTED_DOCKERFILE_FROM="${GO_VER:+golang:${GO_VER}}"; SUGGESTED_DOCKERFILE_FROM="${SUGGESTED_DOCKERFILE_FROM:-golang:latest}"
+  elif printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^python$"; then
+    SUGGESTED_DOCKERFILE_FROM="${PYTHON_VER:+python:${PYTHON_VER}}"; SUGGESTED_DOCKERFILE_FROM="${SUGGESTED_DOCKERFILE_FROM:-python:latest}"
+  elif printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^node$"; then
+    SUGGESTED_DOCKERFILE_FROM="${NODE_VER:+node:${NODE_VER}}"; SUGGESTED_DOCKERFILE_FROM="${SUGGESTED_DOCKERFILE_FROM:-node:lts}"
+  fi
+fi
 
 # ============================================================================
 # Serialize to JSON + Markdown
@@ -737,6 +834,7 @@ EXTRA_BIN_JSON=$(_to_json_arr "${EXTRA_BINARIES[@]:-}")
 INFERRED_TOOLS_JSON=$(_to_json_arr "${INFERRED_TOOLS[@]:-}")
 INFERRED_PY_JSON=$(_to_json_arr "${INFERRED_PY_IMPORTS[@]:-}")
 INFERRED_TS_JSON=$(_to_json_arr "${INFERRED_TS_IMPORTS[@]:-}")
+INFERRED_CI_TOOLS_JSON=$(_to_json_arr "${INFERRED_CI_TOOLS[@]:-}")
 
 export AP_REPO="$REPO" AP_PROJECT="$PROJECT" AP_TODAY="$TODAY"
 export AP_PURPOSE="$PURPOSE" AP_REPO_LANG="$REPO_LANG"
@@ -762,6 +860,9 @@ export AP_BASE="$SUGGESTED_BASE"
 export AP_INFERRED_TOOLS="$INFERRED_TOOLS_JSON"
 export AP_INFERRED_PY="$INFERRED_PY_JSON"
 export AP_INFERRED_TS="$INFERRED_TS_JSON"
+export AP_INFERRED_CI_TOOLS="$INFERRED_CI_TOOLS_JSON"
+export AP_RUST_LIBS="$RUST_LIBS" AP_RUST_VER="$RUST_VER"
+export AP_SUGGESTED_DOCKERFILE_FROM="$SUGGESTED_DOCKERFILE_FROM"
 export AP_JSON_FILE="$JSON_FILE" AP_MD_FILE="$MD_FILE"
 
 python3 << 'PYEOF'
@@ -772,7 +873,7 @@ def s(key, fallback=""):     return os.environ.get(key, fallback)
 def b(key):                  return os.environ.get(key, "false") == "true"
 
 rv = {}
-for lang, vk in [("node", "AP_NODE_VER"), ("go", "AP_GO_VER"), ("python", "AP_PYTHON_VER")]:
+for lang, vk in [("node", "AP_NODE_VER"), ("go", "AP_GO_VER"), ("python", "AP_PYTHON_VER"), ("rust", "AP_RUST_VER")]:
     v = s(vk)
     if v: rv[lang] = v
 
@@ -792,6 +893,7 @@ data = {
         "node":   e("AP_NODE_LIBS"),
         "python": e("AP_PYTHON_LIBS"),
         "go":     e("AP_GO_LIBS"),
+        "rust":   e("AP_RUST_LIBS"),
     },
     "ports": {
         "inbound":  e("AP_INBOUND_PORTS"),
@@ -825,11 +927,13 @@ data = {
         "tools":      e("AP_INFERRED_TOOLS"),
         "py_imports": e("AP_INFERRED_PY"),
         "ts_imports": e("AP_INFERRED_TS"),
+        "ci_tools":   e("AP_INFERRED_CI_TOOLS"),
     },
     "suggested": {
-        "base_image":   s("AP_BASE"),
-        "ai_install":   "claude",
-        "plugin_layer": "",
+        "base_image":       s("AP_BASE"),
+        "dockerfile_from":  s("AP_SUGGESTED_DOCKERFILE_FROM"),
+        "ai_install":       "claude",
+        "plugin_layer":     "",
     }
 }
 
@@ -891,7 +995,7 @@ for lang, libs in data["libraries"].items():
     if libs:
         preview = libs[:12]
         more = f" ... ({len(libs)-12} more)" if len(libs) > 12 else ""
-        md += f"  - **{lang}**: {', '.join(preview)}{more}\n"
+        md += f"  - **{lang}**: {', '.join(str(x) for x in preview)}{more}\n"
 if not any(data["libraries"].values()):
     md += "  none detected\n"
 
@@ -929,12 +1033,14 @@ md += f"""
 ## Inferred from Source *(tools/commands found in repo files)*
 """
 inf = data['inferred']
-has_inferred = inf['tools_new'] or inf['py_imports'] or inf['ts_imports']
+has_inferred = inf['tools_new'] or inf['py_imports'] or inf['ts_imports'] or inf.get('ci_tools')
 if has_inferred:
     if inf['tools_new']:
         md += f"  - **Tools/binaries (not in Dockerfile)**: {fmt(inf['tools_new'])}\n"
     if inf['tools_confirmed']:
         md += f"  - **Confirmed by Dockerfile**: {fmt(inf['tools_confirmed'])}\n"
+    if inf.get('ci_tools'):
+        md += f"  - **CI toolchain (GitHub Actions)**: {fmt(inf['ci_tools'])}\n"
     if inf['py_imports']:
         md += f"  - **Python imports**: {fmt(inf['py_imports'])}\n"
     if inf['ts_imports']:
@@ -944,11 +1050,13 @@ elif inf['tools_confirmed']:
 else:
     md += "  none detected\n"
 
+dockerfile_from = data['suggested'].get('dockerfile_from') or ''
 md += f"""
 ## Suggested Stack
 | Setting | Value |
 |---|---|
-| Base image | `{data['suggested']['base_image']}` |
+| Base image (layer1 variant) | `{data['suggested']['base_image']}` |
+{f'| Dockerfile FROM | `{dockerfile_from}` |' if dockerfile_from else ''}
 | AI CLI | `{data['suggested']['ai_install']}` |
 | Plugin layer | {data['suggested']['plugin_layer'] or '(query dynamically at build time)'} |
 """

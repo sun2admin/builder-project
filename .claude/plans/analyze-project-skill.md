@@ -80,7 +80,8 @@ Runtime extras (supplement, not replace):
 - `deno.json / deno.lock` → deno
 - `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn
 
-Runtime versions: `package.json .engines.node`, `go.mod go X.Y` line
+Runtime versions: `package.json .engines.node`, `go.mod go X.Y` line,
+`Cargo.toml rust-version = "X.Y"` (scanned across all member crates)
 
 ### 3. Devcontainer (authoritative when present)
 File: `.devcontainer/devcontainer.json` (parsed as JSONC — strips `//` and `/* */` comments)
@@ -108,6 +109,12 @@ Per-Dockerfile Python parsing (join continuation lines first):
 - `package.json` → `.dependencies` + `.devDependencies` (cap at 60)
 - `requirements.txt` → lines stripped of version specifiers
 - `go.mod` → indented `require` lines
+- **`Cargo.toml` (all recursively)** → dependency names from `[dependencies]`,
+  `[dev-dependencies]`, `[build-dependencies]`, and table form
+  `[dependencies.name]` sections. Filters out TOML section keywords
+  (`workspace`, `package`, `lib`, `bin`, etc.) to avoid false positives.
+  Capped at 80 entries. Rust version (`rust-version = "X.Y"`) extracted here
+  and surfaced in `runtime_versions.rust`.
 
 ### 6. Ports
 - Dockerfile `EXPOSE` directives
@@ -119,14 +126,25 @@ Priority 1 (most authoritative): `init-firewall*.sh` / `firewall*.sh` / `setup-n
 — Extract quoted domain strings: `grep -oP '"[a-z0-9][a-z0-9.-]+\.[a-z]{2,}"'`
 
 Priority 2 (fallback when no firewall script): URL pattern scan across
-`*.ts *.js *.py *.go *.sh *.json *.yml *.yaml`
-— Extract hostname from `https?://` URLs, skip `localhost / example.com / 127.0.`
+`*.ts *.js *.py *.go *.rs *.sh *.json *.yml *.yaml` (excluding `gen/`, `generated/` dirs and `.svg` files).
+Domain blocklist removes known noise: `example.com`, `localhost`, `w3.org`,
+`schema.org`, `iana.org`, `rfc-editor.org`, `acme.com`, `shields.io`,
+`travis-ci.*`, `codecov.io`, `badge.*`.
+
+**URL noise sources discovered in testing:**
+- `w3.org` from SVG XML namespace declarations in generated SVG files
+- `acme.com` from generated Go ACME client code comments
+- Fix: exclude `gen/` and `generated/` directories, skip `.svg` files
 
 ### 8. Credentials & Auth
 Sources (all combined, deduped by type):
 - `.env.example / .env.sample / .env.template` — var names matching `_KEY$`, `_TOKEN$`, `_PAT$`
-- GitHub Actions workflow files — `secrets.<NAME>` references
+- GitHub Actions workflow files — `secrets.<NAME>` references (exclusive routing: `_KEY$` → api_keys, `_TOKEN$|GITHUB_TOKEN` → tokens, else → other)
 - Source code — `process.env.NAME` (TS/JS), `os.environ.get('NAME')` (Python), `os.Getenv("NAME")` (Go)
+
+**Credential dedup pitfall:** The workflow secrets loop must use exclusive
+`if/elif/else` routing — not additive conditionals — or the same secret appears
+in multiple categories (e.g., `CARGO_REGISTRY_TOKEN` in both tokens and other).
 
 SSH detection: keyword scan for `ssh / id_rsa / known_hosts / ssh-keygen / ssh-agent / SSH_AUTH_SOCK`
 in shell, TS, JS, Python, YAML files.
@@ -151,14 +169,38 @@ playwright, puppeteer, selenium, cypress
 
 ### 13. Source Code Inference
 Runs always. Critical fallback when no Dockerfile/manifest is present.
-Scans shell scripts (`.sh` + extensionless files with bash shebangs), GitHub
-Actions workflow `run:` blocks, and Makefiles / Taskfiles.
+Scans: shell scripts (`.sh` + extensionless files with bash shebangs), GitHub
+Actions workflow `run:` blocks, and `Makefile`, `makefile`, `GNUmakefile`,
+`Taskfile.yml`, `Taskfile.yaml`, `justfile`, `Justfile`.
 
-For each file, tests presence of ~80 known installable binaries (jq, gh, curl,
-kubectl, openssl, fzf, bun, docker, etc.) via `re.search(r'\b<tool>\b', content)`.
+**Note:** Both `Taskfile.yml` and `Taskfile.yaml` must be checked — different
+projects use different extensions.
 
-Also scans Python files for non-stdlib `import` statements, and TS/JS files
-for named module imports.
+For each file, tests presence of ~80 known installable binaries via
+`re.search(r'\b<tool>\b', content)`. KNOWN_TOOLS includes language-specific
+tools (`rustup`, `cargo`, `buf`, `protoc`, `grpc`, `task`, `valkey`) as well
+as common dev tooling.
+
+Also scans:
+- Python files for non-stdlib `import` statements → `inferred.py_imports`
+- TS/JS files (excluding `node_modules/`) for named module imports → `inferred.ts_imports`
+
+**GitHub Actions `uses:` step detection:**
+Maps known CI action prefixes to the tool they install. Added to
+`inferred.ci_tools` (separate from `tools` to preserve provenance):
+```
+dtolnay/rust-toolchain → rust
+actions-rs/toolchain   → rust
+arduino/setup-protoc   → protoc
+bufbuild/buf-setup-action → buf
+actions/setup-node     → node
+actions/setup-python   → python3
+actions/setup-go       → go
+actions/setup-java     → java
+ruby/setup-ruby        → ruby
+Swatinem/rust-cache    → rust
+PyO3/maturin-action    → rust
+```
 
 **Dedup logic:**
 - `inferred.tools_new` = inferred tools NOT in `system_packages` (net-new gaps)
@@ -171,7 +213,10 @@ Set `firewall_required: true` if:
 - `devcontainer.json` `runArgs` includes `NET_ADMIN` or `NET_RAW`
 
 ### 15. Suggested Stack
-- `base_image`: `playwright_with_chromium` if browser tools detected, else `latest`
+- `base_image`: layer1 variant tag — `playwright_with_chromium` if browser tools detected, else `latest`
+- `dockerfile_from`: ideal `FROM` for a dedicated Dockerfile — derived from existing `dockerfile_base`
+  if present, otherwise inferred from language + `runtime_versions`:
+  `rust:1.88`, `golang:1.21`, `python:3.12`, `node:lts`
 - `ai_install`: always `claude` (default; could be parameterized)
 - `plugin_layer`: empty — resolved at build-workspace runtime by querying GHCR
 
@@ -185,60 +230,60 @@ Set `firewall_required: true` if:
   "project":          "repo",
   "analyzed_at":      "YYYY-MM-DD",
   "purpose":          "...",
-  "primary_language": "TypeScript",
-  "languages":        ["node", "shell"],
-  "runtime_extras":   ["bun"],
-  "runtime_versions": {"node": ">=18"},
-  "dockerfile_base":  "node:20",
-  "system_packages":  ["git", "jq", "zsh", ...],
-  "extra_binaries":   ["git-delta_0.18.2_amd64.deb"],
+  "primary_language": "Rust",
+  "languages":        ["rust", "shell"],
+  "runtime_extras":   [],
+  "runtime_versions": {"rust": "1.88"},
+  "dockerfile_base":  "",
+  "system_packages":  [],
+  "extra_binaries":   [],
   "libraries": {
-    "node":   ["@anthropic-ai/sdk", ...],
+    "node":   [],
     "python": [],
-    "go":     []
+    "go":     [],
+    "rust":   ["axum", "tokio", "serde", ...]
   },
   "ports": {
-    "inbound": [8888]
+    "inbound": []
   },
   "external_services": {
-    "domains": ["api.anthropic.com", "registry.npmjs.org"],
-    "source":  "init-firewall.sh"
+    "domains": ["demo.connectrpc.com", "github.com"],
+    "source":  "source_scan"
   },
-  "env_vars": ["ANTHROPIC_API_KEY", "NODE_OPTIONS", ...],
+  "env_vars": [],
   "browser_tools": [],
   "github_api_usage": false,
-  "firewall_required": true,
+  "firewall_required": false,
   "container": {
-    "capabilities": ["NET_ADMIN", "NET_RAW"],
-    "volumes": [
-      {"name": "claude-code-config-${devcontainerId}", "target": "/home/claude/.claude", "type": "volume"},
-      {"name": "${localEnv:HOME}/Downloads/ClaudeFiles/Config/gh_pat", "target": "/run/credentials/gh_pat", "type": "bind"}
-    ],
-    "env": {"NODE_OPTIONS": "--max-old-space-size=4096"},
-    "remote_user": "claude",
-    "post_start": "sudo /usr/local/bin/init-firewall.sh && ...",
+    "capabilities": [],
+    "volumes": [],
+    "env": {},
+    "remote_user": "",
+    "post_start": "",
     "post_create": "",
-    "extensions": ["anthropic.claude-code", "dbaeumer.vscode-eslint"]
+    "extensions": []
   },
   "credentials_required": {
-    "api_keys": ["ANTHROPIC_API_KEY"],
-    "tokens":   ["GITHUB_TOKEN"],
-    "ssh":      true,
-    "other":    ["STATSIG_API_KEY"]
+    "api_keys": [],
+    "tokens":   ["CARGO_REGISTRY_TOKEN", "GITHUB_TOKEN"],
+    "ssh":      false,
+    "other":    []
   },
   "mcp_servers":    [],
-  "claude_plugins": ["hookify", "ralph-loop", ...],
+  "claude_plugins": [],
   "inferred": {
-    "tools":           ["curl", "gh", "git", "jq", ...],
-    "tools_new":       ["curl", "go", "gradle"],
-    "tools_confirmed": ["gh", "git", "jq"],
+    "tools":           ["buf", "cargo", "curl", "docker", "gh", ...],
+    "tools_new":       ["buf", "cargo", "curl", "docker", "gh", ...],
+    "tools_confirmed": [],
     "py_imports":      [],
-    "ts_imports":      []
+    "ts_imports":      [],
+    "ci_tools":        ["rust", "protoc", "buf"]
   },
   "suggested": {
-    "base_image":   "latest",
-    "ai_install":   "claude",
-    "plugin_layer": ""
+    "base_image":      "latest",
+    "dockerfile_from": "rust:1.88",
+    "ai_install":      "claude",
+    "plugin_layer":    ""
   }
 }
 ```
@@ -284,7 +329,7 @@ but are currently missed unless they appear in `package.json` or `requirements.t
 - `pip install <pkg>` one-liners
 - `go install <pkg>@<version>`
 
-### Gap 5: Inferred tool list noise
+### Gap 5: Inferred tool list noise from comments/prose
 Some tools in `KNOWN_TOOLS` appear in comments or README text, not actual
 invocations — e.g., a repo that mentions `gradle` in a comparison table.
 Current implementation does `re.search(r'\bgradle\b', content)` which matches
@@ -294,7 +339,7 @@ anywhere including prose.
 (strip `#`-prefixed lines before scanning). For prose files like README.md,
 exclude from tool scanning entirely.
 
-### Gap 6: No Dockerfile + no shell scripts
+### Gap 6: No Dockerfile + no shell scripts (pure Python repos)
 Pure Python repo with only `.py` files and `requirements.txt`. Currently
 `system_packages` will be empty and `inferred.tools` will also be empty.
 The `py_imports` will be populated.
@@ -303,17 +348,7 @@ The `py_imports` will be populated.
 third-party imports to their system prerequisites — e.g., `cv2` → `libopencv`,
 `psycopg2` → `libpq-dev`, `Pillow` → `libjpeg-dev`. Small curated lookup table.
 
-### Gap 7: Suggested base image uses only one signal
-Only browser tools trigger a non-`latest` suggestion. Should also consider:
-- Primary language (Python → python:3.x, Go → golang:X.Y)
-- Dockerfile base (if detected, use it directly as a suggestion)
-- Runtime version constraints
-
-**Fix:** Expand `suggested.base_image` logic to use `dockerfile_base` as
-the strongest signal, fall back to language+version, then `playwright_*` for
-browser tools.
-
-### Gap 8: TS/JS import dedup vs package.json
+### Gap 7: TS/JS import dedup vs package.json
 `inferred.ts_imports` will list packages like `@anthropic-ai/sdk` that are
 already in `libraries.node`. Same dedup logic as tools vs system_packages
 should apply here.
@@ -330,6 +365,7 @@ When `analyze-project` feeds `build-workspace`, the consumer mapping is:
 | analysis.json field | build-workspace layer | Usage |
 |---|---|---|
 | `suggested.base_image` | Layer 1 | Pre-select base image variant |
+| `suggested.dockerfile_from` | Layer 1 | Suggested FROM for custom Dockerfile |
 | `suggested.ai_install` | Layer 2 | Pre-select claude vs gemini |
 | `suggested.plugin_layer` | Layer 3 | Pre-select plugin layer (if known) |
 | `system_packages` + `inferred.tools_new` | Layer 1 Dockerfile | apt-get packages to add |
@@ -343,6 +379,8 @@ When `analyze-project` feeds `build-workspace`, the consumer mapping is:
 | `mcp_servers` | Layer 4 `.mcp.json` | MCP server config |
 | `firewall_required` | Layer 4 devcontainer.json | Include `--cap-add NET_ADMIN/NET_RAW` |
 | `ports.inbound` | Layer 4 devcontainer.json `forwardPorts` | Port forwarding |
+| `libraries.rust` | Layer 1 Dockerfile (rustup/cargo) | Rust crate deps for build cache |
+| `inferred.ci_tools` | Layer 1 Dockerfile | Additional tools revealed by CI config |
 
 ---
 
@@ -355,6 +393,7 @@ Test against repos representing diverse profiles:
 | `anthropics/claude-code` | Node/bun, Dockerfile, firewall, plugins | System pkgs, domains, caps, plugins |
 | `sun2admin/build-containers-with-claude` | Shell-only, no Dockerfile, credential mounts | Inference, SSH, volumes |
 | `sun2admin/builder-project` | Multi-layer, mixed shell+YAML | Cross-file inference |
+| `anthropics/connect-rust` | Rust, Cargo workspace, Taskfile, no Dockerfile | Rust libs, CI tools, suggested FROM |
 | A pure Python repo | No Dockerfile, no shell scripts | py_imports, no Dockerfile fallback |
 | A Go service with docker-compose | Go, ports, DB clients | ports, go libs, DB detection |
 | A frontend React app | TS, npm, no container | TS inference, node libs |
@@ -385,3 +424,9 @@ Results saved to `builds/<project>/analysis.json` inside the builder-project rep
 This means analysis results are version-controlled and can be compared across runs.
 The `builds/` dir is gitignored for generated artifacts but `analysis.json` and
 `analysis.md` are committed intentionally.
+
+### Cargo.toml workspace pattern
+Rust projects often have a root workspace `Cargo.toml` plus per-crate `Cargo.toml`
+files in subdirectories. Always use `Path('.').rglob('Cargo.toml')` to scan all of
+them. The `TOML_SECTIONS` set filters keyword section names that look like
+dependency names in naive regex (`workspace`, `package`, `lib`, etc.).
