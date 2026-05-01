@@ -1,139 +1,62 @@
 ---
 name: build-workspace
-description: Scaffold a new Claude or Gemini workspace with all dependencies configured
+description: Scaffold a new Claude or Gemini workspace with all dependencies configured. Use this skill when the user wants to create, clone, or modify a workspace build — selecting a base image, AI CLI, plugin layer, and project repo. Invoke for any request involving building or setting up a development workspace.
 shortcut: bw
 usage: |
   /build-workspace [--dry-run]
-  
-  Interactively scaffold a new workspace with base image, AI install-layer,
-  plugin layer, and optional GitHub project repo.
-  
+
+  Lists saved builds in builds/, lets user pick existing (clone/modify) or create new.
+  Walks through each layer, saves workspace.env, launches Claude.
+
   Options:
     --dry-run    Test the menu flow without executing commands or making changes
 ---
 
 # /build-workspace
 
-Build a new Claude or Gemini development workspace from scratch.
+Master orchestrator for building a new Claude or Gemini development workspace.
 
-## Workflow Overview
+## Entry Flow (Option A — list first)
 
-1. **Select base image** — System packages and tools variant
-2. **Select AI install-layer** — Claude or Gemini CLI
-3. **Select plugins layer** — Pre-baked plugins (with option to view details)
-4. **Discover projects** — Search GitHub for `<ai>-prj` tagged repos
-5. **Validate and clone** — Verify GHCR image exists, clone repo if selected
-6. **Initialize and start** — Seed memory, create sync skill, start Claude
+1. Lists saved builds from `builds/` in the repo
+2. User selects an existing build to **clone** or **modify**, or starts **new**
+3. Walks through the layer wizard, pre-populated from the selected build
+4. Saves final config to `builds/<name>/workspace.env`
+5. Launches Claude in the workspace directory
 
-## Step 0: Base Image Selection
+## Layer Skills
 
-Choose the base-ai-layer variant:
+Each layer is handled by a dedicated skill script:
 
-- **light** — Minimal (Python, git, curl)
-- **latest** — Default (light + dev tools + graphics)
-- **playwright_with_chromium** — latest + Playwright Chromium
-- **playwright_with_firefox** — latest + Playwright Firefox
-- **playwright_with_webkit** — latest + Playwright WebKit
-- **playwright_with_all** — latest + all Playwright browsers
+| Layer | Script | Selects |
+|---|---|---|
+| Layer 1 | `build-layer1/build-layer1.sh` | Base image variant |
+| Layer 2 | `build-layer2/build-layer2.sh` | AI CLI (claude/gemini) |
+| Layer 3 | `build-layer3/build-layer3.sh` | Plugin layer (discovered from GitHub) |
+| Layer 4 | `build-layer4/build-layer4.sh` | Project repo (clone + workspace init) |
 
-## Step 1: AI Install-Layer Selection
+Back navigation (`b`) at any layer re-runs the previous layer.
 
-Choose the AI CLI to bake into the image:
+## Saved Build Format
 
-- **claude** — Claude Code CLI + base plugins
-- **gemini** — Gemini Code CLI + base plugins (future)
+```
+builds/<name>/workspace.env
+```
 
-## Step 1a: Plugins Layer Selection
+```bash
+BASE_IMAGE=latest
+AI_INSTALL=claude
+PLUGIN_LAYER=claude-plugins-3f889e47
+PROJECT_SELECTED=sun2admin/builder-project
+WORKSPACE_DIR=/workspace/claude/builder-project
+CREATED=2026-04-30
+LAST_MODIFIED=2026-04-30
+```
 
-Dynamically discovers available plugin layers:
+## Shared Library
 
-**For Claude:**
-- Shows all repos matching `claude-plugins-*` with `anthropic-plugins` topic
-- Displays name, description, and included plugins
-- Option to view plugin details before selecting
-- Example: `claude-plugins-a7f3d2e8` (build-repo-plugins)
-
-**For Gemini:**
-- Placeholder: "Gemini plugins coming soon"
-- Uses empty plugin layer for now
-
-## Step 2: GitHub Project Discovery
-
-Searches for repositories tagged with `<ai>-prj`:
-
-- `claude-prj` for Claude projects
-- `gemini-prj` for Gemini projects (future)
-- Displays repo name, description, last updated
-- Allows selection or "None"
-
-## Step 3: Validation and Cloning
-
-For each candidate repo:
-
-1. **Validate GHCR image** — Check if built image exists
-2. **If image missing** — Ask user if they want to build it
-3. **If yes** — Trigger build (or link to build instructions)
-4. **If no** — Skip that option
-5. **Clone repo** — Full clone to `/workspace/<ai>/<project>/`
-
-## Step 4: Memory Initialization and Setup
-
-If project selected:
-
-1. **Run init-workspace.sh** (before setting cwd)
-   - Discovers all `.claude/` dirs under `/workspace/<ai>/`
-   - Validates `.git` exists in each project
-   - Seeds memory to `~/.claude/projects/<canonical-path>/memory/`
-
-2. **Create sync skill**
-   - Creates `/workspace/<ai>/<project>/.claude/commands/sync-workspace-repo/SKILL.md`
-   - Syncs memory back to git on demand
-   - Auto-commits and pushes
-
-3. **Start Claude**
-   - Sets cwd to `/workspace/<ai>/<project>/`
-   - Executes: `claude --dangerously-skip-permissions`
-
-## Step 5: If No Project Selected
-
-- Skip sync skill creation
-- Set cwd to `/workspace`
-- Execute: `claude --dangerously-skip-permissions`
-
-## Key Features
-
-### Dynamic Discovery
-- Base images: Fetched from base-ai-layer repo tags
-- AI install-layers: Fetched from ai-install-layer repo tags
-- Plugin layers: Fetched from repos with `anthropic-plugins` topic
-- Project repos: Searched via GitHub API with `<ai>-prj` tag
-
-### Validation
-- GHCR image existence verified before offering
-- Project structure validated (requires `.claude/` directory)
-- Git repository required (`.git` must exist)
-
-### Memory Persistence
-- Committed memory seeded from git on startup
-- init-workspace.sh uses `cp -n` to preserve live changes
-- sync-workspace-repo skill auto-commits updates back to git
-
-### Configuration
-- Base image determines system capabilities
-- AI install-layer determines CLI and base plugins
-- Plugin layer determines pre-baked plugins
-- Project selection determines workspace content and context
-
-## Error Handling
-
-- Missing GHCR images: Offer to build or skip
-- Clone failures: Full error message and exit
-- Invalid project structure: Full error message and exit
-- Missing .git: Full error message and exit
-
-## Notes
-
-- All discovery (images, install-layers, plugins, projects) happens dynamically per invocation
-- Memory seeding works across restarts and container rebuilds
-- Multiple projects can coexist under `/workspace/<ai>/` with separate memory namespaces
-- Each project has separate sync skill for independent memory management
+`lib.sh` is sourced by all layer scripts and provides:
+- Color codes (RED GREEN BLUE YELLOW CYAN NC)
+- `run_cmd()` — dry-run wrapper
+- `read_input()` — TTY/piped input handling
+- `input_selection()` — menu validation, sets `$SELECTION`, returns 0/1/2

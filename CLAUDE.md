@@ -23,6 +23,7 @@ Each layer has its own subdir with a `CLAUDE.md` containing layer-specific detai
 - **GHCR**: all images must always be private
 - **Credentials**: write to `~/.profile` (chmod 600), never `/etc/environment`; use `bash --login` in `postAttachCommand`
 - **Container user**: `claude` (bash shell)
+- **Skill creation**: always use the `/skill-creator` plugin when creating or modifying skills
 
 ## Working Across Layers
 
