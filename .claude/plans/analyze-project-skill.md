@@ -36,6 +36,23 @@ inside `{ grep ... || true; }` in any pipeline that feeds into Python JSON
 serialization. Without this, Python prints valid JSON, then `|| echo "[]"` 
 appends another `[]`, producing `[]\n[]` which fails `json.loads()`.
 
+### Conditional Markdown table rows must use list-join, not f-string interpolation
+Embedding a conditional row inside an f-string triple-quote block:
+```python
+f"""| row1 |
+{f'| optional |' if condition else ''}
+| row2 |"""
+```
+produces an empty line between rows when the condition is false, breaking the
+table into two separate tables in all Markdown renderers. Always build table rows
+as a list and `"\n".join()` them:
+```python
+rows = ["| row1 |"]
+if condition: rows.append("| optional |")
+rows.append("| row2 |")
+md += "| Header |\n|---|\n" + "\n".join(rows)
+```
+
 ### Python for structured file parsing; bash for orchestration
 - Bash: clone, file discovery, loop iteration, env var setup
 - Python: JSON generation, JSONC parsing, Dockerfile parsing, regex extraction
@@ -92,9 +109,18 @@ Detected by file presence at repo root:
 - `*.sh` files → shell
 
 Runtime extras (supplement, not replace):
-- `bun.lockb / bun.lock` or `#!/usr/bin/env bun` shebang → bun
+- `bun.lockb / bun.lock` or `#!/usr/bin/env bun` shebang → bun (also implies `node` in languages)
 - `deno.json / deno.lock` → deno
 - `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn
+
+**File-scan fallback**: If GitHub API `primary_language` names a language not
+caught by root manifests (e.g. a GitHub Action repo with Python in subdirs, or
+a TS project with no `package.json`), scan for >2 language-specific files:
+- Python → `*.py` count >2
+- TypeScript/JavaScript → `*.ts`/`*.js` count >2 (excluding `node_modules/`)
+- Go → `*.go` count >2
+
+This handles repos like GitHub Actions where code lives in subdirs with no root manifest.
 
 Runtime versions (in priority order):
 - Node: `package.json .engines.node`, then `.nvmrc`, then `.node-version` (strip leading `v`)
@@ -228,7 +254,13 @@ as common dev tooling.
 
 Also scans:
 - Python files for non-stdlib `import` statements → `inferred.py_imports`
+  (filtered against `STDLIB_PY` — ~60 built-in module names)
 - TS/JS files (excluding `node_modules/`) for named module imports → `inferred.ts_imports`
+  (filtered against `STDLIB_TS` — Node.js built-ins: `fs`, `path`, `os`, `child_process`,
+  `crypto`, `http`, `https`, `url`, `util`, `events`, `stream`, `buffer`, etc.)
+
+Without `STDLIB_TS`, repos that import `fs` or `child_process` would surface those
+as external packages, giving a false impression of external dependencies.
 
 **GitHub Actions `uses:` step detection:**
 Maps known CI action prefixes to the tool they install. Added to
@@ -441,6 +473,7 @@ Test against repos representing diverse profiles:
 | `anthropics/connect-rust` | Rust, Cargo workspace, Taskfile, no Dockerfile | Rust libs, CI tools, suggested FROM |
 | `santifer/career-ops` | Node, Playwright, .env.example, data-file URLs | HTML purpose, cred dedup, domain blocklist, nvmrc |
 | `danielrosehill/claude-code-projects-index` | Astro static site, package-lock.json noise | node_modules exclusion, lock file exclusion, SSH false positive fix |
+| `anthropics/claude-code-security-review` | GitHub Action, Python+bun, no root manifests | TS stdlib filter, language file-scan fallback, Markdown table fix |
 | A pure Python repo | No Dockerfile, no shell scripts | py_imports, no Dockerfile fallback |
 | A Go service with docker-compose | Go, ports, DB clients | ports, go libs, DB detection |
 | A frontend React app | TS, npm, no container | TS inference, node libs |

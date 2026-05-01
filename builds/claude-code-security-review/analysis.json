@@ -1,0 +1,76 @@
+{
+  "repo": "anthropics/claude-code-security-review",
+  "project": "claude-code-security-review",
+  "analyzed_at": "2026-05-01",
+  "purpose": "An AI-powered security review GitHub Action using Claude to analyze code changes for security vulnerabilities. This action provides intelligent, context-aware security analysis for pull requests using Anthropic's Claude Code tool for deep semantic security analysis. See our blog post here for more d",
+  "primary_language": "Python",
+  "languages": [
+    "node",
+    "python"
+  ],
+  "runtime_extras": [
+    "bun"
+  ],
+  "runtime_versions": {},
+  "dockerfile_base": "",
+  "system_packages": [],
+  "extra_binaries": [],
+  "libraries": {
+    "node": [],
+    "python": [],
+    "go": [],
+    "rust": []
+  },
+  "ports": {
+    "inbound": []
+  },
+  "external_services": {
+    "domains": [],
+    "source": "source_scan"
+  },
+  "env_vars": [],
+  "browser_tools": [],
+  "github_api_usage": true,
+  "firewall_required": false,
+  "container": {
+    "capabilities": [],
+    "volumes": [],
+    "env": {},
+    "remote_user": "",
+    "post_start": "",
+    "post_create": "",
+    "extensions": []
+  },
+  "credentials_required": {
+    "api_keys": [
+      "ANTHROPIC_API_KEY",
+      "CLAUDE_API_KEY"
+    ],
+    "tokens": [
+      "GITHUB_TOKEN"
+    ],
+    "ssh": false,
+    "other": []
+  },
+  "mcp_servers": [],
+  "claude_plugins": [],
+  "inferred": {
+    "tools": [],
+    "py_imports": [
+      "anthropic",
+      "claudecode",
+      "pytest",
+      "requests"
+    ],
+    "ts_imports": [],
+    "ci_tools": [],
+    "tools_new": [],
+    "tools_confirmed": []
+  },
+  "suggested": {
+    "base_image": "latest",
+    "dockerfile_from": "python:latest",
+    "ai_install": "claude",
+    "plugin_layer": ""
+  }
+}

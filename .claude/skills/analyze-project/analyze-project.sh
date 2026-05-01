@@ -118,6 +118,32 @@ fi
 [[ -f "yarn.lock" ]] && RUNTIME_EXTRAS+=("yarn")
 RUNTIME_EXTRAS=($(printf '%s\n' "${RUNTIME_EXTRAS[@]:-}" | sort -u))
 
+# bun implies node even without package.json
+if printf '%s\n' "${RUNTIME_EXTRAS[@]:-}" | grep -q "^bun$"; then
+  printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^node$" || LANGUAGES+=("node")
+fi
+
+# Fallback: use GitHub API primary_language + file count to catch repos with
+# no root manifest (e.g. GitHub Actions with inline Python, scattered TS files)
+_LANG_LOWER="${REPO_LANG,,}"
+case "$_LANG_LOWER" in
+  python)
+    if ! printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^python$"; then
+      _pycount=$(find . -name "*.py" -not -path "./.git/*" -not -path "*/node_modules/*" 2>/dev/null | wc -l)
+      [[ "$_pycount" -gt 2 ]] && LANGUAGES+=("python")
+    fi ;;
+  typescript|javascript)
+    if ! printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^node$"; then
+      _tscount=$(find . \( -name "*.ts" -o -name "*.js" \) -not -path "./.git/*" -not -path "*/node_modules/*" 2>/dev/null | wc -l)
+      [[ "$_tscount" -gt 2 ]] && LANGUAGES+=("node")
+    fi ;;
+  go)
+    if ! printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^go$"; then
+      _gocount=$(find . -name "*.go" -not -path "./.git/*" 2>/dev/null | wc -l)
+      [[ "$_gocount" -gt 2 ]] && LANGUAGES+=("go")
+    fi ;;
+esac
+
 # Runtime versions (best-effort)
 NODE_VER=""
 GO_VER=""
@@ -718,6 +744,14 @@ for py in Path('.').rglob('*.py'):
     except:
         pass
 
+STDLIB_TS = {
+    'fs', 'path', 'os', 'child_process', 'crypto', 'http', 'https', 'url',
+    'util', 'events', 'stream', 'buffer', 'readline', 'net', 'tls', 'dns',
+    'assert', 'process', 'cluster', 'worker_threads', 'perf_hooks', 'inspector',
+    'module', 'v8', 'vm', 'zlib', 'querystring', 'string_decoder', 'timers',
+    'domain', 'punycode', 'console', 'constants', 'dgram', 'sys',
+}
+
 for tsf in list(Path('.').rglob('*.ts')) + list(Path('.').rglob('*.js')):
     if '.git' in str(tsf) or 'node_modules' in str(tsf):
         continue
@@ -725,7 +759,7 @@ for tsf in list(Path('.').rglob('*.ts')) + list(Path('.').rglob('*.js')):
         content = tsf.read_text(errors='ignore')
         for m in re.finditer(r'''(?:import|require)\s*(?:\(['"]|from\s+['"])([@a-zA-Z][^'"]+)['"]''', content):
             pkg = m.group(1).split('/')[0]
-            if pkg and not pkg.startswith('.'):
+            if pkg and not pkg.startswith('.') and pkg not in STDLIB_TS:
                 ts_imports_found.add(pkg)
     except:
         pass
@@ -1075,15 +1109,16 @@ else:
     md += "  none detected\n"
 
 dockerfile_from = data['suggested'].get('dockerfile_from') or ''
-md += f"""
-## Suggested Stack
-| Setting | Value |
-|---|---|
-| Base image (layer1 variant) | `{data['suggested']['base_image']}` |
-{f'| Dockerfile FROM | `{dockerfile_from}` |' if dockerfile_from else ''}
-| AI CLI | `{data['suggested']['ai_install']}` |
-| Plugin layer | {data['suggested']['plugin_layer'] or '(query dynamically at build time)'} |
-"""
+stack_rows = [
+    f"| Base image (layer1 variant) | `{data['suggested']['base_image']}` |",
+]
+if dockerfile_from:
+    stack_rows.append(f"| Dockerfile FROM | `{dockerfile_from}` |")
+stack_rows += [
+    f"| AI CLI | `{data['suggested']['ai_install']}` |",
+    f"| Plugin layer | {data['suggested']['plugin_layer'] or '(query dynamically at build time)'} |",
+]
+md += "\n## Suggested Stack\n| Setting | Value |\n|---|---|\n" + "\n".join(stack_rows) + "\n"
 
 with open(os.environ["AP_MD_FILE"], "w") as f:
     f.write(md)
