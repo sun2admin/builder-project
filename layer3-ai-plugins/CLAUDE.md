@@ -40,6 +40,12 @@ Use the `/new-plugin-layer` skill (`.claude/skills/new-plugin-layer/`) to create
 
 Plugin definitions are tracked in `standards.json` (built images) and `plugin-lists.json` (plugin selections).
 
+## Plugin Usage Policy
+
+- Always check available plugins (MCP servers, skills, and agents) first.
+- Utilize relevant plugins, tools, or slash commands to solve tasks instead of attempting to solve them with built-in Bash/Write tools, whenever a plugin is available.
+- Prioritize using `/plugin-name:skill` over manual implementation.
+
 ## Key Constraints
 
 - All GHCR images must be private
