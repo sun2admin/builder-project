@@ -1,0 +1,113 @@
+{
+  "repo": "santifer/career-ops",
+  "project": "career-ops",
+  "analyzed_at": "2026-05-01",
+  "purpose": "Companies use AI to filter candidates. I just gave candidates AI to choose companies.",
+  "primary_language": "JavaScript",
+  "languages": [
+    "node",
+    "shell"
+  ],
+  "runtime_extras": [],
+  "runtime_versions": {},
+  "dockerfile_base": "",
+  "system_packages": [],
+  "extra_binaries": [],
+  "libraries": {
+    "node": [
+      "@google/generative-ai",
+      "dotenv",
+      "js-yaml",
+      "playwright"
+    ],
+    "python": [],
+    "go": [],
+    "rust": []
+  },
+  "ports": {
+    "inbound": []
+  },
+  "external_services": {
+    "domains": [
+      "apply.workable.com",
+      "boards-api.greenhouse.io",
+      "careers.cognigy.com",
+      "careers.mastercard.com",
+      "careers.salesforce.com",
+      "janesmith.dev",
+      "job-boards.eu.greenhouse.io",
+      "job-boards.greenhouse.io",
+      "jobs.ashbyhq.com",
+      "jobs.lever.co",
+      "langfuse.com",
+      "liveperson.com",
+      "mastercard.wd1.myworkdayjobs.com",
+      "openai.com",
+      "retool.com",
+      "santifer.io",
+      "www.canva.com",
+      "www.dialpad.com",
+      "www.genesys.com",
+      "www.getmaxim.ai",
+      "www.getzep.com",
+      "www.gong.io",
+      "www.make.com",
+      "www.talkdesk.com",
+      "www.twilio.com"
+    ],
+    "source": "source_scan"
+  },
+  "env_vars": [
+    "GEMINI_API_KEY"
+  ],
+  "browser_tools": [
+    "playwright"
+  ],
+  "github_api_usage": false,
+  "firewall_required": false,
+  "container": {
+    "capabilities": [],
+    "volumes": [],
+    "env": {},
+    "remote_user": "",
+    "post_start": "",
+    "post_create": "",
+    "extensions": []
+  },
+  "credentials_required": {
+    "api_keys": [
+      "GEMINI_API_KEY"
+    ],
+    "tokens": [
+      "GITHUB_TOKEN"
+    ],
+    "ssh": false,
+    "other": []
+  },
+  "mcp_servers": [],
+  "claude_plugins": [
+    "career-ops"
+  ],
+  "inferred": {
+    "tools": [
+      "just",
+      "node",
+      "parallel"
+    ],
+    "py_imports": [],
+    "ts_imports": [],
+    "ci_tools": [],
+    "tools_new": [
+      "just",
+      "node",
+      "parallel"
+    ],
+    "tools_confirmed": []
+  },
+  "suggested": {
+    "base_image": "playwright_with_chromium",
+    "dockerfile_from": "node:lts",
+    "ai_install": "claude",
+    "plugin_layer": ""
+  }
+}

@@ -64,9 +64,14 @@ start point and has no fixed-length restriction:
 ### 1. Project Identity
 | Signal | Source | Notes |
 |---|---|---|
-| Purpose | README.md first paragraph | Strip badges, HTML, headings; take first real paragraph ≥30 chars |
+| Purpose | README.md first paragraph | Strip badges, HTML tags, headings, markdown links; take first real paragraph ≥30 chars |
 | Purpose fallback | `gh api repos/<owner>/<repo>` `.description` | Used when README has no parseable text |
 | Primary language | GitHub API `.language` | Authoritative; language files are unreliable |
+
+**README HTML pitfall:** Modern READMEs use inline HTML (`<strong>`, `<em>`, `<br>`) inside
+paragraph text. Strip with `re.sub(r'<[^>]+>', '', line)` AFTER stripping markdown syntax.
+Lines starting with `<` are skipped as block-level HTML, but inline tags within text lines
+must be stripped explicitly.
 
 ### 2. Languages & Runtimes
 Detected by file presence at repo root:
@@ -80,8 +85,11 @@ Runtime extras (supplement, not replace):
 - `deno.json / deno.lock` → deno
 - `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn
 
-Runtime versions: `package.json .engines.node`, `go.mod go X.Y` line,
-`Cargo.toml rust-version = "X.Y"` (scanned across all member crates)
+Runtime versions (in priority order):
+- Node: `package.json .engines.node`, then `.nvmrc`, then `.node-version` (strip leading `v`)
+- Go: `go.mod go X.Y` line
+- Python: `pyproject.toml requires-python`, or Dockerfile `FROM python:X.Y`
+- Rust: `Cargo.toml rust-version = "X.Y"` (scanned across all member crates)
 
 ### 3. Devcontainer (authoritative when present)
 File: `.devcontainer/devcontainer.json` (parsed as JSONC — strips `//` and `/* */` comments)
@@ -127,24 +135,39 @@ Priority 1 (most authoritative): `init-firewall*.sh` / `firewall*.sh` / `setup-n
 
 Priority 2 (fallback when no firewall script): URL pattern scan across
 `*.ts *.js *.py *.go *.rs *.sh *.json *.yml *.yaml` (excluding `gen/`, `generated/` dirs and `.svg` files).
-Domain blocklist removes known noise: `example.com`, `localhost`, `w3.org`,
-`schema.org`, `iana.org`, `rfc-editor.org`, `acme.com`, `shields.io`,
-`travis-ci.*`, `codecov.io`, `badge.*`.
 
-**URL noise sources discovered in testing:**
-- `w3.org` from SVG XML namespace declarations in generated SVG files
-- `acme.com` from generated Go ACME client code comments
-- Fix: exclude `gen/` and `generated/` directories, skip `.svg` files
+Domain blocklist — removes known non-runtime domains:
+- Spec/schema noise: `w3.org`, `schema.org`, `iana.org`, `rfc-editor.org`
+- Example/placeholder: `example.com`, `acme.com`, `localhost`, `127.0.*`, `0.0.0.0`
+- CI/badge services: `shields.io`, `travis-ci.*`, `codecov.io`, `badge.*`
+- Community/social: `discord.gg`, `discord.com`
+- Code hosting (links, not APIs): `github.com`, `raw.githubusercontent.com`
+- Documentation sites: `docs.*`, `readthedocs.*`
+- Package registries (install-time, not runtime): `npmjs.com`, `pypi.org`, `crates.io`, `pkg.go.dev`, `rubygems.org`
+
+**URL noise patterns discovered in testing:**
+- `w3.org` from SVG XML namespace declarations in generated SVG files → exclude `gen/`, `generated/` dirs, skip `.svg` files
+- `acme.com` from generated Go ACME client code comments → exclude `gen/` dirs
+- `discord.gg`, `docs.renovatebot.com`, `raw.githubusercontent.com` from README/config links → added to blocklist
+- `janesmith.dev`, personal vanity domains — hard to filter automatically; left as-is (low harm, human can discard)
+- Data-file domains (career-ops: `jobs.lever.co`, `boards-api.greenhouse.io`) — correctly preserved as external services even though they're scraping targets, not called APIs
 
 ### 8. Credentials & Auth
 Sources (all combined, deduped by type):
-- `.env.example / .env.sample / .env.template` — var names matching `_KEY$`, `_TOKEN$`, `_PAT$`
-- GitHub Actions workflow files — `secrets.<NAME>` references (exclusive routing: `_KEY$` → api_keys, `_TOKEN$|GITHUB_TOKEN` → tokens, else → other)
+- `.env.example / .env.sample / .env.template` — var names (exclusive routing by suffix/prefix)
+- GitHub Actions workflow files — `secrets.<NAME>` references
 - Source code — `process.env.NAME` (TS/JS), `os.environ.get('NAME')` (Python), `os.Getenv("NAME")` (Go)
 
-**Credential dedup pitfall:** The workflow secrets loop must use exclusive
-`if/elif/else` routing — not additive conditionals — or the same secret appears
-in multiple categories (e.g., `CARGO_REGISTRY_TOKEN` in both tokens and other).
+Exclusive routing for all sources — each var goes to exactly one bucket:
+1. `_KEY$` or `_SECRET$` → `api_keys`
+2. `_TOKEN$` or `_PAT$` → `tokens`
+3. Known service prefixes (`DATABASE_URL`, `REDIS_URL`, `SMTP_*`, etc.) → `other`
+4. No match → not captured (too generic to classify)
+
+**Credential dedup pitfall:** Both the `.env.example` loop AND the workflow secrets loop
+must use exclusive `if/elif` routing. If one uses additive independent `if` checks,
+a var like `GEMINI_API_KEY` matches both `_KEY$` (api_keys) and `^GEMINI` (other),
+appearing in both. Fix applied to both loops.
 
 SSH detection: keyword scan for `ssh / id_rsa / known_hosts / ssh-keygen / ssh-agent / SSH_AUTH_SOCK`
 in shell, TS, JS, Python, YAML files.
@@ -394,6 +417,7 @@ Test against repos representing diverse profiles:
 | `sun2admin/build-containers-with-claude` | Shell-only, no Dockerfile, credential mounts | Inference, SSH, volumes |
 | `sun2admin/builder-project` | Multi-layer, mixed shell+YAML | Cross-file inference |
 | `anthropics/connect-rust` | Rust, Cargo workspace, Taskfile, no Dockerfile | Rust libs, CI tools, suggested FROM |
+| `santifer/career-ops` | Node, Playwright, .env.example, data-file URLs | HTML purpose, cred dedup, domain blocklist, nvmrc |
 | A pure Python repo | No Dockerfile, no shell scripts | py_imports, no Dockerfile fallback |
 | A Go service with docker-compose | Go, ports, DB clients | ports, go libs, DB detection |
 | A frontend React app | TS, npm, no container | TS inference, node libs |

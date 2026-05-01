@@ -82,6 +82,7 @@ for l in lines:
     elif not stripped.startswith(('#', '!', '<', '|', '[')):
         clean = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', stripped)
         clean = re.sub(r'[*_\`]', '', clean)
+        clean = re.sub(r'<[^>]+>', '', clean)  # strip inline HTML tags
         if len(clean) > 20:
             buf.append(clean)
 if buf:
@@ -123,6 +124,12 @@ GO_VER=""
 PYTHON_VER=""
 if [[ -f "package.json" ]]; then
   NODE_VER=$(python3 -c "import json; d=json.load(open('package.json')); print(d.get('engines',{}).get('node',''))" 2>/dev/null || true)
+fi
+# Fallback: .nvmrc or .node-version
+if [[ -z "$NODE_VER" ]]; then
+  for nvmf in .nvmrc .node-version; do
+    [[ -f "$nvmf" ]] && NODE_VER=$(tr -d 'v \n' < "$nvmf" 2>/dev/null | head -1) && break
+  done
 fi
 if [[ -f "go.mod" ]]; then
   GO_VER=$(grep "^go " go.mod 2>/dev/null | awk '{print $2}' | head -1 || true)
@@ -408,7 +415,7 @@ done < <(find . -name "init-firewall*" -o -name "firewall*.sh" -o -name "setup-n
 # Priority 2: URL patterns in source files (supplement if firewall not found)
 # Exclude generated dirs, SVG/image files, and well-known non-runtime domains
 if [[ ${#EXT_DOMAINS[@]} -eq 0 ]]; then
-  DOMAIN_BLOCKLIST="example\.\|localhost\|127\.0\.\|0\.0\.0\.0\|w3\.org\|schema\.org\|iana\.org\|rfc-editor\.org\|acme\.com\|shields\.io\|travis-ci\.\|codecov\.io\|badge\."
+  DOMAIN_BLOCKLIST="example\.\|localhost\|127\.0\.\|0\.0\.0\.0\|w3\.org\|schema\.org\|iana\.org\|rfc-editor\.org\|acme\.com\|shields\.io\|travis-ci\.\|codecov\.io\|badge\.\|discord\.gg\|discord\.com\|github\.com\|raw\.githubusercontent\.com\|docs\.\|readthedocs\.\|pkg\.go\.dev\|crates\.io\|npmjs\.com\|pypi\.org\|rubygems\.org"
   while IFS= read -r domain; do
     [[ -n "$domain" ]] && EXT_DOMAINS+=("$domain")
   done < <(find . -not -path "./.git/*" -not -path "*/gen/*" -not -path "*/generated/*" \
@@ -432,13 +439,17 @@ CRED_TOKENS=()
 CRED_SSH=false
 CRED_OTHER=()
 
-# From .env.example and similar
+# From .env.example and similar — exclusive routing: each var goes to exactly one bucket
 for f in .env.example .env.sample .env.template .env.test .env.development; do
-  [[ -f "$f" ]] && while IFS= read -r line; do
-    key="${line%%=*}"
-    [[ "$key" =~ _KEY$ ]] && CRED_API_KEYS+=("$key")
-    [[ "$key" =~ _TOKEN$|_PAT$ ]] && CRED_TOKENS+=("$key")
-    [[ "$key" =~ ^(ANTHROPIC|OPENAI|GEMINI|AWS|GCP|AZURE|STRIPE|SENDGRID|TWILIO|DATADOG|SENTRY) ]] && CRED_OTHER+=("$key")
+  [[ -f "$f" ]] && while IFS= read -r key; do
+    [[ -n "$key" ]] || continue
+    if [[ "$key" =~ _KEY$|_SECRET$ ]]; then
+      CRED_API_KEYS+=("$key")
+    elif [[ "$key" =~ _TOKEN$|_PAT$ ]]; then
+      CRED_TOKENS+=("$key")
+    elif [[ "$key" =~ ^(DATABASE_URL|REDIS_URL|MONGODB_URI|POSTGRES|MYSQL|SMTP_|SENDGRID|TWILIO|STRIPE|DATADOG|SENTRY) ]]; then
+      CRED_OTHER+=("$key")
+    fi
   done < <(grep -oP '^[A-Z_][A-Z0-9_]*' "$f" 2>/dev/null || true)
 done
 
