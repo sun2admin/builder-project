@@ -1,0 +1,93 @@
+{
+  "repo": "hesreallyhim/awesome-claude-code",
+  "project": "awesome-claude-code",
+  "analyzed_at": "2026-05-01",
+  "purpose": "A curated list of awesome skills, hooks, slash-commands, agent orchestrators, applications, and plugins for Claude Code by Anthropic",
+  "primary_language": "Python",
+  "languages": [
+    "python"
+  ],
+  "runtime_extras": [],
+  "runtime_versions": {},
+  "dockerfile_base": "",
+  "system_packages": [],
+  "extra_binaries": [],
+  "libraries": {
+    "node": [],
+    "python": [],
+    "go": [],
+    "rust": []
+  },
+  "ports": {
+    "inbound": []
+  },
+  "external_services": {
+    "domains": [
+      "api.anthropic.com",
+      "claude.com"
+    ],
+    "source": "source_scan"
+  },
+  "env_vars": [],
+  "browser_tools": [],
+  "github_api_usage": true,
+  "firewall_required": false,
+  "container": {
+    "capabilities": [],
+    "volumes": [],
+    "env": {},
+    "remote_user": "",
+    "post_start": "",
+    "post_create": "",
+    "extensions": []
+  },
+  "credentials_required": {
+    "api_keys": [
+      "ANTHROPIC_API_KEY"
+    ],
+    "tokens": [
+      "GITHUB_TOKEN",
+      "SC_DISPATCH_TOKEN"
+    ],
+    "ssh": true,
+    "other": [
+      "ACC_OPS",
+      "AWESOME_CC_PAT_PUBLIC_REPO",
+      "SC_DISPATCH_URL"
+    ]
+  },
+  "mcp_servers": [],
+  "claude_plugins": [],
+  "inferred": {
+    "tools": [
+      "git",
+      "make",
+      "pip",
+      "python",
+      "python3"
+    ],
+    "py_imports": [
+      "dotenv",
+      "github",
+      "pytest",
+      "requests",
+      "yaml"
+    ],
+    "ts_imports": [],
+    "ci_tools": [],
+    "tools_new": [
+      "git",
+      "make",
+      "pip",
+      "python",
+      "python3"
+    ],
+    "tools_confirmed": []
+  },
+  "suggested": {
+    "base_image": "latest",
+    "dockerfile_from": "python:3",
+    "ai_install": "claude",
+    "plugin_layer": ""
+  }
+}

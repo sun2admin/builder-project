@@ -101,6 +101,16 @@ paragraph text. Strip with `re.sub(r'<[^>]+>', '', line)` AFTER stripping markdo
 Lines starting with `<` are skipped as block-level HTML, but inline tags within text lines
 must be stripped explicitly.
 
+**README blockquote pitfall:** Lines starting with `>` are blockquote callouts or notices
+("repo is being reorganized", "deprecated", etc.) — not project descriptions. Skip them with
+the same `startswith` check used for headings and HTML: `('#', '!', '<', '|', '[', '>')`.
+
+**README short-snippet fallback:** READMEs in transition may have a real first paragraph that's
+a dialogue fragment or notice (<80 chars). The 30-char minimum alone won't catch these. Fix:
+after extracting README purpose, if it's <80 chars AND `REPO_DESC` (GitHub API description) is
+available, prefer `REPO_DESC` — it's intentionally written as a project summary. Full condition:
+`[[ ( -z "$PURPOSE" || ${#PURPOSE} -lt 80 ) && -n "$REPO_DESC" ]]`
+
 ### 2. Languages & Runtimes
 Detected by file presence at repo root:
 - `package.json` → node
@@ -191,6 +201,11 @@ Domain blocklist — removes known non-runtime domains:
 - Package registries (install-time, not runtime): `npmjs.com`, `npmjs.org`, `pypi.org`, `crates.io`, `pkg.go.dev`, `rubygems.org`
 - npm funding/support noise: `opencollective.com`, `tidelift.com`
 - Font CDN: `fonts.googleapis.com`, `fonts.gstatic.com`, `gstatic.com`
+- Awesome list badge redirect: `awesome.re`
+- Homebrew docs: `formulae.brew.sh`, `brew.sh`, `homebrew.sh`
+- Tool documentation: `pre-commit.com`
+- Placeholder domains: `existing.com`
+- GitHub stats badge widgets: `github-readme-stats` (prefix match, covers forks on any TLD)
 
 **URL noise patterns discovered in testing:**
 - `w3.org` from SVG XML namespace declarations in generated SVG files → exclude `.svg` files and `gen/` dirs
@@ -265,6 +280,19 @@ Also scans:
 Without `STDLIB_TS`, repos that import `fs` or `child_process` would surface those
 as external packages, giving a false impression of external dependencies.
 
+**`STDLIB_PY` coverage gaps:** Python's stdlib is ~250 modules — many non-obvious ones are
+missing from a hand-curated set. Found in testing: `difflib`, `importlib`, `pkgutil`,
+`zipfile`, `tarfile`, `readline`, `shlex`, `getpass`, `getopt`, `select`,
+`asyncio`, `concurrent`, `linecache`, `profile`, `timeit`, `doctest`, `pdb`, `filecmp`,
+`calendar`, `secrets`, `ipaddress`. When encountering an unexpected stdlib import in
+`py_imports`, add it to `STDLIB_PY`.
+
+**Local module false positives in `py_imports`:** `import scripts` or `import utils` refers
+to a local `scripts/` or `utils/` directory, not a PyPI package. Fix: collect root-level
+directory names and `.py` file stems before scanning:
+`LOCAL_MODULES = {p.name for p in Path('.').iterdir() if p.is_dir() and not p.name.startswith('.')} | {p.stem for p in Path('.').glob('*.py')}`
+Then exclude: `if pkg not in STDLIB_PY and not pkg.startswith('_') and pkg not in LOCAL_MODULES`
+
 **GitHub Actions `uses:` step detection:**
 Maps known CI action prefixes to the tool they install. Added to
 `inferred.ci_tools` (separate from `tools` to preserve provenance):
@@ -299,6 +327,8 @@ Set `firewall_required: true` if:
   `rust:1.88`, `golang:1.21`, `python:3.12`, `node:lts`
 - `ai_install`: always `claude` (default; could be parameterized)
 - `plugin_layer`: empty — resolved at build-workspace runtime by querying GHCR
+- `dockerfile_from` fallback: `node:lts`, `python:3`, `golang:latest`, `rust:latest` — never `python:latest`
+  (`python:latest` is an anti-pattern; `python:3` pins to the Python 3 branch at minimum)
 
 ---
 
@@ -478,6 +508,7 @@ Test against repos representing diverse profiles:
 | `danielrosehill/claude-code-projects-index` | Astro static site, package-lock.json noise | node_modules exclusion, lock file exclusion, SSH false positive fix |
 | `anthropics/claude-code-security-review` | GitHub Action, Python+bun, no root manifests | TS stdlib filter, language file-scan fallback, Markdown table fix |
 | `peterkrueck/claude-code-development-kit` | Shell+Python utilities, no manifests | Unconditional language file-scan, py_imports for sub-threshold Python |
+| `hesreallyhim/awesome-claude-code` | Python automation, awesome list README in flux | Blockquote skip, README short-snippet fallback to REPO_DESC, local module filter, STDLIB_PY gaps, domain blocklist: awesome.re/pre-commit.com/github-readme-stats, python:3 fallback |
 | A pure Python repo | No Dockerfile, no shell scripts | py_imports, no Dockerfile fallback |
 | A Go service with docker-compose | Go, ports, DB clients | ports, go libs, DB detection |
 | A frontend React app | TS, npm, no container | TS inference, node libs |

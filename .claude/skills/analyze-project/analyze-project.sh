@@ -80,7 +80,7 @@ for l in lines:
         if buf:
             paras.append(' '.join(buf))
             buf = []
-    elif not stripped.startswith(('#', '!', '<', '|', '[')):
+    elif not stripped.startswith(('#', '!', '<', '|', '[', '>')):
         clean = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', stripped)
         clean = re.sub(r'[*_\`]', '', clean)
         clean = re.sub(r'<[^>]+>', '', clean)  # strip inline HTML tags
@@ -91,7 +91,9 @@ if buf:
 print(next((p for p in paras if len(p) > 30), '')[:300])
 " 2>/dev/null || echo "")
 fi
-[[ -z "$PURPOSE" && -n "$REPO_DESC" ]] && PURPOSE="$REPO_DESC"
+# Fall back to API description when README yields nothing or only a short snippet
+# (<80 chars suggests a dialogue fragment or transitional notice, not a real description)
+[[ ( -z "$PURPOSE" || ${#PURPOSE} -lt 80 ) && -n "$REPO_DESC" ]] && PURPOSE="$REPO_DESC"
 
 # ============================================================================
 # Languages and runtime
@@ -437,7 +439,7 @@ done < <(find . -name "init-firewall*" -o -name "firewall*.sh" -o -name "setup-n
 # Priority 2: URL patterns in source files (supplement if firewall not found)
 # Exclude generated dirs, SVG/image files, and well-known non-runtime domains
 if [[ ${#EXT_DOMAINS[@]} -eq 0 ]]; then
-  DOMAIN_BLOCKLIST="example\.\|localhost\|127\.0\.\|0\.0\.0\.0\|w3\.org\|schema\.org\|iana\.org\|rfc-editor\.org\|acme\.com\|shields\.io\|travis-ci\.\|codecov\.io\|badge\.\|discord\.gg\|discord\.com\|github\.com\|raw\.githubusercontent\.com\|docs\.\|readthedocs\.\|pkg\.go\.dev\|crates\.io\|npmjs\.com\|npmjs\.org\|pypi\.org\|rubygems\.org\|opencollective\.com\|tidelift\.com\|fonts\.googleapis\.com\|fonts\.gstatic\.com\|gstatic\.com"
+  DOMAIN_BLOCKLIST="example\.\|localhost\|127\.0\.\|0\.0\.0\.0\|w3\.org\|schema\.org\|iana\.org\|rfc-editor\.org\|acme\.com\|shields\.io\|travis-ci\.\|codecov\.io\|badge\.\|discord\.gg\|discord\.com\|github\.com\|raw\.githubusercontent\.com\|docs\.\|readthedocs\.\|pkg\.go\.dev\|crates\.io\|npmjs\.com\|npmjs\.org\|pypi\.org\|rubygems\.org\|opencollective\.com\|tidelift\.com\|fonts\.googleapis\.com\|fonts\.gstatic\.com\|gstatic\.com\|awesome\.re\|formulae\.brew\.sh\|pre-commit\.com\|existing\.com\|homebrew\.sh\|brew\.sh\|github-readme-stats"
   while IFS= read -r domain; do
     [[ -n "$domain" ]] && EXT_DOMAINS+=("$domain")
   done < <(find . \
@@ -678,6 +680,12 @@ STDLIB_PY = {
     '__future__', 'builtins', 'types', 'pprint', 'queue', 'heapq',
     'bisect', 'array', 'codecs', 'locale', 'gettext', 'atexit',
     'shelve', 'dbm', 'zlib', 'gzip', 'bz2', 'lzma',
+    'difflib', 'importlib', 'pkgutil', 'zipfile', 'tarfile', 'pickle',
+    'copyreg', 'dis', 'readline', 'shlex', 'getpass', 'getopt',
+    'select', 'asyncio', 'concurrent', 'linecache', 'profile',
+    'timeit', 'doctest', 'pdb', 'cProfile', 'pstats', 'cmd',
+    'filecmp', 'fnmatch', 'calendar', 'secrets', 'ipaddress',
+    'urllib3',
 }
 
 tools_found = set()
@@ -728,6 +736,9 @@ for mf in ['Makefile', 'makefile', 'GNUmakefile', 'Taskfile.yml', 'Taskfile.yaml
         except:
             pass
 
+LOCAL_MODULES = {p.name for p in Path('.').iterdir() if p.is_dir() and not p.name.startswith('.')} | \
+               {p.stem for p in Path('.').glob('*.py')}
+
 for py in Path('.').rglob('*.py'):
     if '.git' in str(py):
         continue
@@ -735,7 +746,7 @@ for py in Path('.').rglob('*.py'):
         content = py.read_text(errors='ignore')
         for m in re.finditer(r'^(?:import|from)\s+([a-zA-Z_][a-zA-Z0-9_]*)', content, re.MULTILINE):
             pkg = m.group(1).split('.')[0]
-            if pkg not in STDLIB_PY and not pkg.startswith('_'):
+            if pkg not in STDLIB_PY and not pkg.startswith('_') and pkg not in LOCAL_MODULES:
                 py_imports_found.add(pkg)
     except:
         pass
@@ -852,7 +863,7 @@ if [[ -z "$SUGGESTED_DOCKERFILE_FROM" ]]; then
   elif printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^go$"; then
     SUGGESTED_DOCKERFILE_FROM="${GO_VER:+golang:${GO_VER}}"; SUGGESTED_DOCKERFILE_FROM="${SUGGESTED_DOCKERFILE_FROM:-golang:latest}"
   elif printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^python$"; then
-    SUGGESTED_DOCKERFILE_FROM="${PYTHON_VER:+python:${PYTHON_VER}}"; SUGGESTED_DOCKERFILE_FROM="${SUGGESTED_DOCKERFILE_FROM:-python:latest}"
+    SUGGESTED_DOCKERFILE_FROM="${PYTHON_VER:+python:${PYTHON_VER}}"; SUGGESTED_DOCKERFILE_FROM="${SUGGESTED_DOCKERFILE_FROM:-python:3}"
   elif printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^node$"; then
     SUGGESTED_DOCKERFILE_FROM="${NODE_VER:+node:${NODE_VER}}"; SUGGESTED_DOCKERFILE_FROM="${SUGGESTED_DOCKERFILE_FROM:-node:lts}"
   fi
