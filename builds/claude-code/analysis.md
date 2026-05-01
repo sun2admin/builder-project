@@ -59,7 +59,8 @@ No
 Yes — NET_ADMIN/NET_RAW capabilities needed
 
 ## Inferred from Source *(tools/commands found in repo files)*
-  - **Tools/binaries**: curl, gh, git, go, gradle, java, jq, just, python, sudo, xargs
+  - **Tools/binaries (not in Dockerfile)**: curl, go, gradle, java, just, python, xargs
+  - **Confirmed by Dockerfile**: gh, git, jq, sudo
   - **Python imports**: hookify
 
 ## Suggested Stack

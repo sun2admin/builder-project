@@ -833,6 +833,12 @@ data = {
     }
 }
 
+# Dedup: compute which inferred tools are already covered by explicit Dockerfile packages
+explicit_pkgs = set(data['system_packages'])
+inferred_tools = set(data['inferred']['tools'])
+data['inferred']['tools_new'] = sorted(inferred_tools - explicit_pkgs)  # net-new only
+data['inferred']['tools_confirmed'] = sorted(inferred_tools & explicit_pkgs)  # already explicit
+
 with open(os.environ["AP_JSON_FILE"], "w") as f:
     json.dump(data, f, indent=2)
 
@@ -923,14 +929,18 @@ md += f"""
 ## Inferred from Source *(tools/commands found in repo files)*
 """
 inf = data['inferred']
-has_inferred = inf['tools'] or inf['py_imports'] or inf['ts_imports']
+has_inferred = inf['tools_new'] or inf['py_imports'] or inf['ts_imports']
 if has_inferred:
-    if inf['tools']:
-        md += f"  - **Tools/binaries**: {fmt(inf['tools'])}\n"
+    if inf['tools_new']:
+        md += f"  - **Tools/binaries (not in Dockerfile)**: {fmt(inf['tools_new'])}\n"
+    if inf['tools_confirmed']:
+        md += f"  - **Confirmed by Dockerfile**: {fmt(inf['tools_confirmed'])}\n"
     if inf['py_imports']:
         md += f"  - **Python imports**: {fmt(inf['py_imports'])}\n"
     if inf['ts_imports']:
         md += f"  - **TS/JS imports**: {fmt(inf['ts_imports'])}\n"
+elif inf['tools_confirmed']:
+    md += f"  - all detected tools already declared in Dockerfile: {fmt(inf['tools_confirmed'])}\n"
 else:
     md += "  none detected\n"
 

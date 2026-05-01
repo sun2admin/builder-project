@@ -156,7 +156,22 @@
     "py_imports": [
       "hookify"
     ],
-    "ts_imports": []
+    "ts_imports": [],
+    "tools_new": [
+      "curl",
+      "go",
+      "gradle",
+      "java",
+      "just",
+      "python",
+      "xargs"
+    ],
+    "tools_confirmed": [
+      "gh",
+      "git",
+      "jq",
+      "sudo"
+    ]
   },
   "suggested": {
     "base_image": "latest",
