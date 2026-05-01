@@ -743,9 +743,9 @@ NOISE = {'true','false','null','yes','no','on','off','ok','all','none',
 
 DELIMITERS_RE   = re.compile(
     r'(?:^|[;|&({`\n])\s*(?:sudo\s+|env\s+(?:[A-Z_]+=\S+\s+)*)?'
-    r'([a-zA-Z][a-zA-Z0-9_.-]*)',
+    r'([a-zA-Z][a-zA-Z0-9_-]*)',
     re.MULTILINE)
-EXPLICIT_DEP_RE = re.compile(r'(?:command\s+-[vV]|which|type)\s+([a-zA-Z][a-zA-Z0-9_.-]*)')
+EXPLICIT_DEP_RE = re.compile(r'(?:command\s+-[vV]|which|type)\s+([a-zA-Z][a-zA-Z0-9_-]*)')
 SHEBANG_RE      = re.compile(r'#!/usr/bin/env\s+([a-zA-Z][a-zA-Z0-9_.-]*)')
 COMMENT_RE      = re.compile(r'^\s*#')
 
@@ -759,6 +759,7 @@ def extract_commands(content):
                 and cmd not in SHELL_BUILTINS
                 and cmd not in NOISE
                 and not cmd.isupper()
+                and not cmd[0].isupper()  # class names, constants, proper nouns
                 and '/' not in cmd
                 and not cmd[0].isdigit()):
             cmds.add(cmd)

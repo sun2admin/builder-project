@@ -1,9 +1,133 @@
 {
+  "actionlint": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "active_ref": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "actual_norm": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "actual_version": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "after": {
     "apt_depends": [],
     "apt_package": null
   },
-  "allow_diff": {
+  "after_at": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "alembic": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "allow_count": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "allowed": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "allowlist": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "allowlist_globs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "allowlist_path": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "and": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "anonymous": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "api": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "api_call": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "apikey": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "app": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "applySignal": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "apt-get": {
+    "apt_depends": [],
+    "apt_package": "apt"
+  },
+  "arch": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "architecture_care": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "args": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "arr": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "artifacts-only": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "async": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "attempt": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "authorization": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "auto": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "auto-generated": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "auto_upgrade": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "autonomy": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "avg": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -11,7 +135,46 @@
     "apt_depends": [],
     "apt_package": null
   },
-  "backup": {
+  "awk": {
+    "apt_depends": [],
+    "apt_package": "awk"
+  },
+  "backoff": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "base": {
+    "apt_depends": [],
+    "apt_package": "base"
+  },
+  "basename": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "bash": {
+    "apt_depends": [
+      "base-files",
+      "debianutils"
+    ],
+    "apt_package": "bash"
+  },
+  "be": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "before": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "benign": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "bin": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "binary": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -19,7 +182,71 @@
     "apt_depends": [],
     "apt_package": null
   },
-  "changes": {
+  "body_file": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "body_tmp": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "branch": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "branches": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "brew": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "browse": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "build-push": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "builder-journey": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "builder-profile": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "bun": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "bunx": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "byType": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cannot": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cat": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "check_prereq": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "check_snooze": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "check_source_state": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -27,15 +254,147 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "checkpoint_mode": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "checkpoint_push": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "checks": {
     "apt_depends": [],
     "apt_package": null
   },
-  "comment_body": {
+  "chmod": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "chromium": {
     "apt_depends": [],
     "apt_package": null
   },
-  "comment_id": {
+  "claude": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cleanup_old_claude_symlinks": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cleanup_prefixed_claude_symlinks": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cls": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd_create": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd_delete_project": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd_get": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd_list": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd_list_orgs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd_list_orphans": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd_normalize": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd_pooler_url": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd_set": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmd_wait": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cmp": {
+    "apt_depends": [],
+    "apt_package": "diffutils"
+  },
+  "code": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "codesign": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "codex": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "codex_reviews": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "collaborative": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "comm": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "commit": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "community": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "completed": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "composer": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "compute_paths_to_stage": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "conf": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "confidence": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "connection": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "console": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -43,11 +402,35 @@
     "apt_depends": [],
     "apt_package": null
   },
-  "contains": {
+  "context": {
+    "apt_depends": [],
+    "apt_package": "context"
+  },
+  "continuing": {
     "apt_depends": [],
     "apt_package": null
   },
-  "content": {
+  "copied": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "copy": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "count": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "countStr": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "counts": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "coverage": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -55,7 +438,63 @@
     "apt_depends": [],
     "apt_package": "coreutils"
   },
-  "d": {
+  "create_agents_sidecar": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "create_codex_runtime_root": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "create_factory_runtime_root": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "create_opencode_runtime_root": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cross_project_learnings": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "css": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cur": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "curl": {
+    "apt_depends": [
+      "libc6",
+      "libcurl4",
+      "zlib1g"
+    ],
+    "apt_package": "curl"
+  },
+  "curl_args": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cursor": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cursor_path": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "cut": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "cypress": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -63,25 +502,467 @@
     "apt_depends": [],
     "apt_package": null
   },
-  "env": {
+  "database": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "date": {
     "apt_depends": [],
     "apt_package": "coreutils"
+  },
+  "day": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "days": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "days_span": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "db": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "db_host": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "db_name": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "db_port": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "db_user": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "declared": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "def": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "defaults": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "delete-project": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "deleted_ref": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "deny": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "derive_source_id": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "design": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "designTitles": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "detail_preference": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "developer-profile": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "die": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "die_auth": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "die_conflict": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "die_net": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "die_quota": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "diff": {
+    "apt_depends": [],
+    "apt_package": "diff"
+  },
+  "different": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "dim": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "dims": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "dir_name": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "dirname": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "dispatched": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "dist": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "diversity": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "dk": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_check": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_check_mismatch": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_clear": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_derive": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_gap": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_migrate": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_narrative": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_probe": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_profile": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_read": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_stats": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_trace": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_uninstall": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_vibe": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_wireup": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "do_write": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "docs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "download-artifact": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "droid": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "dst": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "du": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "e2e": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "elapsed": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "end": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "engine_raw": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "enrichment": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "ensure_file": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "ensure_playwright_browser": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "ensure_profile": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "ensure_worktree": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "entries": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "entry": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "err": {
+    "apt_depends": [],
+    "apt_package": null
   },
   "event_type": {
     "apt_depends": [],
     "apt_package": null
   },
-  "f": {
+  "eventsPath": {
     "apt_depends": [],
     "apt_package": null
   },
-  "failure": {
+  "every": {
     "apt_depends": [],
     "apt_package": null
   },
-  "first": {
+  "evt": {
     "apt_depends": [],
     "apt_package": null
+  },
+  "ew_rc": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "except": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "existing": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "existing_path": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "expected": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "expected_norm": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "expected_version": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "extension": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "extra": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "extra_obj": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "factory": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "federated": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "fileURLToPath": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "file_count": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "files": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "final": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "find": {
+    "apt_depends": [],
+    "apt_package": "findutils"
+  },
+  "first_or_session": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "flag": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "flagged": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "fnmatch": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "forbidden": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "free_text": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "from": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "from_entries": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "fs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "full": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "future": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gap": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gbrain": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gbrain_config_exists": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gbrain_doctor_ok": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gbrain_engine": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gbrain_on_path": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gbrain_status": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gbrain_sync_mode": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gbrain_sync_mode_prompted": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gbrain_version": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gbrain_version_ok": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gentle": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "get_remote_url": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gh": {
+    "apt_depends": [
+      "libc6"
+    ],
+    "apt_package": "gh"
   },
   "git": {
     "apt_depends": [
@@ -97,19 +978,153 @@
     ],
     "apt_package": "git"
   },
-  "github-api-usage-monitor": {
+  "github": {
     "apt_depends": [],
     "apt_package": null
   },
-  "github-script": {
+  "github_pat_": {
     "apt_depends": [],
     "apt_package": null
   },
-  "github_url": {
+  "gitlab": {
     "apt_depends": [],
     "apt_package": null
   },
-  "has_broken_links": {
+  "globs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "glossed": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "go": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "got": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "grep": {
+    "apt_depends": [
+      "dpkg"
+    ],
+    "apt_package": "grep"
+  },
+  "gstack": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack-": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack-brain": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack-brain-init": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack-brain-restore": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack-brain-sync": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack-brain-uninstall": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack-config": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack-gbrain-source-wireup": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack-gbrain-supabase-verify": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack-upgrade": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack_brain_git": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack_brain_sync_mode": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack_contributor": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gstack_home": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gsub": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "gtimeout": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "has": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "hdiutil": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "head": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "hermes": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "hint": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "home": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "hooks": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "host": {
+    "apt_depends": [],
+    "apt_package": "host"
+  },
+  "host_lower": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "hostport": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "hour": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "http_code": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -121,11 +1136,47 @@
     "apt_depends": [],
     "apt_package": "coreutils"
   },
-  "is_github_repo": {
+  "identity": {
     "apt_depends": [],
     "apt_package": null
   },
-  "issue_number": {
+  "ies": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "import": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "including": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "index": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "inferred": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "info": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "instructions": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "int": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "isCrossProject": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "is_valid_clone": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -136,11 +1187,151 @@
     ],
     "apt_package": "jq"
   },
-  "keep_outputs": {
+  "json": {
     "apt_depends": [],
     "apt_package": null
   },
-  "labels": {
+  "json_safe": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "kebab-case": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "keeping": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "kept": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "key": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "kiro": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "kiro-cli": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "last": {
+    "apt_depends": [],
+    "apt_package": "util-linux"
+  },
+  "last_push": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "launcher": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "learnings": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "len": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "length": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "level": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "lib": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "likely": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "limit": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "line": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "lines": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "link": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "link_claude_skill_dirs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "link_codex_skill_dirs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "link_dest": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "link_factory_skill_dirs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "link_name": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "link_opencode_skill_dirs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "linked": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "list-orgs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "list-orphans": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "ln": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "load_lines": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "lock_pid": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "log": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "log_entry": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "login": {
+    "apt_depends": [],
+    "apt_package": "login"
+  },
+  "lookup_default": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -148,31 +1339,163 @@
     "apt_depends": [],
     "apt_package": "coreutils"
   },
-  "maintainer": {
+  "m_ver": {
     "apt_depends": [],
     "apt_package": null
   },
-  "make": {
-    "apt_depends": [],
-    "apt_package": "make"
-  },
-  "max_tokens": {
+  "macOS": {
     "apt_depends": [],
     "apt_package": null
   },
-  "messages": {
+  "machine": {
     "apt_depends": [],
     "apt_package": null
+  },
+  "map": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "match": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "matched": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "matcher": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "mention": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "migrate_direct_codex_install": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "migrated": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "migrated_at": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "minute": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "mkdir": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
   },
   "mktemp": {
     "apt_depends": [],
     "apt_package": "coreutils"
   },
-  "model": {
+  "mod": {
     "apt_depends": [],
     "apt_package": null
   },
-  "near": {
+  "mode": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "month": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "move": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "ms": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "must": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "mv": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "name": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "need": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "never": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "new_cursor": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "next": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "node": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "node_modules": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "non-empty": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "non-fatal": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "normalize": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "now": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "npm": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "obj": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "od": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "old_target": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "one": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "one-time": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "oneWay": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "oneway": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -180,19 +1503,187 @@
     "apt_depends": [],
     "apt_package": null
   },
-  "owner": {
+  "openapi": {
     "apt_depends": [],
     "apt_package": null
   },
-  "payload": {
+  "openclaw": {
     "apt_depends": [],
     "apt_package": null
   },
-  "pip": {
+  "opencode": {
     "apt_depends": [],
-    "apt_package": "pip"
+    "apt_package": null
   },
-  "pr_url": {
+  "optional": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "or": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "orgs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "orphans": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "os": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "osascript": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "out": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "oven-sh": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "overrides": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "package": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "package-lock": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pacman": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "parts": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pass_part": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "password": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pat": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "path": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "path_inside": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "paths": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "paths_file": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "patterns": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pbcopy": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pdftotext": {
+    "apt_depends": [],
+    "apt_package": "poppler-utils"
+  },
+  "perl": {
+    "apt_depends": [
+      "perl-base",
+      "perl-modules-5.36",
+      "libperl5.36"
+    ],
+    "apt_package": "perl"
+  },
+  "permission": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pglite": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pgrep": {
+    "apt_depends": [],
+    "apt_package": "procps"
+  },
+  "pid": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pkill": {
+    "apt_depends": [],
+    "apt_package": "procps"
+  },
+  "plutil": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pooler-url": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "port": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "postcss": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "postgres": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "postgresql": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pref": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "preference": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "prefix": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "prefixed_target": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "prefs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "prev": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "preview": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -200,9 +1691,61 @@
     "apt_depends": [],
     "apt_package": null
   },
-  "python": {
+  "prisma": {
     "apt_depends": [],
-    "apt_package": "python"
+    "apt_package": null
+  },
+  "privacy_map": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "privacy_path": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "proactive": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "probe": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "process": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "profile": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "profilePath": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "project-local": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "projects": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "prompt": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "provide": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "push_err": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pyproject": {
+    "apt_depends": [],
+    "apt_package": null
   },
   "python3": {
     "apt_depends": [
@@ -211,11 +1754,119 @@
     ],
     "apt_package": "python3"
   },
-  "reason": {
+  "qids": {
     "apt_depends": [],
     "apt_package": null
   },
-  "repo": {
+  "ql": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "query": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "question_id": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "question_ids_covered": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "queue": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "queue_depth": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "queue_paths": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "raw": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "re": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "re-poll": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "read-only": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "read-write": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "read_secret_to_env": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "readlink": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "realpath": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "recommended": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "recreating": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "ref": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "refresh": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "refs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "regmod": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "reject_direct": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "rel": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "remote_auth_hint": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "remote_url": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "removed": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "removed_any": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "replaced": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -223,7 +1874,63 @@
     "apt_depends": [],
     "apt_package": null
   },
-  "resource_name": {
+  "report": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "require": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "require_curl": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "require_db_pass": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "require_jq": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "require_pat": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "required": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "requirements": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "resetting": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "resolve_real": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "resources": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "resources_shown": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "resp": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "resp_file": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "rest": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -231,7 +1938,27 @@
     "apt_depends": [],
     "apt_package": null
   },
-  "restoring": {
+  "results": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "retros": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "review": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "reviewed": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "risk_tolerance": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "risks": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -239,27 +1966,331 @@
     "apt_depends": [],
     "apt_package": "coreutils"
   },
-  "role": {
+  "rmdir": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "root": {
     "apt_depends": [],
     "apt_package": null
   },
-  "script": {
+  "routing_declined": {
     "apt_depends": [],
-    "apt_package": "bsdutils"
+    "apt_package": null
+  },
+  "rows": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "rules": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "safe_rm_worktree": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sampleSize": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sample_size": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "save_cursor": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "saved_stty": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "scan_out": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "scc": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "schema_version": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "scope_appetite": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "scripts": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "secret": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "secret_scan_stdin": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "security": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sed": {
+    "apt_depends": [],
+    "apt_package": "sed"
+  },
+  "seen": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "seq": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "sessions": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "settings": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "settingsPath": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sha": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "shell": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "should": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "signalCounts": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "signalsAcc": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "signals_accumulated": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "since": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sinceMs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "single-line": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "skill": {
+    "apt_depends": [],
+    "apt_package": "procps"
+  },
+  "skill_dir": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "skill_name": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "skill_prefix": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "skills": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "skills_covered": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "skip_eng_review": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "skip_lines": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "skip_path": {
+    "apt_depends": [],
+    "apt_package": null
   },
   "skipping": {
     "apt_depends": [],
     "apt_package": null
   },
-  "state": {
+  "sleep": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "slug": {
     "apt_depends": [],
     "apt_package": null
   },
-  "state_reason": {
+  "snippet": {
     "apt_depends": [],
     "apt_package": null
   },
-  "success": {
+  "snoozed_epoch": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "snoozed_level": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "snoozed_ver": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sort": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "sort_key": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "spath": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "spec": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "src": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "st": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "starting": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "startswith": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "stat": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "stats": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "status_tmp": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "stop_browse_daemon": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "stty": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "styles": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sub": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sub_add": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sub_list": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sub_remove": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sub_test": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "subcmd_discover_new": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "subcmd_drop_queue": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "subcmd_once": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "subcmd_skip_file": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "subcmd_status": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "subprocess": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "swagger": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "switch": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "symlink_count": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sync": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "sync_active": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sync_out": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sync_redacted": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "sys": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -267,15 +2298,239 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "table": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "tail": {
     "apt_depends": [],
     "apt_package": "coreutils"
+  },
+  "tailwind": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "target": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "target_dir": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "target_real": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "telemetry": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "tests": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "text": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "the": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "this": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "timeout": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "timeout_bin": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "tmp": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "to_entries": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "token": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "top-right": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "topics": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "total": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "totalSignals": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "totals": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "touch": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "tr": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "try": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "ts": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "typeof": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "uname": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "unknown": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "update_check": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "upgrade_prompted": {
+    "apt_depends": [],
+    "apt_package": null
   },
   "upload-artifact": {
     "apt_depends": [],
     "apt_package": null
   },
-  "uses": {
+  "url": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "user": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "user-stated": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "user_part": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "userinfo": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "using": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "uuidgen": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "v2": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "val": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "validate_mode": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "values": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "varname": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "ver": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "waited": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "warn": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "warnings": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "was": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "wc": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "we": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "week": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "which": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "whoami": {
+    "apt_depends": [],
+    "apt_package": "coreutils"
+  },
+  "will": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "wireup": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "workspace_root": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "worktree_status": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "write_status": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "yarn": {
     "apt_depends": [],
     "apt_package": null
   }
