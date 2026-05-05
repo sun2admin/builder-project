@@ -7,13 +7,44 @@ description: Scan a GitHub project repo for all dependencies needed to build a c
 
 Clones a GitHub repo fresh and scans it for all dependencies needed to configure a container stack. Saves findings to `builds/<project>/analysis.json` and `builds/<project>/analysis.md`.
 
+## Reference Docs — Read Before Modifying
+
+| File | When to load |
+|---|---|
+| [`DETECTION_PRINCIPLES.md`](./DETECTION_PRINCIPLES.md) | Editing detection logic (regex, parsers, filters, bash/Python idioms) |
+| [`DATA_SCHEMA.md`](./DATA_SCHEMA.md) | Editing output JSON shape, builds dir layout, tool-deps.json, consumer contract |
+| [`TESTING.md`](./TESTING.md) | Validating gap fixes, adding test repos, regression checking |
+
+Core detection rule: derive from the artifact, never compare against an
+opinion list. No `KNOWN_TOOLS`/`STDLIB_*`/`COMMON_DOMAINS` arrays. Use
+runtime queries (`apt-cache`, `sys.stdlib_module_names`,
+`node -e builtinModules`) or cached lookups (`tool-deps.json`). Cover tool
+families, not single members (npm+yarn+pnpm+bun, pip+pipx, etc.).
+
 ## Usage
 
 ```
-/analyze-project [owner/repo]
+/analyze-project [-q|--quiet] [-v|--verbose] [owner/repo]
 ```
 
 Prompts for repo if not provided.
+
+**Output channels:**
+- **stdout** — JSON file path (single line, always)
+- **stderr** — progress traces; full markdown report when emit enabled
+
+**Markdown emit decision (auto-detect with override):**
+- `-q` / `--quiet` → suppress markdown
+- `-v` / `--verbose` → emit markdown regardless of TTY
+- Default: emit when stdout is a terminal; suppress when piped/captured
+
+**Why:** when invoked by `build-workflow` (or any wrapper), markdown noise
+floods the wrapper's terminal. Default TTY-aware behavior keeps wrapper
+output clean while preserving direct-user UX.
+
+**Files saved regardless of emit:**
+- `builds/<owner>/<repo>/analysis.json`
+- `builds/<owner>/<repo>/analysis.md`
 
 ## What It Detects
 

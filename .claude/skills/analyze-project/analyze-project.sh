@@ -17,14 +17,44 @@ cleanup() { [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"; }
 trap cleanup EXIT
 
 # ============================================================================
-# Input
+# Input + flags
 # ============================================================================
 
-REPO="${1:-}"
+QUIET=0
+VERBOSE=0
+REPO=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -q|--quiet)   QUIET=1; shift ;;
+    -v|--verbose) VERBOSE=1; shift ;;
+    -h|--help)
+      cat >&2 <<EOF
+Usage: analyze-project.sh [-q|--quiet] [-v|--verbose] [owner/repo]
+
+  -q  Suppress markdown report on stderr (still saves analysis.md file).
+  -v  Always emit markdown report regardless of TTY detection.
+  Default: emit markdown to stderr only when stdout is a TTY.
+
+stdout: path to builds/<owner>/<repo>/analysis.json (single line)
+stderr: progress traces, plus markdown report when emitted
+EOF
+      exit 0 ;;
+    *) REPO="$1"; shift ;;
+  esac
+done
+
 if [[ -z "$REPO" ]]; then
   read_input "GitHub repo (owner/repo): "
   REPO="$input"
 fi
+
+# Decide markdown emit: explicit flags override TTY detection
+if [[ "$QUIET" == "1" ]]; then EMIT_MD=0
+elif [[ "$VERBOSE" == "1" ]]; then EMIT_MD=1
+elif [[ -t 1 ]]; then EMIT_MD=1
+else EMIT_MD=0
+fi
+export AP_EMIT_MD="$EMIT_MD"
 
 if [[ ! "$REPO" =~ ^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ ]]; then
   echo -e "${RED}✘ Invalid format. Use owner/repo (e.g. sun2admin/myapp)${NC}" >&2
@@ -236,6 +266,186 @@ PYEOF
   DC_REMOTE_USER=$(echo "$DC_DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('remote_user',''))" 2>/dev/null || echo "")
 fi
 
+# ============================================================================
+# postStartCommand / postCreateCommand chain decomposition (Gap 3)
+# Splits `&&` chains into per-step entries; scans in-repo scripts for signals
+# (firewall, ssh, github, git-clone domains) and feeds them into the appropriate
+# downstream detectors via env vars.
+# ============================================================================
+
+DC_POST_START_CHAIN="[]"
+DC_POST_CREATE_CHAIN="[]"
+DC_INIT_SCRIPTS="[]"
+INIT_SIGNAL_FIREWALL="false"
+INIT_SIGNAL_SSH="false"
+INIT_SIGNAL_GH="false"
+INIT_DOMAINS=""
+
+if [[ -n "$DC_POST_START" || -n "$DC_POST_CREATE" ]]; then
+  CHAIN_PARSE=$(POST_START="$DC_POST_START" POST_CREATE="$DC_POST_CREATE" python3 << 'PYEOF'
+import os, re, json
+from pathlib import Path
+
+INTERPRETERS = {'bash', 'sh', 'zsh', 'python', 'python3', 'node', 'ruby', 'perl'}
+
+def strip_bash_c(cmd):
+    """Strip leading `bash -c '...'` wrapper to expose the inner chain."""
+    m = re.match(r'^\s*(?:bash|sh)\s+-c\s+(["\'])(.*)\1\s*$', cmd, re.DOTALL)
+    return m.group(2) if m else cmd
+
+def split_chain(cmd):
+    """Split on top-level `&&` only (skip inside quotes)."""
+    if not cmd:
+        return []
+    cmd = strip_bash_c(cmd)
+    parts, buf, q = [], [], None
+    i = 0
+    while i < len(cmd):
+        c = cmd[i]
+        if q:
+            buf.append(c)
+            if c == q and (i == 0 or cmd[i-1] != '\\'):
+                q = None
+            i += 1
+            continue
+        if c in ('"', "'"):
+            q = c
+            buf.append(c)
+            i += 1
+            continue
+        if c == '&' and i + 1 < len(cmd) and cmd[i+1] == '&':
+            parts.append(''.join(buf).strip())
+            buf = []
+            i += 2
+            continue
+        buf.append(c)
+        i += 1
+    tail = ''.join(buf).strip()
+    if tail:
+        parts.append(tail)
+    return [p for p in parts if p]
+
+def parse_step(raw):
+    """Decompose one chain step into {raw, sudo, script, args}."""
+    step = {'raw': raw, 'sudo': False, 'script': '', 'args': ''}
+    parts = raw.split()
+    if not parts:
+        return step
+    if parts[0] == 'sudo':
+        step['sudo'] = True
+        parts = parts[1:]
+    if not parts:
+        return step
+    head = parts[0]
+    rest = parts[1:]
+    # Skip flags after sudo (e.g., `sudo -E env ...`)
+    while head.startswith('-') and rest:
+        head = rest[0]
+        rest = rest[1:]
+    base = head.split('/')[-1].lower()
+    base_no_ver = re.sub(r'\d+$', '', base)
+    if base_no_ver in INTERPRETERS and rest:
+        # `bash X.sh ARGS` — script is second token, skip flags
+        i = 0
+        while i < len(rest) and rest[i].startswith('-'):
+            i += 1
+        if i < len(rest):
+            step['script'] = rest[i]
+            step['args'] = ' '.join(rest[i+1:])
+        else:
+            step['args'] = ' '.join(rest)
+    else:
+        step['script'] = head
+        step['args'] = ' '.join(rest)
+    return step
+
+def in_repo_path(script):
+    """Return repo-relative path if script lives in cloned repo, else None."""
+    if not script:
+        return None
+    if script.startswith('/workspace/'):
+        # /workspace/<repo>/X → strip /workspace/<owner-or-name>/
+        rel = script.split('/', 3)[-1] if script.count('/') >= 3 else script
+        p = Path(rel)
+    elif script.startswith('/'):
+        return None  # absolute path outside workspace; baked into image
+    else:
+        p = Path(script)
+    if p.exists() and p.is_file():
+        return str(p)
+    # Try without leading workspace path components
+    for prefix_len in range(1, 5):
+        cand = Path(*script.lstrip('/').split('/')[prefix_len:])
+        if cand.exists() and cand.is_file():
+            return str(cand)
+    return None
+
+def scan_script(path):
+    """Read script; return (firewall, ssh, gh, [domains])."""
+    try:
+        text = open(path, errors='ignore').read()
+    except Exception:
+        return False, False, False, []
+    fw  = bool(re.search(r'\b(iptables|ipset|init-firewall|nft\b|ufw\b)', text))
+    ssh = bool(re.search(r'\b(ssh-add|ssh-agent|SSH_AUTH_SOCK)\b', text))
+    gh  = bool(re.search(r'\bgh\s+(auth|api)\b|@octokit|PyGithub', text))
+    domains = []
+    for m in re.finditer(r'git\s+clone\s+(?:--\S+\s+)*([^\s]+)', text):
+        url = m.group(1)
+        dm = re.search(r'(?:https?://|git@)([^/:]+)', url)
+        if dm:
+            domains.append(dm.group(1))
+    for m in re.finditer(r'https?://([^/\s"\']+)', text):
+        domains.append(m.group(1))
+    return fw, ssh, gh, sorted(set(domains))
+
+def process(cmd):
+    chain = []
+    in_repo_scripts = []
+    fw_any, ssh_any, gh_any = False, False, False
+    domain_set = set()
+    for raw in split_chain(cmd):
+        step = parse_step(raw)
+        rel = in_repo_path(step['script']) if step['script'] else None
+        step['in_repo'] = rel is not None
+        if rel:
+            step['script'] = rel
+            in_repo_scripts.append(rel)
+            fw, ssh, gh, doms = scan_script(rel)
+            fw_any |= fw; ssh_any |= ssh; gh_any |= gh
+            domain_set.update(doms)
+        chain.append(step)
+    return chain, in_repo_scripts, fw_any, ssh_any, gh_any, sorted(domain_set)
+
+ps_chain, ps_scripts, ps_fw, ps_ssh, ps_gh, ps_doms = process(os.environ.get('POST_START',''))
+pc_chain, pc_scripts, pc_fw, pc_ssh, pc_gh, pc_doms = process(os.environ.get('POST_CREATE',''))
+
+all_scripts = sorted(set(ps_scripts + pc_scripts))
+all_doms    = sorted(set(ps_doms + pc_doms))
+
+print("CHAIN_PS:" + json.dumps(ps_chain))
+print("CHAIN_PC:" + json.dumps(pc_chain))
+print("SCRIPTS:" + json.dumps(all_scripts))
+print("FW:"      + ("true" if (ps_fw or pc_fw) else "false"))
+print("SSH:"     + ("true" if (ps_ssh or pc_ssh) else "false"))
+print("GH:"      + ("true" if (ps_gh or pc_gh) else "false"))
+for d in all_doms:
+    print("DOM:" + d)
+PYEOF
+)
+  while IFS= read -r line; do
+    case "$line" in
+      CHAIN_PS:*) DC_POST_START_CHAIN="${line#CHAIN_PS:}" ;;
+      CHAIN_PC:*) DC_POST_CREATE_CHAIN="${line#CHAIN_PC:}" ;;
+      SCRIPTS:*)  DC_INIT_SCRIPTS="${line#SCRIPTS:}" ;;
+      FW:*)       INIT_SIGNAL_FIREWALL="${line#FW:}" ;;
+      SSH:*)      INIT_SIGNAL_SSH="${line#SSH:}" ;;
+      GH:*)       INIT_SIGNAL_GH="${line#GH:}" ;;
+      DOM:*)      INIT_DOMAINS+="${line#DOM:}"$'\n' ;;
+    esac
+  done <<< "$CHAIN_PARSE"
+fi
+
 # VS Code extensions from .vscode/extensions.json (supplement devcontainer)
 if [[ -f ".vscode/extensions.json" ]]; then
   VSCODE_EXTS=$(python3 -c "
@@ -263,6 +473,9 @@ echo "  → system packages..." >&2
 SYS_PACKAGES_RAW=""
 DOCKERFILE_BASE=""
 EXTRA_BINARIES=()
+JS_GLOBAL=()
+PY_INSTALLS=()
+GO_INSTALLS=()
 
 while IFS= read -r dockerfile; do
   # Use Python to join backslash-continuation lines before parsing
@@ -312,6 +525,57 @@ for l in joined:
         m = re.search(r'releases/download/[^/\s]+/([^\s"\'\\]+)', l)
         if m:
             print("BIN:" + m.group(1))
+
+# JS package-manager global installs:
+#   npm/pnpm/bun: <pm> {install|i|add} -g <pkg>...
+#   yarn:        yarn global add <pkg>...
+_JS_PATTERNS = [
+    r'\b(?:npm|pnpm|bun)\s+(?:install|i|add)\s+-g\b(.*?)(?:&&|\|\||;|$)',
+    r'\byarn\s+global\s+add\b(.*?)(?:&&|\|\||;|$)',
+]
+for l in joined:
+    for pattern in _JS_PATTERNS:
+        for m in re.finditer(pattern, l):
+            for tok in m.group(1).split():
+                if tok.startswith('-') or tok in ('|', '||', '&&', ';'):
+                    continue
+                print("JSPKG:" + tok)
+
+# Python pip/pipx installs (Gap 4)
+# Skip `-r requirements.txt` references — those are already collected via manifest scan
+for l in joined:
+    for m in re.finditer(r'\b(?:pip|pip3|pipx)\s+install\b(.*?)(?:&&|\|\||;|$)', l):
+        body = m.group(1)
+        # Skip if this is a `-r <file>` install (manifest-driven; already covered)
+        if re.search(r'\s-r\s', body):
+            continue
+        toks = body.split()
+        i = 0
+        while i < len(toks):
+            t = toks[i]
+            if t.startswith('-'):
+                # Some flags consume the next token
+                if t in ('-r', '--requirement', '-c', '--constraint',
+                         '-e', '--editable', '--index-url', '--extra-index-url',
+                         '--find-links', '--target', '--prefix'):
+                    i += 2
+                    continue
+                i += 1
+                continue
+            if t in ('|', '||', '&&', ';'):
+                i += 1
+                continue
+            print("PYPKG:" + t)
+            i += 1
+
+# Go installs (Gap 4)
+# Form: `go install <module-path>@<version>` — version pin required by `go install`
+for l in joined:
+    for m in re.finditer(r'\bgo\s+install\b(.*?)(?:&&|\|\||;|$)', l):
+        for tok in m.group(1).split():
+            if tok.startswith('-') or '@' not in tok or tok in ('|', '||', '&&', ';'):
+                continue
+            print("GOPKG:" + tok)
 PYEOF
 )
 
@@ -320,6 +584,9 @@ PYEOF
       BASE:*) [[ -z "$DOCKERFILE_BASE" ]] && DOCKERFILE_BASE="${pline#BASE:}" ;;
       PKG:*)  SYS_PACKAGES_RAW+=" ${pline#PKG:}" ;;
       BIN:*)  EXTRA_BINARIES+=("${pline#BIN:}") ;;
+      JSPKG:*) JS_GLOBAL+=("${pline#JSPKG:}") ;;
+      PYPKG:*) PY_INSTALLS+=("${pline#PYPKG:}") ;;
+      GOPKG:*) GO_INSTALLS+=("${pline#GOPKG:}") ;;
     esac
   done <<< "$parsed"
 
@@ -537,6 +804,9 @@ PYEOF_DOMAINS
   )
 fi
 
+while IFS= read -r d; do
+  [[ -n "$d" && "$d" =~ \. ]] && EXT_DOMAINS+=("$d")
+done <<< "$INIT_DOMAINS"
 EXT_DOMAINS=($(printf '%s\n' "${EXT_DOMAINS[@]:-}" | sort -u))
 
 # ============================================================================
@@ -604,6 +874,46 @@ if grep -rq "ssh\|id_rsa\|known_hosts\|ssh-keygen\|ssh-agent\|SSH_AUTH_SOCK" . \
 fi
 # SSH outbound port as strong signal too
 echo "$INBOUND_PORTS_RAW $SYS_PACKAGES_RAW" | grep -q "openssh\|ssh " && CRED_SSH=true || true
+
+# Cross-reference /run/credentials/* bind-mounts as auth signals (Gap 2)
+# Mount targets under /run/credentials/ are convention-driven secret bind-mounts
+CRED_FROM_MOUNTS=$(echo "$DC_VOLUMES" | python3 << 'PYEOF'
+import sys, json, re, os
+try:
+    mounts = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for m in mounts:
+    target = m.get('target', '') if isinstance(m, dict) else ''
+    if not target.startswith('/run/credentials/'):
+        continue
+    name = os.path.basename(target.rstrip('/'))
+    if not name:
+        continue
+    # SSH-shaped filename: ssh keyword, known_hosts, id_* keys, or *_<keytype> suffix
+    if re.search(r'(?i)(^|_)(ssh|known_hosts|id_(rsa|ed25519|ecdsa|dsa))(_|$)|_(ed25519|rsa|ecdsa|dsa)$', name):
+        print("SSH:")
+        continue
+    # Suffix-based routing (case-insensitive — credential filenames vary)
+    if re.search(r'(?i)_key$', name):
+        print("KEY:" + name)
+    elif re.search(r'(?i)_(token|pat)$', name):
+        print("TOK:" + name)
+    elif re.search(r'(?i)_secret$', name):
+        print("KEY:" + name)
+    else:
+        print("OTH:" + name)
+PYEOF
+)
+while IFS= read -r line; do
+  [[ -n "$line" ]] || continue
+  case "$line" in
+    SSH:*)  CRED_SSH=true ;;
+    KEY:*)  CRED_API_KEYS+=("${line#KEY:}") ;;
+    TOK:*)  CRED_TOKENS+=("${line#TOK:}") ;;
+    OTH:*)  CRED_OTHER+=("${line#OTH:}") ;;
+  esac
+done <<< "$CRED_FROM_MOUNTS"
 
 # Deduplicate
 CRED_API_KEYS=($(printf '%s\n' "${CRED_API_KEYS[@]:-}" | sort -u))
@@ -932,36 +1242,13 @@ if grep -rq "@octokit\|PyGithub\|go-github\|Octokit\|github\.rest\.\|gh api " . 
 fi
 
 # ============================================================================
-# Firewall requirements
+# Init-script signal merge into raw credential / GitHub-API flags
+# (firewall_required is a composition concern; build-workflow derives it
+#  from container.capabilities + init_scripts content.)
 # ============================================================================
 
-FIREWALL_REQUIRED="false"
-if [[ -n "$(find . -name "init-firewall*" -o -name "firewall*.sh" 2>/dev/null | head -1)" ]]; then
-  FIREWALL_REQUIRED="true"
-fi
-echo "$DC_CAPABILITIES" | grep -qi "NET_ADMIN\|NET_RAW" && FIREWALL_REQUIRED="true" || true
-
-# ============================================================================
-# Suggested stack settings
-# ============================================================================
-
-# Layer 1 variant (our GHCR image tags): latest | playwright_with_chromium
-SUGGESTED_BASE="latest"
-[[ ${#BROWSER_TOOLS[@]} -gt 0 ]] && SUGGESTED_BASE="playwright_with_chromium"
-
-# Ideal Dockerfile FROM when creating a dedicated stack for this project
-SUGGESTED_DOCKERFILE_FROM="${DOCKERFILE_BASE:-}"
-if [[ -z "$SUGGESTED_DOCKERFILE_FROM" ]]; then
-  if printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^rust$"; then
-    SUGGESTED_DOCKERFILE_FROM="rust:${RUST_VER:-latest}"
-  elif printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^go$"; then
-    SUGGESTED_DOCKERFILE_FROM="${GO_VER:+golang:${GO_VER}}"; SUGGESTED_DOCKERFILE_FROM="${SUGGESTED_DOCKERFILE_FROM:-golang:latest}"
-  elif printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^python$"; then
-    SUGGESTED_DOCKERFILE_FROM="${PYTHON_VER:+python:${PYTHON_VER}}"; SUGGESTED_DOCKERFILE_FROM="${SUGGESTED_DOCKERFILE_FROM:-python:3}"
-  elif printf '%s\n' "${LANGUAGES[@]:-}" | grep -q "^node$"; then
-    SUGGESTED_DOCKERFILE_FROM="${NODE_VER:+node:${NODE_VER}}"; SUGGESTED_DOCKERFILE_FROM="${SUGGESTED_DOCKERFILE_FROM:-node:lts}"
-  fi
-fi
+[[ "$INIT_SIGNAL_SSH" == "true" ]] && CRED_SSH=true
+[[ "$INIT_SIGNAL_GH" == "true" ]] && GITHUB_API="true"
 
 # ============================================================================
 # Serialize to JSON + Markdown
@@ -990,6 +1277,9 @@ MCP_JSON=$(_to_json_arr "${MCP_SERVERS[@]:-}")
 CLAUDE_PLUGINS_JSON=$(_to_json_arr "${CLAUDE_PLUGINS[@]:-}")
 BROWSER_JSON=$(_to_json_arr "${BROWSER_TOOLS[@]:-}")
 EXTRA_BIN_JSON=$(_to_json_arr "${EXTRA_BINARIES[@]:-}")
+JS_GLOBAL_JSON=$(_to_json_arr "${JS_GLOBAL[@]:-}")
+PY_INSTALLS_JSON=$(_to_json_arr "${PY_INSTALLS[@]:-}")
+GO_INSTALLS_JSON=$(_to_json_arr "${GO_INSTALLS[@]:-}")
 INFERRED_TOOLS_JSON=$(_to_json_arr "${INFERRED_TOOLS[@]:-}")
 INFERRED_PY_JSON=$(_to_json_arr "${INFERRED_PY_IMPORTS[@]:-}")
 INFERRED_TS_JSON=$(_to_json_arr "${INFERRED_TS_IMPORTS[@]:-}")
@@ -1002,27 +1292,28 @@ export AP_DOCKERFILE_BASE="$DOCKERFILE_BASE"
 export AP_LANGS="$LANGS_JSON" AP_RUNTIME_EXTRAS="$RUNTIME_EXTRAS_JSON"
 export AP_NODE_VER="$NODE_VER" AP_GO_VER="$GO_VER" AP_PYTHON_VER="$PYTHON_VER"
 export AP_SYS_PKGS="$SYS_PACKAGES" AP_EXTRA_BINS="$EXTRA_BIN_JSON"
+export AP_JS_GLOBAL="$JS_GLOBAL_JSON"
+export AP_PY_INSTALLS="$PY_INSTALLS_JSON" AP_GO_INSTALLS="$GO_INSTALLS_JSON"
 export AP_NODE_LIBS="$NODE_LIBS" AP_PYTHON_LIBS="$PYTHON_LIBS" AP_GO_LIBS="$GO_LIBS"
 export AP_INBOUND_PORTS="$INBOUND_PORTS"
 export AP_EXT_DOMAINS="$EXT_DOMAINS_JSON" AP_EXT_SOURCE="$EXT_SOURCE"
 export AP_ENV_VARS="$ENV_VARS"
 export AP_BROWSER="$BROWSER_JSON" AP_GITHUB_API="$GITHUB_API"
-export AP_FIREWALL_REQUIRED="$FIREWALL_REQUIRED"
 export AP_DC_CAPS="$DC_CAPABILITIES" AP_DC_VOLUMES="$DC_VOLUMES"
 export AP_DC_CONTAINER_ENV="$DC_CONTAINER_ENV"
 export AP_DC_POST_START="$DC_POST_START" AP_DC_POST_CREATE="$DC_POST_CREATE"
+export AP_DC_POST_START_CHAIN="$DC_POST_START_CHAIN" AP_DC_POST_CREATE_CHAIN="$DC_POST_CREATE_CHAIN"
+export AP_DC_INIT_SCRIPTS="$DC_INIT_SCRIPTS"
 export AP_DC_EXTENSIONS="$DC_EXTENSIONS" AP_DC_REMOTE_USER="$DC_REMOTE_USER"
 export AP_CRED_KEYS="$CRED_KEYS_JSON" AP_CRED_TOKENS="$CRED_TOKENS_JSON"
 export AP_CRED_SSH="$CRED_SSH" AP_CRED_OTHER="$CRED_OTHER_JSON"
 export AP_MCP_SERVERS="$MCP_JSON" AP_CLAUDE_PLUGINS="$CLAUDE_PLUGINS_JSON"
 export AP_PLUGIN_COUNT="$plugin_count"
-export AP_BASE="$SUGGESTED_BASE"
 export AP_INFERRED_TOOLS="$INFERRED_TOOLS_JSON"
 export AP_INFERRED_PY="$INFERRED_PY_JSON"
 export AP_INFERRED_TS="$INFERRED_TS_JSON"
 export AP_INFERRED_CI_TOOLS="$INFERRED_CI_TOOLS_JSON"
 export AP_RUST_LIBS="$RUST_LIBS" AP_RUST_VER="$RUST_VER"
-export AP_SUGGESTED_DOCKERFILE_FROM="$SUGGESTED_DOCKERFILE_FROM"
 export AP_JSON_FILE="$JSON_FILE" AP_MD_FILE="$MD_FILE"
 
 python3 << 'PYEOF'
@@ -1105,6 +1396,9 @@ data = {
     "dockerfile_base":  s("AP_DOCKERFILE_BASE"),
     "system_packages":  e("AP_SYS_PKGS"),
     "extra_binaries":   e("AP_EXTRA_BINS"),
+    "global_js_packages":     e("AP_JS_GLOBAL"),
+    "dockerfile_python_installs": e("AP_PY_INSTALLS"),
+    "dockerfile_go_installs":     e("AP_GO_INSTALLS"),
     "libraries": {
         "node":   e("AP_NODE_LIBS"),
         "python": e("AP_PYTHON_LIBS"),
@@ -1121,7 +1415,6 @@ data = {
     "env_vars":          e("AP_ENV_VARS"),
     "browser_tools":     e("AP_BROWSER"),
     "github_api_usage":  b("AP_GITHUB_API"),
-    "firewall_required": b("AP_FIREWALL_REQUIRED"),
     "container": {
         "capabilities":  e("AP_DC_CAPS"),
         "volumes":       e("AP_DC_VOLUMES"),
@@ -1129,6 +1422,9 @@ data = {
         "remote_user":   s("AP_DC_REMOTE_USER"),
         "post_start":    s("AP_DC_POST_START"),
         "post_create":   s("AP_DC_POST_CREATE"),
+        "post_start_chain":  e("AP_DC_POST_START_CHAIN"),
+        "post_create_chain": e("AP_DC_POST_CREATE_CHAIN"),
+        "init_scripts":  e("AP_DC_INIT_SCRIPTS"),
         "extensions":    e("AP_DC_EXTENSIONS"),
     },
     "credentials_required": {
@@ -1146,12 +1442,7 @@ data = {
         "ci_tools":   e("AP_INFERRED_CI_TOOLS"),
     },
     "system_deps":   system_deps,
-    "suggested": {
-        "base_image":       s("AP_BASE"),
-        "dockerfile_from":  s("AP_SUGGESTED_DOCKERFILE_FROM"),
-        "ai_install":       "claude",
-        "plugin_layer":     "",
-    }
+    "schema_version": 2,
 }
 
 # Dedup: compute which inferred tools are already covered by explicit Dockerfile packages
@@ -1159,6 +1450,17 @@ explicit_pkgs = set(data['system_packages'])
 inferred_tools = set(data['inferred']['tools'])
 data['inferred']['tools_new'] = sorted(inferred_tools - explicit_pkgs)  # net-new only
 data['inferred']['tools_confirmed'] = sorted(inferred_tools & explicit_pkgs)  # already explicit
+
+# Gap 5: TS/JS imports dedup vs package.json node libs
+node_libs = set(data['libraries'].get('node', []))
+ts_imports = set(data['inferred'].get('ts_imports', []))
+data['inferred']['ts_imports_new'] = sorted(ts_imports - node_libs)
+data['inferred']['ts_imports_confirmed'] = sorted(ts_imports & node_libs)
+# Same dedup for Python imports vs python libs
+python_libs = set(data['libraries'].get('python', []))
+py_imports = set(data['inferred'].get('py_imports', []))
+data['inferred']['py_imports_new'] = sorted(py_imports - python_libs)
+data['inferred']['py_imports_confirmed'] = sorted(py_imports & python_libs)
 
 with open(os.environ["AP_JSON_FILE"], "w") as f:
     json.dump(data, f, indent=2)
@@ -1206,6 +1508,15 @@ md = f"""# Dependency Analysis: {data['project']}
 ## System Packages
 {fmt(data['system_packages'])}
 
+## Global JS Package Installs *(Dockerfile npm/pnpm/yarn/bun globals)*
+{fmt(data['global_js_packages'])}
+
+## Dockerfile Python Installs *(`pip` / `pipx` in RUN blocks)*
+{fmt(data['dockerfile_python_installs'])}
+
+## Dockerfile Go Installs *(`go install` in RUN blocks)*
+{fmt(data['dockerfile_go_installs'])}
+
 ## Libraries
 """
 for lang, libs in data["libraries"].items():
@@ -1229,6 +1540,30 @@ md += f"""
 ## Container Requirements
 {fmt_container(data['container'])}
 
+## Init Script Chain *(decomposed `postStartCommand` / `postCreateCommand`)*
+"""
+def fmt_chain(chain, label):
+    if not chain:
+        return f"  - {label}: none\n"
+    lines = [f"  - **{label}**:"]
+    for step in chain:
+        marker = "✓ in-repo" if step.get('in_repo') else "○ baked/external"
+        sudo = " (sudo)" if step.get('sudo') else ""
+        script = step.get('script') or '(no script)'
+        args = f" `{step['args']}`" if step.get('args') else ""
+        lines.append(f"      - {marker}{sudo}: `{script}`{args}")
+    return "\n".join(lines) + "\n"
+
+ps_chain = data['container'].get('post_start_chain', [])
+pc_chain = data['container'].get('post_create_chain', [])
+init_scripts = data['container'].get('init_scripts', [])
+md += fmt_chain(ps_chain, 'post_start_chain')
+md += fmt_chain(pc_chain, 'post_create_chain')
+if init_scripts:
+    md += f"  - **init_scripts (in-repo)**: {fmt(init_scripts)}\n"
+
+md += f"""
+
 ## Credentials Required
 {fmt_creds(data['credentials_required'])}
 
@@ -1244,9 +1579,6 @@ md += f"""
 ## GitHub API Usage
 {'Yes' if data['github_api_usage'] else 'No'}
 
-## Firewall Required
-{'Yes — NET_ADMIN/NET_RAW capabilities needed' if data['firewall_required'] else 'No'}
-
 ## Inferred from Source *(tools/commands found in repo files)*
 """
 inf = data['inferred']
@@ -1258,10 +1590,14 @@ if has_inferred:
         md += f"  - **Confirmed by Dockerfile**: {fmt(inf['tools_confirmed'])}\n"
     if inf.get('ci_tools'):
         md += f"  - **CI toolchain (GitHub Actions)**: {fmt(inf['ci_tools'])}\n"
-    if inf['py_imports']:
-        md += f"  - **Python imports**: {fmt(inf['py_imports'])}\n"
-    if inf['ts_imports']:
-        md += f"  - **TS/JS imports**: {fmt(inf['ts_imports'])}\n"
+    if inf.get('py_imports_new'):
+        md += f"  - **Python imports (not in manifest)**: {fmt(inf['py_imports_new'])}\n"
+    if inf.get('py_imports_confirmed'):
+        md += f"  - **Python imports confirmed by manifest**: {fmt(inf['py_imports_confirmed'])}\n"
+    if inf.get('ts_imports_new'):
+        md += f"  - **TS/JS imports (not in package.json)**: {fmt(inf['ts_imports_new'])}\n"
+    if inf.get('ts_imports_confirmed'):
+        md += f"  - **TS/JS imports confirmed by package.json**: {fmt(inf['ts_imports_confirmed'])}\n"
 elif inf['tools_confirmed']:
     md += f"  - all detected tools already declared in Dockerfile: {fmt(inf['tools_confirmed'])}\n"
 else:
@@ -1276,22 +1612,12 @@ if sys_deps:
         dep_str = f" (needs: {', '.join(deps[:5])})" if deps else ""
         md += f"  - `{tool}` → `{pkg}`{dep_str}\n"
 
-dockerfile_from = data['suggested'].get('dockerfile_from') or ''
-stack_rows = [
-    f"| Base image (layer1 variant) | `{data['suggested']['base_image']}` |",
-]
-if dockerfile_from:
-    stack_rows.append(f"| Dockerfile FROM | `{dockerfile_from}` |")
-stack_rows += [
-    f"| AI CLI | `{data['suggested']['ai_install']}` |",
-    f"| Plugin layer | {data['suggested']['plugin_layer'] or '(query dynamically at build time)'} |",
-]
-md += "\n## Suggested Stack\n| Setting | Value |\n|---|---|\n" + "\n".join(stack_rows) + "\n"
-
 with open(os.environ["AP_MD_FILE"], "w") as f:
     f.write(md)
 
-print(md)
+if os.environ.get("AP_EMIT_MD") == "1":
+    import sys
+    sys.stderr.write(md)
 PYEOF
 
 echo "" >&2

@@ -4,6 +4,72 @@
 **Output path:** `builds/<owner>/<repo>/analysis.json` + `builds/<owner>/<repo>/analysis.md`
 **Status:** Active development — core working, iterating on coverage
 
+> **REQUIRED READING before changes:**
+> - Detection logic / bash+Python idioms → [`DETECTION_PRINCIPLES.md`](../skills/analyze-project/DETECTION_PRINCIPLES.md)
+> - Output JSON / builds dir / tool-deps.json / consumer contract → [`DATA_SCHEMA.md`](../skills/analyze-project/DATA_SCHEMA.md)
+> - Test corpus / regression protocol → [`TESTING.md`](../skills/analyze-project/TESTING.md)
+>
+> All gap fixes, new detectors, and refactors must conform to those files'
+> rules (no hardcoded filter lists, cover tool families not single members,
+> derive from artifact; schema additions follow the field-add checklist;
+> changes pass the test corpus). If a proposed change conflicts with any
+> reference file, the reference wins — update the plan, not the reference.
+
+---
+
+## Reference-Doc Maintenance Workflow
+
+The reference docs (`DETECTION_PRINCIPLES.md`, `DATA_SCHEMA.md`,
+`TESTING.md`) are the source of truth for the skill. They must stay current
+as the skill evolves. **Apply this workflow on every change, no exceptions.**
+
+### Before any code change
+1. Identify which reference doc(s) own the area being changed:
+   - Detection logic / regex / parsers / bash+Python idioms → `DETECTION_PRINCIPLES.md`
+   - Output JSON shape / builds dir / tool-deps.json / consumer contract → `DATA_SCHEMA.md`
+   - Test repos / verification protocol → `TESTING.md`
+2. Read the relevant doc(s) and confirm the proposed change conforms.
+3. **If conflict found:** stop and prompt the user for review before
+   editing code or docs. Conflict examples:
+   - Plan says fix X by introducing a hardcoded list, but
+     `DETECTION_PRINCIPLES.md` forbids hardcoded lists
+   - Schema change would break a downstream consumer not yet updated
+   - Test corpus doesn't cover the modified path
+
+### During the change
+1. Update the code.
+2. **In the same change, update the reference doc** — never let docs lag behind code.
+3. If the change introduces a new pattern, idiom, or category that's
+   reusable, add it to the relevant reference doc as a durable rule.
+
+### When to create a new reference .md
+Create a new sibling reference file when:
+- The new content is **durable** (won't churn over time)
+- It's **substantial** (>~50 lines / multiple sections)
+- It doesn't fit any existing reference doc's scope
+- Future edits to the skill will benefit from re-reading it
+
+Examples of when to split:
+- New domain emerges (e.g., `MIGRATIONS.md` for schema-version migration playbooks)
+- Reference grows beyond ~500 lines and develops distinct sub-topics
+
+When creating, propagate cross-references to all sibling docs + plan banner
++ `SKILL.md` reference table. Loading model stays on-demand.
+
+### When NOT to create a new .md
+- Content fits an existing reference's scope → extend that file instead
+- Content is ephemeral (gap fix detail, iteration log) → keep in plan
+- Content is single-paragraph or single-rule → inline into existing doc
+
+### Conflict-prompt template
+When stopping to prompt the user about a conflict, state:
+1. **Where:** plan section or proposed code change
+2. **Conflicts with:** which reference doc + line/section
+3. **Options:** keep reference rule (preferred), or update reference (requires
+   justification — why old rule no longer applies)
+
+Wait for user decision. Reference wins by default.
+
 ---
 
 ## Purpose
@@ -462,50 +528,289 @@ Set `firewall_required: true` if:
 
 ## Known Gaps & Planned Improvements
 
-### Gap 1: npm global installs from Dockerfile
-`RUN npm install -g @anthropic-ai/claude-code` installs a global binary, not
-a library. These should surface in `extra_binaries` or a new `global_npm` field,
-not be lost. Current regex looks only for `releases/download/` patterns.
+### Gap 1: JS package-manager global installs from Dockerfile ✅ FIXED (2026-05-05)
+`RUN npm install -g <pkg>` (and yarn/pnpm/bun equivalents) installs a global
+binary, not a library. Must surface, not be lost. Initial fix covered npm only;
+broadened per `DETECTION_PRINCIPLES.md` rule "cover tool families, not single members".
 
-**Fix:** Add npm global install detection in Python Dockerfile parser:
-`re.findall(r'npm install -g ([\S]+)', line)`
+**Implemented:** Python Dockerfile parser uses `re.finditer` (not `findall` —
+needed to handle multiple installs on one joined line, e.g. shell if/else
+branches). Two patterns cover the JS pkg-manager family:
+- `r'\b(?:npm|pnpm|bun)\s+(?:install|i|add)\s+-g\b(.*?)(?:&&|\|\||;|$)'` —
+  npm/pnpm/bun share `-g` flag with `install`/`i`/`add` subcommands
+- `r'\byarn\s+global\s+add\b(.*?)(?:&&|\|\||;|$)'` — yarn's distinct
+  `global add` syntax
 
-### Gap 2: Credential bind-mount files as auth signals
+Both patterns: non-greedy body, explicit terminator, flag tokens stripped
+via `tok.startswith('-')` (covers `--silent`, `--unsafe-perm`, etc. without
+hardcoding flag list). Output: `global_js_packages` JSON field + markdown
+section "Global JS Package Installs". Verified against layer2-ai-install
+Dockerfile (captures both `@google/gemini-cli` and `@anthropic-ai/claude-code`
+from if/else block).
+
+Internal naming: `JSPKG:` parser tag, `JS_GLOBAL` array, `AP_JS_GLOBAL` env,
+`global_js_packages` JSON field — no npm-specific names anywhere.
+
+### Gap 2: Credential bind-mount files as auth signals ✅ FIXED (2026-05-05)
 The Layer 4 repo mounts `/run/credentials/gh_pat` and `/run/credentials/gh_claude_ed25519`.
-These appear in `container.volumes` but are not cross-referenced into
-`credentials_required`. A consumer has to know to look there.
+These appear in `container.volumes` but were not cross-referenced into
+`credentials_required`. A consumer had to know to look there.
 
-**Fix:** Post-process volumes — any bind mount with `/run/credentials/` in the
-target path should be extracted as an auth signal and surfaced in credentials.
+**Implemented:** After `DC_VOLUMES` is populated and standard cred detection
+runs, a Python post-process scans mounts for `target` paths starting with
+`/run/credentials/`. Filename basename is classified using same convention as
+env-var-style routing — case-insensitive to handle lowercase filenames:
+- SSH-shaped (matches `ssh|known_hosts|id_*` keyword OR ends in `_(rsa|ed25519|ecdsa|dsa)`) → `credentials_required.ssh = true`
+- `_key$` or `_secret$` → `credentials_required.api_keys`
+- `_(token|pat)$` → `credentials_required.tokens`
+- else → `credentials_required.other`
 
-### Gap 3: init-script chain parsing
-`postStartCommand` can be a chain like:
+Output emits `KEY:`/`TOK:`/`SSH:`/`OTH:` lines piped into existing CRED_*
+arrays which then run through standard dedup. No new field — extends existing
+shape (consumer-safe, additive).
+
+Verified against synthetic mount fixtures (gh_pat, gh_claude_ed25519,
+openai_api_key, anthropic_token, config, etc.).
+
+### Gap 3: init-script chain parsing ✅ FIXED (2026-05-05)
+`postStartCommand` is a chain like:
 `sudo /usr/local/bin/init-firewall.sh && /workspace/.devcontainer/scripts/init-ssh.sh && ...`
 
 Each init script may add more dependencies (SSH keys, GH tokens, project repos).
-Currently captured as a raw string; could be parsed to enumerate each script and
-what it sets up.
+Was captured as raw string only; consumers had to re-parse + replicate
+folklore of what each script name means.
 
-**Fix:** Split `&&` chain → per-script list. Then scan each script for what it
-installs/configures and add those signals to the appropriate categories.
+**Implemented:** Python parser splits `&&` chain (quote-aware, top-level only)
+into per-step entries `{raw, sudo, script, args, in_repo}`. Strips `sudo` flag,
+detects interpreter prefix (`bash X.sh` → script is X.sh), distinguishes
+repo-internal vs image-baked scripts. For each in-repo script, content scan
+extracts signals:
+- `iptables|ipset|init-firewall|nft|ufw` → `firewall_required: true`
+- `ssh-add|ssh-agent|SSH_AUTH_SOCK` → `credentials_required.ssh: true`
+- `gh auth|gh api|@octokit|PyGithub` → `github_api_usage: true`
+- `git clone <url>` and `https://...` URLs → merge into `external_services.domains`
 
-### Gap 4: npm/pip/go installs inside Dockerfile RUN blocks
-`RUN npm install`, `RUN pip install X`, `RUN go install X` inside a Dockerfile
-RUN block beyond the standard package manager call. These add runtime dependencies
-but are currently missed unless they appear in `package.json` or `requirements.txt`.
+**No script-name allowlist** — detection is by what each script does
+(content patterns), not its filename. A custom `setup-foo.sh` doing iptables
+work is detected the same way as `init-firewall.sh`.
 
-**Fix:** In Python Dockerfile parser, also extract:
-- `npm install -g <pkg>` / `npm ci` (look for package.json alongside)
-- `pip install <pkg>` one-liners
-- `go install <pkg>@<version>`
+**New JSON fields (additive, schema-safe):**
+- `container.post_start_chain` — array of per-step objects
+- `container.post_create_chain` — same shape for postCreateCommand
+- `container.init_scripts` — deduped list of in-repo script paths
+- (existing `post_start`/`post_create` strings retained for back-compat)
 
-### Gap 5: TS/JS import dedup vs package.json
-`inferred.ts_imports` will list packages like `@anthropic-ai/sdk` that are
-already in `libraries.node`. Same dedup logic as tools vs system_packages
-should apply here.
+**Verified:** synthetic chain `sudo /usr/local/bin/init-firewall.sh && bash
+.devcontainer/scripts/init-ssh.sh && bash .devcontainer/scripts/init-gh.sh &&
+bash .devcontainer/scripts/load-projects.sh -live owner/repo` correctly
+produces 4 chain entries, distinguishes baked/in-repo, picks up SSH+GH+domains
+from script content scans.
 
-**Fix:** After building `data`, compute:
-`inferred['ts_imports_new'] = sorted(set(ts_imports) - set(node_libs))`
+**Edge cases handled:** `bash -c '...'` wrapper strip, quote-aware chain
+splitter (skips `&&` inside quoted strings), interpreter-prefix detection
+(`bash`/`sh`/`zsh`/`python[3]`/`node`/`ruby`/`perl`), absolute paths flagged
+`in_repo: false`, missing files (no scan).
+
+### Gap 4: pip/go installs inside Dockerfile RUN blocks ✅ FIXED (2026-05-05)
+`RUN pip install X`, `RUN go install X@v` inside a Dockerfile RUN block were
+missed unless they appeared in `requirements.txt` / `go.mod`. (npm/yarn/pnpm/bun
+globals already covered by Gap 1.)
+
+**Implemented:** Two new parser blocks in Dockerfile Python parser:
+- `\b(?:pip|pip3|pipx)\s+install\b(.*?)(?:&&|\|\||;|$)` — Python pkg installs.
+  Skip line if body contains `-r <file>` (manifest-driven, already covered by
+  requirements.txt scan). Token-aware flag stripping consumes value-taking
+  flags (`-e`, `--editable`, `-r`, `-c`, `--index-url`, `--extra-index-url`,
+  `--find-links`, `--target`, `--prefix`).
+- `\bgo\s+install\b(.*?)(?:&&|\|\||;|$)` — Go binary installs. Filter requires
+  `@` in token (Go pin syntax `<path>@<ver>` is mandatory for `go install`).
+
+**New JSON fields (additive):**
+- `dockerfile_python_installs` — pip/pipx pkg names
+- `dockerfile_go_installs` — go module paths with version pins
+
+**Verified on diverse Dockerfile fixture:** captured 8 pip pkgs (requests,
+httpx, pydantic, black, ruff, poetry, pytest, fastapi) and 3 go pkgs with
+version pins, correctly skipped `pip install -r requirements.txt`,
+`pip install -e .`, handled `&&` chains and inline mixed-language installs.
+
+---
+
+## Pending Migration: Composition Lift-Out
+
+**Source:** [`build-workflow-stack-composition.md`](./build-workflow-stack-composition.md)
+**Date filed:** 2026-05-05
+**Status:** Open — code changes pending; documented for future work
+
+Per the architectural directive that `analyze-project` is a pure detector,
+the following composition fields and logic must be **removed** from this
+skill and migrated to `build-workflow`:
+
+### Migration Item 1: Remove `suggested` block ✅ FIXED (2026-05-05)
+Currently emitted:
+```jsonc
+"suggested": {
+  "base_image": "...",
+  "dockerfile_from": "...",
+  "ai_install": "claude",
+  "plugin_layer": ""
+}
+```
+All four are stack-composition opinions, not analysis facts. Move logic to
+build-workflow per `build-workflow-stack-composition.md` §2-§4.
+
+**Action items:**
+- Search builder-project for downstream consumers of `suggested.*` (build-workspace.sh, layer scripts) — update in lockstep
+- Drop the `suggested` JSON field from `analyze-project.sh`
+- Drop the "Suggested Stack" markdown table at end of report
+- Update `DATA_SCHEMA.md` schema table — remove `suggested` rows
+- Update `DATA_SCHEMA.md` consumer-contract table — remove `suggested.*` rows
+- Update `DETECTION_PRINCIPLES.md` — add explicit composition-boundary rule
+
+### Migration Item 2: Remove `firewall_required` derived flag ✅ FIXED (2026-05-05)
+Currently emitted:
+```jsonc
+"firewall_required": true
+```
+This is a derived bool composing `container.capabilities` + presence of
+firewall script. Raw signals are already in the output; build-workflow can
+derive the flag itself.
+
+**Action items:**
+- Drop `FIREWALL_REQUIRED` bash var, `AP_FIREWALL_REQUIRED` env, JSON field
+- Drop "Firewall Required" markdown section
+- Update `DATA_SCHEMA.md` schema table
+- Document derivation logic in `build-workflow-stack-composition.md` §7
+
+### Migration Item 3: DETECTION_PRINCIPLES composition-boundary rule ✅ FIXED (2026-05-05)
+Add a new section to `DETECTION_PRINCIPLES.md` that codifies the doctrine:
+
+> **Detection ≠ provisioning.** This skill emits raw signals about what a
+> repo declares. It does NOT emit composed/derived/opinionated values about
+> how to provision a stack. Composition belongs to `build-workflow`. If a
+> proposed field would be computed by combining other fields with
+> opinion/preference, push back and route the change to build-workflow.
+
+**Action items:**
+- Edit `DETECTION_PRINCIPLES.md` — add "Composition Boundary" section
+- Cross-reference from `SKILL.md` reference table
+- Cross-reference from this plan's banner
+
+### Migration Item 4: TESTING.md update ✅ FIXED (2026-05-05)
+Test repo verification protocol must be updated to confirm the removed
+fields are gone, not present.
+
+**Action items:**
+- Edit `TESTING.md` — add expectation: `suggested` field absent;
+  `firewall_required` absent
+- Per-repo verification step: run `analyze-project`, assert composition
+  fields absent in output
+
+### Migration Item 5: TTY-aware stdout — suppress markdown when piped ✅ FIXED (2026-05-05)
+**Problem:** skill currently prints full markdown report to stdout
+unconditionally. When invoked by `build-workflow` (or any wrapper), this
+floods the wrapper's terminal with the per-repo report — noise during
+interactive prompts. Direct user invocation should still see the report.
+
+**Convention:** stdout is the machine-readable channel; stderr is the
+human-facing channel. Move markdown rendering to a TTY-conditional emit.
+
+**Behavior matrix (post-change):**
+
+| Invocation | stdout | stderr |
+|---|---|---|
+| Direct user run (`bash analyze-project.sh owner/repo`) — TTY attached | JSON file path (single line, last) | Progress traces + full markdown report |
+| Piped/captured (`r=$(bash analyze-project.sh owner/repo)`) — no TTY | JSON file path only | Progress traces (no markdown) |
+| Forced quiet (`bash analyze-project.sh -q owner/repo`) | JSON file path only | Minimal progress (no markdown) |
+| Forced verbose (`bash analyze-project.sh -v owner/repo`) | JSON file path | Full markdown regardless of TTY |
+
+**Detection:** `[ -t 1 ]` — true if stdout is a terminal.
+
+**Action items:**
+- Add `-q|--quiet` and `-v|--verbose` flag parsing to `analyze-project.sh`
+- Determine effective mode at startup:
+  ```bash
+  if [[ "$QUIET" == "1" ]]; then EMIT_MD=0
+  elif [[ "$VERBOSE" == "1" ]]; then EMIT_MD=1
+  elif [[ -t 1 ]]; then EMIT_MD=1
+  else EMIT_MD=0
+  fi
+  ```
+- Move markdown emit from `print(md)` (stdout) to `sys.stderr.write(md)`
+  when `EMIT_MD=1`, skip when `EMIT_MD=0`. File `analysis.md` always
+  saved regardless.
+- Replace final `print(md)` in Python block:
+  ```python
+  if os.environ.get("AP_EMIT_MD") == "1":
+      import sys
+      sys.stderr.write(md)
+  ```
+- Keep final `echo "$JSON_FILE"` to stdout — unchanged. Wrappers capture
+  via standard stdout-capture pattern: `result=$(analyze-project.sh repo)`
+  yields JSON path with no markdown noise.
+- Update `SKILL.md` usage section to document flags
+- Update `DATA_SCHEMA.md` to clarify stdout contract (JSON path only)
+- Update `TESTING.md` — verify both modes (TTY emit, piped suppress)
+
+**Why this matters:**
+- build-workflow can capture JSON path cleanly: `path=$(analyze-project.sh r)`
+  no longer pollutes its prompt with 500 lines of report
+- Direct users still get the report — same UX as today when run from a shell
+- Standard Unix idiom (auto-detect + explicit override) — no surprise
+
+**Caveat:** if a wrapper passes `-v` (forced verbose) the markdown lands
+on the wrapper's stderr. Wrapper can redirect (`2>/dev/null` or
+`2>"$LOG"`) if needed.
+
+### Migration Item 6: Schema-stability bump ✅ FIXED (2026-05-05)
+Removing `suggested` and `firewall_required` is a **breaking change** per
+`DATA_SCHEMA.md` Schema Stability rules.
+
+**Action items:**
+- Add `schema_version: 2` to JSON output (current implicit version: 1)
+- Document breaking change in `DATA_SCHEMA.md` Schema Stability section
+- Coordinate with consumer updates (build-workflow, layer scripts) — do
+  not merge skill removal until consumers are updated
+
+### Migration sequencing
+1. Find all consumers of `suggested.*` and `firewall_required` (grep across
+   builder-project)
+2. Build the build-workflow composition logic (do NOT remove from skill yet)
+3. Switch consumers to read raw signals or build-workflow output
+4. Once consumers verified working: remove fields from skill in one PR with
+   schema_version bump
+
+---
+
+### Gap 5: TS/JS and Python import dedup vs manifests ✅ FIXED (2026-05-05)
+`inferred.ts_imports` listed packages like `@anthropic-ai/sdk` already declared
+in `libraries.node` (package.json). Same problem for `py_imports` vs
+`libraries.python`. Required parallel dedup logic to existing tools dedup.
+
+**Implemented:** in the post-data-construction Python block (alongside
+`tools_new`/`tools_confirmed`), added:
+```python
+node_libs = set(data['libraries'].get('node', []))
+ts_imports = set(data['inferred'].get('ts_imports', []))
+data['inferred']['ts_imports_new']       = sorted(ts_imports - node_libs)
+data['inferred']['ts_imports_confirmed'] = sorted(ts_imports & node_libs)
+python_libs = set(data['libraries'].get('python', []))
+py_imports = set(data['inferred'].get('py_imports', []))
+data['inferred']['py_imports_new']       = sorted(py_imports - python_libs)
+data['inferred']['py_imports_confirmed'] = sorted(py_imports & python_libs)
+```
+
+**Markdown rendering** updated: replaced raw `py_imports`/`ts_imports`
+sections with the `_new` (actionable) and `_confirmed` (validated) splits.
+Mirrors `tools_new`/`tools_confirmed` presentation.
+
+**New JSON fields (additive):**
+- `inferred.ts_imports_new` — TS/JS imports not yet in package.json
+- `inferred.ts_imports_confirmed` — TS/JS imports validated against package.json
+- `inferred.py_imports_new` — Python imports not yet in pyproject/requirements
+- `inferred.py_imports_confirmed` — Python imports validated against manifest
+
+Original `ts_imports`/`py_imports` arrays retained (raw input to dedup).
 
 ---
 
