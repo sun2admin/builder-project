@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "build-stack"
+version = "0.1.0"
+description = "Compose a complete container stack from per-repo analyses. Engine for the /build-stack skill."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "sun2admin" },
+]
+dependencies = [
+  "jsonschema>=4.0",
+]
+
+[project.scripts]
+build-stack = "build_stack.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["build_stack*"]
+
+[tool.setuptools.package-data]
+build_stack = ["schema/*.json"]

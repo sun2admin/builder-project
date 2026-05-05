@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sun2admin/builder-project/build-input.schema.json",
+  "title": "build-stack input schema",
+  "description": "Contract between /build-stack skill and build-stack tool",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "build_name",
+    "ai_cli",
+    "project_repo",
+    "plugin_repos",
+    "tool_min_version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "build_name": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "ai_cli": {
+      "type": "string",
+      "enum": ["claude", "gemini"]
+    },
+    "project_repo": {
+      "description": "owner/repo, or null for sandbox (no project repo)",
+      "oneOf": [
+        { "type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$" },
+        { "type": "null" }
+      ]
+    },
+    "plugin_repos": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+      },
+      "uniqueItems": true
+    },
+    "overrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base_image": {
+          "description": "L1 variant override; null = auto-pick",
+          "oneOf": [
+            { "type": "string", "enum": ["light", "latest", "playwright_with_chromium", "playwright_with_firefox", "playwright_with_safari"] },
+            { "type": "null" }
+          ]
+        },
+        "additional_l4_features": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "credentials_delivery": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["containerEnv", "mount"]
+          }
+        }
+      }
+    },
+    "tool_min_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_modified": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

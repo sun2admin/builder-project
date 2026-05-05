@@ -1,24 +1,147 @@
-# build-workflow Stack Composition Plan
+# build-stack Stack Composition Plan
 
-**Skill path:** `.claude/skills/build-workspace/build-workspace.sh`
-**Status:** Active — composition responsibilities being lifted out of `analyze-project`
+**Skill path:** `.claude/skills/build-stack/build-stack.sh` (new skill — greenfield, UX layer)
+**Tool path:** `tools/build-stack/` (new Python CLI — composition engine)
+**Status:** Active — `build-stack` is a complete redesign. UX as a skill (bash); composition logic as a separate Python tool. The skill collects intent and writes `build.json`; the tool reads `build.json` and performs all heavy lifting.
+
+> **Reference skill — `build-workspace` (time-bounded):** The existing
+> `.claude/skills/build-workspace/` skill is **reference only** during build-stack
+> development. It must not be modified. **It will be deleted after build-stack
+> ships and validates** — along with its layer sub-skills (`build-layer1..4`).
+>
+> When researching a task in this plan, **first check whether `build-workspace`
+> already solves it** (menu flow, `lib.sh` helpers, `builds/<name>/workspace.env`
+> registry, dry-run wrapper, TTY/piped input handling, build-name sanitization,
+> new/clone/modify entry flow). **Copy any pattern that applies into `build-stack/`**
+> — the two skills must share no files, since `build-workspace` is going away.
+> The redesign is about composition logic + skill+tool split, not about throwing
+> away the workflow scaffolding `build-workspace` already validates.
 
 > **Architectural directive (2026-05-05):** `analyze-project` is a pure
 > detector. It scans one repo and emits raw facts. **All stack composition
-> logic belongs in `build-workflow` (this skill).** When `build-workflow`
-> walks user prompts, it invokes `analyze-project` once per repo (project
-> repo + each selected plugin repo), aggregates the resulting analyses, and
-> composes the layer stack.
+> logic belongs in the `build-stack` tool.** The `/build-stack` skill collects
+> user inputs and writes `build.json`. The tool reads `build.json`, invokes
+> analyze-project once per repo (project repo + each selected plugin repo),
+> aggregates the resulting analyses, and composes the layer stack into
+> `devcontainer.json` + `workspace.env`.
 
 > **REQUIRED READING before changes:**
 > - Stack architecture → `../../CLAUDE.md` (Architecture section)
+> - Reference skill → `.claude/skills/build-workspace/` (SKILL.md, build-workspace.sh, lib.sh) — time-bounded
 > - Layer 4 split → [`layer4-design.md`](./layer4-design.md)
 > - Analyze-project schema → [`../skills/analyze-project/DATA_SCHEMA.md`](../skills/analyze-project/DATA_SCHEMA.md)
 > - Detection principles (parallel separation rule applies) → [`../skills/analyze-project/DETECTION_PRINCIPLES.md`](../skills/analyze-project/DETECTION_PRINCIPLES.md)
 
 ---
 
+## Architecture: skill+tool split
+
+Two artifacts, one slash command, clear contract.
+
+```
+┌──────────────────────────────────────┐    ┌──────────────────────────────┐
+│ /build-stack (skill — bash)          │    │ build-stack (tool — Python)  │
+│ ─ Phase 1: collect user intent       │ ─▶ │ ─ Phase 3: invoke analyze-   │
+│   ─ AI CLI choice                    │    │            project per repo  │
+│   ─ project repo OR sandbox          │    │ ─ Phase 4: aggregate         │
+│   ─ 0+ plugin repos                  │    │ ─ Phase 5: compose (L1/L4)   │
+│   ─ override prompts                 │    │ ─ Phase 6: emit              │
+│ ─ Phase 2: write build.json          │    │            devcontainer.json │
+│   + invoke tool                      │    │            + workspace.env   │
+│                                      │    │                              │
+│ ~250 lines bash                      │    │ ~1500-2500 lines Python      │
+└──────────────────────────────────────┘    └──────────────────────────────┘
+                                ▲                  │
+                                │                  ▼
+                          builds/<name>/build.json (versioned JSON contract)
+```
+
+### Why split
+
+| Concern | Resolution |
+|---|---|
+| Skill code size growth | Skill stays ~250 lines (UX only). Tool absorbs all feature accretion. |
+| Bash awkward for set algebra / version compare | Tool is Python; skill stays bash for I/O |
+| Independent testability | Tool runs in CI without Claude session; unit tests on Python modules |
+| Replay / audit / cache | `build.json` is git-trackable; tool re-run regenerates outputs |
+| Non-interactive use | Automation/cron writes `build.json` directly, invokes tool, bypasses skill |
+| Promotion to standalone | Tool can be promoted to `pip install build-stack` later without touching skill |
+
+### Skill side: one skill, internal phase modules
+
+```
+.claude/skills/build-stack/
+├── SKILL.md
+├── build-stack.sh           # entry point: phase orchestration, ~250 lines
+└── lib.sh                   # bash helpers, copied verbatim from build-workspace/lib.sh
+```
+
+No sub-skills (no per-layer split). Phases are functions in one process. Reasons:
+- Layers ≠ phases. Output is layered (L1/L2/L3/L4); work is phased (gather/analyze/aggregate/compose/emit).
+- Composition is cross-cutting: L1 depends on aggregated deps from all repos; L4 features depend on L1 floor; L3 depends on L2 + plugins. The DAG doesn't decompose per-layer.
+- Single-process state passing simpler than env files / exit codes between sub-skills.
+
+### Tool side: one binary, subcommand decomposition
+
+```
+tools/build-stack/
+├── pyproject.toml
+├── README.md
+├── build_stack/
+│   ├── __main__.py          # entry: python -m build_stack <subcommand>
+│   ├── cli.py               # argparse, subcommand dispatch
+│   ├── analyze.py           # Phase 3 — invokes analyze-project skill (Phase 1 migration), Python port (Phase 2+)
+│   ├── aggregate.py         # Phase 4 — multi-repo merge per merge rules
+│   ├── select.py            # Phase 5a — L1 capability cover, L3 plugin layer pick
+│   ├── compose.py           # Phase 5b — L4 feature map, version overlays
+│   ├── emit.py              # Phase 6 — devcontainer.json + workspace.env writer
+│   ├── ghcr.py              # GHCR manifest queries, OCI label reads
+│   └── schema/
+│       └── build-input.schema.json  # JSON Schema for build.json validation
+└── tests/
+    ├── fixtures/             # sample build.json + expected outputs
+    └── test_*.py
+```
+
+Subcommands (git-style verbs):
+
+| Subcommand | Use |
+|---|---|
+| `build-stack compose <build.json>` | Primary path: full Phase 3-6 pipeline |
+| `build-stack validate <build.json>` | JSON-schema check + reachability validation (skill calls before invoking compose) |
+| `build-stack analyze <repo>` | Standalone single-repo detection (replaces /analyze-project's bash logic in Phase 2+) |
+| `build-stack diff <build-a> <build-b>` | Future: stack-diff for review |
+| `build-stack stats builds/` | Future: promotion-path metrics from aggregated analyses |
+| `build-stack rebuild builds/<name>` | Future: re-emit outputs from existing build.json (cache hit) |
+
+### Front-facing skills (two slash commands, one tool)
+
+| Skill | Role | Tool subcommand invoked |
+|---|---|---|
+| `/build-stack` | Multi-repo composition workflow (Phases 1-6) | `compose` (which internally calls `analyze` + `aggregate`) |
+| `/analyze-project` | Single-repo detection — independently invokable per user request | `analyze` (Phase 2+ end state); current 1629-line bash retained in Phase 1 |
+
+Both skills are thin UX wrappers. Tool owns all logic.
+
+### `analyze-project` migration phases (skill→tool absorption)
+
+| Phase | analyze-project skill | tool's `analyze` subcommand | Status |
+|---|---|---|---|
+| 0 — current | 1629-line bash, full logic | does not exist | now |
+| 1 — build-stack v1 | 1629-line bash, full logic | shells out to skill via Bash subprocess | first build-stack release |
+| 2 — port | 1629-line bash, full logic | full Python port (parallel implementation) | post-build-stack-stable |
+| 3 — cutover | thin ~50-line bash wrapper → calls `build-stack analyze` | full implementation, single source of truth | after parity validated |
+
+Phase 4 (skill removal) explicitly NOT planned — independent invocation valuable.
+
+---
+
 ## Boundary
+
+**Status of migration as of 2026-05-05:**
+- ✅ Detector stripped: `suggested.*`, `firewall_required` no longer emitted by analyze-project
+- ⚠️  Composer not yet implemented: build-stack tool does not exist; no devcontainer.json composition output
+- 🆕 New fields (never existed in detector): `dockerfile_from`, `extras_needed`, `devcontainer_features`, `version_overlays`
 
 ### What stays in analyze-project (pure detection)
 - `languages`, `runtime_versions`, `runtime_extras`
@@ -34,33 +157,67 @@
 - `inferred.{tools,tools_new,tools_confirmed,py_imports*,ts_imports*,ci_tools}`
 - `system_deps` (apt-cache resolution — fact, not decision)
 
-### What moves to build-workflow (composition / opinion)
-- `suggested.base_image` — picks L1 variant
-- `suggested.dockerfile_from` — project-native runtime image (compositional hint)
-- `suggested.ai_install` — picks L2 variant
-- `suggested.plugin_layer` — picks L3 image
-- `firewall_required` (bool) — derived flag composing capabilities + script presence
-- All composition fields proposed in earlier sessions but NOT added to the
-  skill: `extras_needed`, `devcontainer_features`, `version_overlays`,
-  `L1_LATEST_RUNTIMES`, `DEVCONTAINER_FEATURE_MAP`
+### What lives in build-stack tool (composition / opinion)
+- ✅ `suggested.base_image` — picks L1 variant (in `select.py`)
+- 🆕 `suggested.dockerfile_from` — project-native runtime image (in `select.py`, never in detector)
+- ✅ `suggested.ai_install` — picks L2 variant (in `select.py`)
+- ✅ `suggested.plugin_layer` — picks L3 image (in `select.py`)
+- ✅ `firewall_required` (bool) — derived in `compose.py` from capabilities + script presence
+- 🆕 `extras_needed`, `devcontainer_features`, `version_overlays` — in `compose.py`
+- 🆕 `L1_LATEST_RUNTIMES`, `DEVCONTAINER_FEATURE_MAP` — constants in `select.py`/`compose.py`
+
+---
+
+## JSON Contract: `build.json`
+
+The skill+tool boundary. Skill writes; tool reads.
+
+**Location:** `builds/<build_name>/build.json`
+
+**Schema (v1.0):**
+```json
+{
+  "schema_version": "1.0",
+  "build_name": "my-stack",
+  "ai_cli": "claude",                       // "claude" | "gemini"
+  "project_repo": "owner/repo",             // OR null = sandbox (no repo)
+  "plugin_repos": ["owner/plugin-a"],       // 0..N entries
+  "overrides": {
+    "base_image": null,                     // null = auto-pick; else L1 variant name
+    "additional_l4_features": [],           // user-added devcontainer features beyond auto
+    "credentials_delivery": {               // per-cred override; null = auto-pick policy
+      "GITHUB_TOKEN": "containerEnv"        // "containerEnv" | "mount"
+    }
+  },
+  "tool_min_version": "1.0",
+  "created": "2026-05-05T18:30:00Z",
+  "last_modified": "2026-05-05T18:30:00Z"
+}
+```
+
+JSON Schema lives at `tools/build-stack/build_stack/schema/build-input.schema.json`. Skill calls `build-stack validate <path>` before invoking compose; tool refuses unknown schema_version.
 
 ---
 
 ## Stack-composition responsibilities
 
+All sections below describe behavior of the **tool**, not the skill. Skill only sets fields in `build.json`; tool implements all of the following.
+
 ### 1. Multi-repo analysis aggregation
 
-`build-workflow` invokes `analyze-project` on multiple repos:
+`build-stack compose` invokes analyze-project on multiple repos:
 
-```
+```python
 analyses = []
-analyses.append(analyze_project(<project repo>))
-for plugin_repo in selected_plugins_from_menu:
+if build.project_repo:
+    analyses.append(analyze_project(build.project_repo))
+for plugin_repo in build.plugin_repos:
     analyses.append(analyze_project(plugin_repo))
+# Sandbox case: project_repo = null → analyses may be empty (plugins-only)
+# or just plugin analyses
 ```
 
-Each call writes to `builds/<owner>/<repo>/analysis.json`. build-workflow
-reads each, merges by category. Merge rules:
+Each call writes to `builds/<owner>/<repo>/analysis.json`. Tool reads each, merges by category. Merge rules:
 
 | Field | Merge rule |
 |---|---|
@@ -68,19 +225,39 @@ reads each, merges by category. Merge rules:
 | Per-language libs | Union per-lang, then sort |
 | Domains | Union, then sort |
 | Credentials | Union per-bucket (api_keys/tokens/other), `ssh = any(ssh)` |
-| MCP servers | Union by `name` field; conflict on duplicate name → prompt user |
+| MCP servers | Union by `name` field; conflict on duplicate name → fail with error (no auto-merge) |
 | post_start chains | Concatenate in order: project chain first, then plugin chains |
 | init_scripts | Union, preserve order |
-| runtime_versions | Conflict-resolve: prefer pinned over latest, prompt user on cross-repo conflict |
+| runtime_versions | Highest pinned version wins; latest (unpinned) loses to any pin; cross-pin conflict → fail with error |
 | capabilities, volumes | Union; volumes deduped by `target` path |
+
+**Aggregation artifact:** Tool writes `builds/<build_name>/aggregated.json` after merge. Mirrors per-repo `analysis.json` pattern. Supports debugging, replay, promotion-path metrics.
+
+### Plugin source-repo discovery
+
+Each L3 plugin image must declare its source repo via OCI label at build time:
+
+```
+org.opencontainers.image.source = https://github.com/<owner>/<repo>
+```
+
+Tool queries the manifest:
+```bash
+docker manifest inspect ghcr.io/sun2admin/<plugin-image>:latest \
+  | jq -r '.config.Labels["org.opencontainers.image.source"]'
+```
+
+If label missing on a selected plugin: skill prompts user for source repo URL, warns that the plugin image needs label backfill at next L3 publish.
+
+**Dependencies:**
+- `build-and-push.yml` for each plugin repo must pass `--label org.opencontainers.image.source=<url>` (one-line CI change)
+- Document required label in `layer3-ai-plugins/CLAUDE.md`
 
 ### 2. L1 variant selection — minimal viable + user override
 
-Pick the **smallest L1 variant that covers all aggregated dependencies**,
-then offer user the option to override upward (never downward).
+Pick the **smallest L1 variant that covers all aggregated dependencies**, then offer user the option to override upward (never downward).
 
-**Capability profile of each L1 variant** (source of truth, lives in
-`build-workflow`, versioned in lockstep with L1 image publish):
+**Capability profile of each L1 variant** (lives in `select.py`, versioned in lockstep with L1 image publish):
 
 ```python
 L1_VARIANTS = {
@@ -102,9 +279,11 @@ L1_VARIANTS = {
                       'playwright-core', 'chromium'},
         'excludes':  {'firefox', 'webkit'},
     },
-    'playwright_with_firefox':  { 'rank': 3, 'provides': {..., 'firefox'},  ... },
-    'playwright_with_safari':   { 'rank': 3, 'provides': {..., 'webkit'},   ... },
-    'playwright_with_all':      { 'rank': 4, 'provides': {..., 'chromium', 'firefox', 'webkit'}, ... },
+    'playwright_with_firefox':  {'rank': 3, 'provides': {..., 'firefox'},  ...},
+    'playwright_with_safari':   {'rank': 3, 'provides': {..., 'webkit'},   ...},
+    # NOTE: playwright_with_all variant is defined in CI but NOT published —
+    # exceeds GitHub Actions runner time limit. Multi-browser projects must
+    # pick one variant + install other browsers at L4 via init script.
 }
 ```
 
@@ -112,10 +291,9 @@ L1_VARIANTS = {
 
 ```python
 def required_caps(agg):
-    caps = {'node', 'shell'}                             # always required
+    caps = {'node', 'shell'}
     if 'python' in agg['languages']:        caps.add('python')
     if 'playwright' in agg['browser_tools']:caps.add('playwright-core')
-    # browser flavor from playwright config / source patterns
     if uses_chromium(agg):                  caps.add('chromium')
     if uses_firefox(agg):                   caps.add('firefox')
     if uses_webkit(agg):                    caps.add('webkit')
@@ -129,18 +307,18 @@ def required_caps(agg):
 ```python
 def pick_l1(agg):
     needed = required_caps(agg)
-    # Filter to variants that satisfy needed; pick lowest rank
-    candidates = [
-        (name, v) for name, v in L1_VARIANTS.items()
-        if needed <= v['provides']
-    ]
-    if not candidates:
-        # No existing variant covers all deps — fall back to playwright_with_all
-        # OR prompt user about adding deps via L4 features
-        return None  # caller handles
-    auto_pick = min(candidates, key=lambda x: x[1]['rank'])
-    return auto_pick[0]
+    candidates = [(n, v) for n, v in L1_VARIANTS.items()
+                  if needed <= v['provides']]
+    if candidates:
+        return min(candidates, key=lambda x: x[1]['rank'])[0], []  # (variant, missing=empty)
+
+    # No variant covers all caps → pick max-rank variant + emit
+    # `extras_needed = needed - max_variant.provides` for L4 fallback
+    max_variant = max(L1_VARIANTS.items(), key=lambda x: x[1]['rank'])
+    return max_variant[0], list(needed - max_variant[1]['provides'])
 ```
+
+Caller checks the second return value: if non-empty, those caps must be installed via L4 features (Section 5) or init scripts.
 
 **User override validation:**
 
@@ -155,17 +333,17 @@ def validate_override(user_choice, needed):
     return True, None
 ```
 
-**Interactive flow:**
+**Interactive flow (in skill, validated by tool):**
 
 ```
 analyze-project completes for project + N plugin repos
    ↓
-aggregate analyses
+aggregate analyses (in tool)
    ↓
 required = required_caps(aggregated)
-auto_pick = pick_l1(aggregated)        # e.g., 'light' if no python/playwright
+auto_pick, missing = pick_l1(aggregated)
 
-Print:
+Print to skill stderr:
   "Required L1 capabilities: {required}"
   "Minimal variant: {auto_pick}"
   "Higher-capability options: [latest, playwright_with_chromium, ...]"
@@ -175,7 +353,7 @@ if user_input:
     valid, err = validate_override(user_input, required)
     if not valid: REJECT, re-prompt
    ↓
-final_l1 = user_input or auto_pick
+build.overrides.base_image = user_input or null    # null = auto-pick stays
 ```
 
 **Examples:**
@@ -184,38 +362,46 @@ final_l1 = user_input or auto_pick
 |---|---|---|---|
 | Pure node CLI tool | `{node, shell}` | `light` | `latest`, all `playwright_with_*` |
 | Node + Python AI app | `{node, shell, python}` | `latest` | All `playwright_with_*` |
-| Node + Python + Playwright (Chromium) | `{node, shell, python, playwright-core, chromium}` | `playwright_with_chromium` | `playwright_with_all` |
-| Node + Python + Playwright (multi-browser) | `{..., chromium, firefox, webkit}` | `playwright_with_all` | (no higher option) |
-
-**Rejection example:**
-- auto_pick = `latest` (project needs python)
-- user tries override `light`
-- validate fails: missing `{python}`
-- workflow re-prompts: "`light` doesn't ship Python; pick from {latest, playwright_with_*}"
+| Node + Python + Playwright (Chromium) | `{node, shell, python, playwright-core, chromium}` | `playwright_with_chromium` | `playwright_with_firefox`, `playwright_with_safari` (all rank 3) |
+| Node + Python + Playwright (multi-browser) | `{..., chromium, firefox, webkit}` | `playwright_with_chromium` + `extras_needed={firefox, webkit}` (no all-in-one variant published) | Pick another rank-3 variant + extras |
 
 **Why minimal-viable over always-:latest:**
 - Smaller image pull (`:light` ~150MB vs `:latest` ~600MB)
 - Faster cold start on first dev build
 - Less disk usage per dev workstation
-- User can override upward if they want bigger toolchain (e.g., dev wants
-  `:latest` even on a node-only project to have Python available for
-  ad-hoc scripts)
+- User can override upward if they want bigger toolchain
 
 **Why never override downward:**
-- Validate refuses overrides that drop required capabilities
+- `validate_override` refuses overrides that drop required capabilities
 - Prevents broken devcontainers from manual misconfiguration
-- Auto-pick is the floor; override is opt-up only
 
 ### 3. L2 variant selection
-Default: `claude`. Override: explicit user prompt `"Which AI CLI?"`.
+
+Default: pick from `aggregated.languages` + project framing:
+- `claude` if no signals (most projects)
+- `gemini` if user explicitly chose at /build-stack entry
+- Future: if `aggregated.mcp_servers` references gemini-only servers
+
+Override: explicit user prompt at workflow entry. No auto-detect from project content — too ambiguous.
+
+When L2=gemini, §4 has no candidates currently (no `gemini-plugins-*` images exist). Tool skips L3 entirely or prompts user.
 
 ### 4. L3 plugin layer selection
-- Take `aggregated.claude_plugins` (union from project + plugin repos)
-- Query GHCR for `claude-plugins-*` images that contain ALL required plugins
-- If exact match: use it
-- If subset match: pick smallest superset
-- If no match: invoke `/new-plugin-layer` to build new image with the union
-- Prompt user before triggering new builds
+
+Algorithm parallel to §2 (set-cover with monotone preference):
+
+```python
+needed_plugins = aggregated.claude_plugins
+candidates = [img for img in ghcr_query_plugin_images()
+              if needed_plugins <= img.plugin_set]
+if candidates:
+    return min(candidates, key=lambda i: len(i.plugin_set))  # smallest superset
+else:
+    # No image contains all required plugins
+    return INVOKE_NEW_PLUGIN_LAYER_BUILD(needed_plugins)
+```
+
+If no match: invoke `/new-plugin-layer` to build new image with the union. Prompt user before triggering new builds.
 
 ### 5. Layer 4 overlay composition
 
@@ -250,34 +436,46 @@ version_overlays = {
 }
 ```
 
-These constants live in `build-workflow` and update when L1 image content
-changes — single source of truth, versioned in lockstep with L1 publish.
+These constants live in `compose.py` and update when L1 image content changes — single source of truth, versioned in lockstep with L1 publish.
 
 ### 6. Credentials wiring
-- For each entry in `aggregated.credentials_required`, decide whether to use
-  `containerEnv` passthrough (host env) or `/run/credentials/<name>` mount
-- Prompt user once per cred for delivery method
-- Generate appropriate devcontainer.json `containerEnv` and `mounts`
+
+For each entry in `aggregated.credentials_required`, decide whether to use `containerEnv` passthrough (host env) or `/run/credentials/<name>` mount.
+
+**Default policy** (when `build.json` doesn't specify per-cred override): `containerEnv` passthrough. Rationale: simplest, matches dev-on-laptop pattern. User can re-run /build-stack to switch to mount-based delivery per cred.
+
+**Per-cred override:** `build.json.overrides.credentials_delivery.<NAME>` = `"containerEnv"` or `"mount"`.
+
+Generates appropriate devcontainer.json `containerEnv` and `mounts`.
 
 ### 7. Firewall composition
-- Set `runArgs` `--cap-add NET_ADMIN/NET_RAW` if any aggregated analysis
-  shows iptables-touching init script OR explicit capability
-- Generate per-project firewall extension if `aggregated.external_services.domains`
-  exceeds L1's baked allowlist (write extra-domains script invoked after
-  L1's init-firewall.sh)
+
+- Set `runArgs` `--cap-add NET_ADMIN/NET_RAW` if any aggregated analysis shows iptables-touching init script OR explicit capability
+- Generate per-project firewall extension if `aggregated.external_services.domains` exceeds L1's baked allowlist
+
+L1's baked allowlist is defined in: `layer1-ai-depends/init-firewall.sh`
+
+Tool reads that file's allowlist, diffs against `aggregated.external_services.domains`, emits an `extra-domains.sh` only when the diff is non-empty.
 
 ### 8. Init script chain assembly
-- Concatenate per-repo chains in order (project first, plugins after)
-- Deduplicate by script path
-- Handle ordering constraints (firewall before SSH before token; user-prompt
-  if conflicting orders detected)
-- Emit final `postStartCommand` string
+
+Each per-repo chain provided as ordered list. Compose:
+
+1. Build a partial order from constraints:
+   - `init-firewall.sh` ≺ everything (must run first)
+   - `init-ssh.sh` ≺ `init-gh-token.sh` ≺ `init-github-mcp.sh` (existing convention)
+   - `load-projects.sh` runs last
+2. Topologically sort union-of-chains under the partial order.
+3. Conflict = same script appears in two chains at incompatible positions relative to the partial order. Detect: cycle in graph after collapse.
+4. On conflict: emit warning + use partial-order default. Fail-fast in CI / non-interactive mode.
+
+Emit final `postStartCommand` string into devcontainer.json.
 
 ---
 
 ## Decision-rule summary (heavy asset vs feature)
 
-Composition logic (lives in build-workflow, NOT in skill):
+Composition logic (lives in tool's `compose.py`, NOT in skill):
 
 ```
 USE L1 VARIANT WHEN:
@@ -305,66 +503,65 @@ Examples:
 
 ## Promotion path
 
+**Scope:** Out of scope for build-stack v1. Documented as future direction. Requires `build-stack stats` subcommand to scan `builds/*/aggregated.json`.
+
 When a feature becomes ubiquitous:
-1. Track feature usage frequency across all `builds/*/analysis.json` runs
-2. When >50% of recent projects use feature X → propose promotion
+1. Track feature usage frequency across all `builds/*/aggregated.json` runs
+2. When >50% of recent projects (window: TBD) use feature X → propose promotion
 3. Stack maintainer approves; bumps L1 image with X baked in
-4. `build-workflow` constants updated; X removed from `DEVCONTAINER_FEATURE_MAP`
-5. Existing devcontainer.json files using the feature continue to work
-   (feature install becomes idempotent — already-installed = noop)
+4. `build-stack` constants updated; X removed from `DEVCONTAINER_FEATURE_MAP`
+5. Existing devcontainer.json files using the feature continue to work (feature install becomes idempotent)
 
 ---
 
 ## Migration steps from current state
 
-1. **Remove `suggested` block from `analyze-project`** — clean break.
-   Update `analyze-project.sh` to drop the `suggested` JSON field and the
-   "Suggested Stack" markdown table. Update `DATA_SCHEMA.md` to remove the
-   `suggested.*` rows. Plan Gap entries reference deprecation date.
-
-2. **Remove `firewall_required` from analyze-project** — keep raw signals
-   (`container.capabilities`, `init_scripts` with iptables content). Build-
-   workflow derives the bool from raw signals.
-
-3. **Implement composition in build-workflow:**
-   - Read `analyses[]` from `builds/<owner>/<repo>/analysis.json`
-   - Aggregate per merge rules above
-   - Apply L1/L2/L3 selection logic
-   - Apply L4 feature/overlay logic
-   - Generate final devcontainer.json
-   - Emit summary to user
-
-4. **Schema-stability bump** — composition fields removal is breaking. If any
-   downstream consumers exist that read `suggested.*` directly, update them
-   in lockstep (search builder-project for consumers before removal).
-
-5. **Update reference docs:**
-   - `DATA_SCHEMA.md` → mark `suggested.*` and `firewall_required` removed,
-     add deprecation note
-   - `DETECTION_PRINCIPLES.md` → add boundary rule: skill never composes
-   - `TESTING.md` → update test corpus expectations (no `suggested` field)
+1. ✅ DONE — Removed `suggested` block from analyze-project.sh
+2. ✅ DONE — Removed `firewall_required` from analyze-project.sh
+3. 🚧 TODO — Create `build-stack` skill skeleton:
+   - `.claude/skills/build-stack/SKILL.md`
+   - `.claude/skills/build-stack/build-stack.sh` (Phase 1+2)
+   - `.claude/skills/build-stack/lib.sh` (copied from build-workspace)
+4. 🚧 TODO — Create `build-stack` tool skeleton:
+   - `tools/build-stack/pyproject.toml`
+   - `tools/build-stack/build_stack/__main__.py` + `cli.py`
+   - JSON schema at `tools/build-stack/build_stack/schema/build-input.schema.json`
+5. 🚧 TODO — Implement tool subcommand `validate` (JSON schema check)
+6. 🚧 TODO — Implement tool subcommand `compose`:
+   - Phase 3 (analyze): shell out to existing analyze-project skill (Migration phase 1)
+   - Phase 4 (aggregate): merge rules per §1
+   - Phase 5a (select): L1 capability cover per §2; L3 plugin pick per §4
+   - Phase 5b (compose): L4 features per §5; firewall per §7; init chain per §8
+   - Phase 6 (emit): devcontainer.json + workspace.env writers
+7. 🚧 TODO — Add OCI source label requirement to L3 build CI (per §1 plugin source-repo discovery)
+8. 🚧 TODO — Update reference docs (DATA_SCHEMA, DETECTION_PRINCIPLES, TESTING) to reflect removed fields + boundary rule
+9. 🚧 TODO — Validate end-to-end: scaffold a stack from this builder-project repo using /build-stack, compare output to existing devcontainer.json
+10. 🚧 TODO — Delete `build-workspace` skill + `build-layer1..4` sub-skills (after build-stack validates)
 
 ---
 
 ## Composition Doctrine
 
-Three rules for analyze-project / build-workflow boundary:
+Three rules for analyze-project / build-stack boundary:
 
-1. **Detection ≠ provisioning** — skill detects what a repo declares;
-   build-workflow decides what to install where.
-2. **Skill emits raw signals; workflow makes decisions.** If a field in
-   `analysis.json` is computed from other fields plus opinion, it belongs
-   in build-workflow.
-3. **Test the boundary** — every analyze-project test should pass without
-   any compositional output. If a test breaks, the skill is doing too much.
+1. **Detection ≠ provisioning** — analyze-project detects what a repo declares; build-stack tool decides what to install where.
+2. **Skill emits raw signals; tool makes decisions.** If a field in `analysis.json` is computed from other fields plus opinion, it belongs in the build-stack tool, not in analyze-project.
+3. **Test the boundary** — analyze-project test corpus (see TESTING.md) asserts schema shape. Add explicit test that no test fixture contains `suggested.*` or `firewall_required` keys.
 
 ---
 
-## Open Questions
+## Open Questions — resolved
 
-- Should the multi-repo analysis aggregation produce a separate
-  `builds/<workspace-name>/aggregated.json` artifact, or compute on-the-fly?
-- How to handle conflicting `runtime_versions` across project + plugins
-  (e.g., project pins node 18, plugin pins node 22)?
-- Plugin repo discovery: how does build-workflow obtain a plugin's source
-  repo URL from its GHCR image name? Currently the relationship is implicit.
+- ~~Aggregation artifact location~~ → §1: `builds/<build_name>/aggregated.json`
+- ~~runtime_versions conflict~~ → §1 merge table: highest pinned wins, latest loses to any pin, cross-pin conflict fails
+- ~~Plugin source repo discovery~~ → §1: OCI source label
+- ~~Implementation language (bash vs Python)~~ → Architecture section: skill = bash, tool = Python
+- ~~Skill split (per-layer vs single)~~ → Architecture section: single skill, internal phases
+- ~~analyze-project independent invocation~~ → Architecture section: `/analyze-project` skill stays as thin wrapper post-Phase 3 migration
+
+## Open Questions — remaining
+
+- Workspace name derivation for `builds/<build_name>/`: matches `build.name` from JSON. Conflict policy if name collides with existing build entry: append timestamp or prompt user?
+- Promotion threshold window (§Promotion path "last 30 days, last N runs, all-time"?)
+- gemini-plugins-* images don't exist yet — when L2=gemini, §4 has no candidates. Skip L3 entirely, or prompt user, or build empty plugin layer?
+- Tool distribution: stay in `tools/build-stack/` indefinitely, or promote to standalone repo once stable? Promotion criteria: external reuse, version cadence diverges from builder-project.
