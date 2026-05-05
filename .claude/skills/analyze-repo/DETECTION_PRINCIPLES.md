@@ -1,4 +1,4 @@
-# analyze-project — Detection Principles
+# analyze-repo — Detection Principles
 
 **Read this before modifying the skill's detection logic.** Every category
 (packages, libraries, binaries, tools, domains, env vars, credentials) follows
@@ -11,7 +11,7 @@ list.**
 - [`TESTING.md`](./TESTING.md) — test repo corpus, regression protocol, noise floor.
   Read when validating fixes.
 - [`SKILL.md`](./SKILL.md) — discovery / triggering description.
-- [`../../plans/analyze-project-skill.md`](../../plans/analyze-project-skill.md)
+- [`../../plans/analyze-repo-skill.md`](../../plans/analyze-repo-skill.md)
   — active dev plan + gap tracking.
 
 ## Core Principle
@@ -38,7 +38,7 @@ provision a stack. Composition belongs to `build-workflow`.
 opinion/preference, it belongs in `build-workflow`.** Push back, route the
 change to the build-workflow plan instead.
 
-**Test the boundary:** every analyze-project test should pass without any
+**Test the boundary:** every analyze-repo test should pass without any
 compositional output. If a test would break without `suggested.*`, the test
 is testing the wrong skill.
 
@@ -198,13 +198,13 @@ Hard-won engineering patterns. Each one fixes a class of bug, not a single
 incident — apply consistently.
 
 ### Env-var bridge: bash → Python
-All bash-collected data is exported as `AP_*` env vars before a single
+All bash-collected data is exported as `AR_*` env vars before a single
 `python3 << 'PYEOF'` block reads them and serializes JSON.
 - **Single-quoted heredoc** (`<< 'PYEOF'`, not `<< PYEOF`) prevents bash from
   expanding `${}` inside Python — critical because Python uses `{}` for
   f-strings.
-- **Export timing matters:** any `AP_*` var must be exported BEFORE the
-  Python block that reads it. `AP_NODE_BUILTINS` (set after `node -e`) must
+- **Export timing matters:** any `AR_*` var must be exported BEFORE the
+  Python block that reads it. `AR_NODE_BUILTINS` (set after `node -e`) must
   be exported before the inferred-source Python block, not in the main
   exports section near the bottom.
 

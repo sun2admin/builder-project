@@ -17,11 +17,11 @@
 > The redesign is about composition logic + skill+tool split, not about throwing
 > away the workflow scaffolding `build-workspace` already validates.
 
-> **Architectural directive (2026-05-05):** `analyze-project` is a pure
+> **Architectural directive (2026-05-05):** `analyze-repo` is a pure
 > detector. It scans one repo and emits raw facts. **All stack composition
 > logic belongs in the `build-stack` tool.** The `/build-stack` skill collects
 > user inputs and writes `build.json`. The tool reads `build.json`, invokes
-> analyze-project once per repo (project repo + each selected plugin repo),
+> analyze-repo once per repo (project repo + each selected plugin repo),
 > aggregates the resulting analyses, and composes the layer stack into
 > `devcontainer.json` + `workspace.env`.
 
@@ -29,8 +29,8 @@
 > - Stack architecture → `../../CLAUDE.md` (Architecture section)
 > - Reference skill → `.claude/skills/build-workspace/` (SKILL.md, build-workspace.sh, lib.sh) — time-bounded
 > - Layer 4 split → [`layer4-design.md`](./layer4-design.md)
-> - Analyze-project schema → [`../skills/analyze-project/DATA_SCHEMA.md`](../skills/analyze-project/DATA_SCHEMA.md)
-> - Detection principles (parallel separation rule applies) → [`../skills/analyze-project/DETECTION_PRINCIPLES.md`](../skills/analyze-project/DETECTION_PRINCIPLES.md)
+> - Analyze-project schema → [`../skills/analyze-repo/DATA_SCHEMA.md`](../skills/analyze-repo/DATA_SCHEMA.md)
+> - Detection principles (parallel separation rule applies) → [`../skills/analyze-repo/DETECTION_PRINCIPLES.md`](../skills/analyze-repo/DETECTION_PRINCIPLES.md)
 
 ---
 
@@ -90,7 +90,7 @@ tools/build-stack/
 ├── build_stack/
 │   ├── __main__.py          # entry: python -m build_stack <subcommand>
 │   ├── cli.py               # argparse, subcommand dispatch
-│   ├── analyze.py           # Phase 3 — invokes analyze-project skill (Phase 1 migration), Python port (Phase 2+)
+│   ├── analyze.py           # Phase 3 — invokes analyze-repo skill (Phase 1 migration), Python port (Phase 2+)
 │   ├── aggregate.py         # Phase 4 — multi-repo merge per merge rules
 │   ├── select.py            # Phase 5a — L1 capability cover, L3 plugin layer pick
 │   ├── compose.py           # Phase 5b — L4 feature map, version overlays
@@ -109,7 +109,7 @@ Subcommands (git-style verbs):
 |---|---|
 | `build-stack compose <build.json>` | Primary path: full Phase 3-6 pipeline |
 | `build-stack validate <build.json>` | JSON-schema check + reachability validation (skill calls before invoking compose) |
-| `build-stack analyze <repo>` | Standalone single-repo detection (replaces /analyze-project's bash logic in Phase 2+) |
+| `build-stack analyze <repo>` | Standalone single-repo detection (replaces /analyze-repo's bash logic in Phase 2+) |
 | `build-stack diff <build-a> <build-b>` | Future: stack-diff for review |
 | `build-stack stats builds/` | Future: promotion-path metrics from aggregated analyses |
 | `build-stack rebuild builds/<name>` | Future: re-emit outputs from existing build.json (cache hit) |
@@ -119,13 +119,13 @@ Subcommands (git-style verbs):
 | Skill | Role | Tool subcommand invoked |
 |---|---|---|
 | `/build-stack` | Multi-repo composition workflow (Phases 1-6) | `compose` (which internally calls `analyze` + `aggregate`) |
-| `/analyze-project` | Single-repo detection — independently invokable per user request | `analyze` (Phase 2+ end state); current 1629-line bash retained in Phase 1 |
+| `/analyze-repo` | Single-repo detection — independently invokable per user request | `analyze` (Phase 2+ end state); current 1629-line bash retained in Phase 1 |
 
 Both skills are thin UX wrappers. Tool owns all logic.
 
-### `analyze-project` migration phases (skill→tool absorption)
+### `analyze-repo` migration phases (skill→tool absorption)
 
-| Phase | analyze-project skill | tool's `analyze` subcommand | Status |
+| Phase | analyze-repo skill | tool's `analyze` subcommand | Status |
 |---|---|---|---|
 | 0 — current | 1629-line bash, full logic | does not exist | now |
 | 1 — build-stack v1 | 1629-line bash, full logic | shells out to skill via Bash subprocess | first build-stack release |
@@ -139,11 +139,11 @@ Phase 4 (skill removal) explicitly NOT planned — independent invocation valuab
 ## Boundary
 
 **Status of migration as of 2026-05-05:**
-- ✅ Detector stripped: `suggested.*`, `firewall_required` no longer emitted by analyze-project
+- ✅ Detector stripped: `suggested.*`, `firewall_required` no longer emitted by analyze-repo
 - ⚠️  Composer not yet implemented: build-stack tool does not exist; no devcontainer.json composition output
 - 🆕 New fields (never existed in detector): `dockerfile_from`, `extras_needed`, `devcontainer_features`, `version_overlays`
 
-### What stays in analyze-project (pure detection)
+### What stays in analyze-repo (pure detection)
 - `languages`, `runtime_versions`, `runtime_extras`
 - `system_packages`, `extra_binaries`, `global_js_packages`,
   `dockerfile_python_installs`, `dockerfile_go_installs`
@@ -205,7 +205,7 @@ All sections below describe behavior of the **tool**, not the skill. Skill only 
 
 ### 1. Multi-repo analysis aggregation
 
-`build-stack compose` invokes analyze-project on multiple repos:
+`build-stack compose` invokes analyze-repo on multiple repos:
 
 ```python
 analyses = []
@@ -336,7 +336,7 @@ def validate_override(user_choice, needed):
 **Interactive flow (in skill, validated by tool):**
 
 ```
-analyze-project completes for project + N plugin repos
+analyze-repo completes for project + N plugin repos
    ↓
 aggregate analyses (in tool)
    ↓
@@ -516,8 +516,8 @@ When a feature becomes ubiquitous:
 
 ## Migration steps from current state
 
-1. ✅ DONE — Removed `suggested` block from analyze-project.sh
-2. ✅ DONE — Removed `firewall_required` from analyze-project.sh
+1. ✅ DONE — Removed `suggested` block from analyze-repo.sh
+2. ✅ DONE — Removed `firewall_required` from analyze-repo.sh
 3. 🚧 TODO — Create `build-stack` skill skeleton:
    - `.claude/skills/build-stack/SKILL.md`
    - `.claude/skills/build-stack/build-stack.sh` (Phase 1+2)
@@ -528,7 +528,7 @@ When a feature becomes ubiquitous:
    - JSON schema at `tools/build-stack/build_stack/schema/build-input.schema.json`
 5. 🚧 TODO — Implement tool subcommand `validate` (JSON schema check)
 6. 🚧 TODO — Implement tool subcommand `compose`:
-   - Phase 3 (analyze): shell out to existing analyze-project skill (Migration phase 1)
+   - Phase 3 (analyze): shell out to existing analyze-repo skill (Migration phase 1)
    - Phase 4 (aggregate): merge rules per §1
    - Phase 5a (select): L1 capability cover per §2; L3 plugin pick per §4
    - Phase 5b (compose): L4 features per §5; firewall per §7; init chain per §8
@@ -542,11 +542,11 @@ When a feature becomes ubiquitous:
 
 ## Composition Doctrine
 
-Three rules for analyze-project / build-stack boundary:
+Three rules for analyze-repo / build-stack boundary:
 
-1. **Detection ≠ provisioning** — analyze-project detects what a repo declares; build-stack tool decides what to install where.
-2. **Skill emits raw signals; tool makes decisions.** If a field in `analysis.json` is computed from other fields plus opinion, it belongs in the build-stack tool, not in analyze-project.
-3. **Test the boundary** — analyze-project test corpus (see TESTING.md) asserts schema shape. Add explicit test that no test fixture contains `suggested.*` or `firewall_required` keys.
+1. **Detection ≠ provisioning** — analyze-repo detects what a repo declares; build-stack tool decides what to install where.
+2. **Skill emits raw signals; tool makes decisions.** If a field in `analysis.json` is computed from other fields plus opinion, it belongs in the build-stack tool, not in analyze-repo.
+3. **Test the boundary** — analyze-repo test corpus (see TESTING.md) asserts schema shape. Add explicit test that no test fixture contains `suggested.*` or `firewall_required` keys.
 
 ---
 
@@ -557,7 +557,7 @@ Three rules for analyze-project / build-stack boundary:
 - ~~Plugin source repo discovery~~ → §1: OCI source label
 - ~~Implementation language (bash vs Python)~~ → Architecture section: skill = bash, tool = Python
 - ~~Skill split (per-layer vs single)~~ → Architecture section: single skill, internal phases
-- ~~analyze-project independent invocation~~ → Architecture section: `/analyze-project` skill stays as thin wrapper post-Phase 3 migration
+- ~~analyze-repo independent invocation~~ → Architecture section: `/analyze-repo` skill stays as thin wrapper post-Phase 3 migration
 
 ## Open Questions — remaining
 

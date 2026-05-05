@@ -1,4 +1,4 @@
-# analyze-project — Data Schema & Layout
+# analyze-repo — Data Schema & Layout
 
 **Read this when modifying output structure, the builds registry, or
 `tool-deps.json`.** Sibling to `DETECTION_PRINCIPLES.md`. Companion files
@@ -8,7 +8,7 @@ serve different concerns:
 - `DATA_SCHEMA.md` (this file) — WHAT the skill writes (paths, JSON shape, cache, consumer contract)
 - `TESTING.md` — HOW to verify changes (test corpus, regression protocol)
 - `SKILL.md` — WHEN the skill triggers (description, brief usage)
-- `.claude/plans/analyze-project-skill.md` — active dev plan + gap tracking
+- `.claude/plans/analyze-repo-skill.md` — active dev plan + gap tracking
 
 If a change here affects detection logic, update both files. If a change
 breaks downstream consumers (`build-workspace`), bump the schema version
@@ -20,9 +20,9 @@ and document the migration.
 
 ### Skill directory
 ```
-.claude/skills/analyze-project/
+.claude/skills/analyze-repo/
 ├── SKILL.md                  ← discovery / triggering
-├── analyze-project.sh        ← orchestrator (bash + inline Python)
+├── analyze-repo.sh        ← orchestrator (bash + inline Python)
 ├── tool-deps.json            ← cached tool→apt mappings (committed)
 ├── DETECTION_PRINCIPLES.md   ← detection rules (load on edit)
 └── DATA_SCHEMA.md            ← this file (load on schema work)
@@ -108,18 +108,18 @@ Top-level keys (current):
 
 ### Adding a new field
 Checklist:
-1. Add to bash export (`export AP_FOO="$FOO_JSON"`)
+1. Add to bash export (`export AR_FOO="$FOO_JSON"`)
 2. Add to Python data dict using `e()` / `s()` / `b()` helper
 3. Add markdown rendering section
 4. Update this schema table
-5. Update `analyze-project-skill.md` JSON Schema example
+5. Update `analyze-repo-skill.md` JSON Schema example
 6. Tell `build-workspace` if it should consume the new field
 
 ---
 
 ## tool-deps.json Schema
 
-Path: `.claude/skills/analyze-project/tool-deps.json`
+Path: `.claude/skills/analyze-repo/tool-deps.json`
 Initial state: `{}`. Grows incrementally; committed to version control.
 
 ```json

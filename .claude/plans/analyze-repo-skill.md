@@ -1,13 +1,13 @@
-# analyze-project Skill Plan
+# analyze-repo Skill Plan
 
-**Skill path:** `.claude/skills/analyze-project/analyze-project.sh`
+**Skill path:** `.claude/skills/analyze-repo/analyze-repo.sh`
 **Output path:** `builds/<owner>/<repo>/analysis.json` + `builds/<owner>/<repo>/analysis.md`
 **Status:** Active development — core working, iterating on coverage
 
 > **REQUIRED READING before changes:**
-> - Detection logic / bash+Python idioms → [`DETECTION_PRINCIPLES.md`](../skills/analyze-project/DETECTION_PRINCIPLES.md)
-> - Output JSON / builds dir / tool-deps.json / consumer contract → [`DATA_SCHEMA.md`](../skills/analyze-project/DATA_SCHEMA.md)
-> - Test corpus / regression protocol → [`TESTING.md`](../skills/analyze-project/TESTING.md)
+> - Detection logic / bash+Python idioms → [`DETECTION_PRINCIPLES.md`](../skills/analyze-repo/DETECTION_PRINCIPLES.md)
+> - Output JSON / builds dir / tool-deps.json / consumer contract → [`DATA_SCHEMA.md`](../skills/analyze-repo/DATA_SCHEMA.md)
+> - Test corpus / regression protocol → [`TESTING.md`](../skills/analyze-repo/TESTING.md)
 >
 > All gap fixes, new detectors, and refactors must conform to those files'
 > rules (no hardcoded filter lists, cover tool families not single members,
@@ -412,7 +412,7 @@ system packages it needs in Layer 1. This is a key function — the analysis dir
 informs what goes into the Layer 1 Dockerfile.
 
 **Resolution flow:**
-1. Load `tool-deps.json` from the skill directory (alongside `analyze-project.sh`)
+1. Load `tool-deps.json` from the skill directory (alongside `analyze-repo.sh`)
 2. For each tool not already cached:
    a. Try `apt-cache show <tool>` — if the tool name is itself a Debian package, extract `Depends:` field
    b. If not a direct package, try `dpkg -S */bin/<tool>` to find what package provides the binary
@@ -642,7 +642,7 @@ version pins, correctly skipped `pip install -r requirements.txt`,
 **Date filed:** 2026-05-05
 **Status:** Open — code changes pending; documented for future work
 
-Per the architectural directive that `analyze-project` is a pure detector,
+Per the architectural directive that `analyze-repo` is a pure detector,
 the following composition fields and logic must be **removed** from this
 skill and migrated to `build-workflow`:
 
@@ -661,7 +661,7 @@ build-workflow per `build-workflow-stack-composition.md` §2-§4.
 
 **Action items:**
 - Search builder-project for downstream consumers of `suggested.*` (build-workspace.sh, layer scripts) — update in lockstep
-- Drop the `suggested` JSON field from `analyze-project.sh`
+- Drop the `suggested` JSON field from `analyze-repo.sh`
 - Drop the "Suggested Stack" markdown table at end of report
 - Update `DATA_SCHEMA.md` schema table — remove `suggested` rows
 - Update `DATA_SCHEMA.md` consumer-contract table — remove `suggested.*` rows
@@ -703,7 +703,7 @@ fields are gone, not present.
 **Action items:**
 - Edit `TESTING.md` — add expectation: `suggested` field absent;
   `firewall_required` absent
-- Per-repo verification step: run `analyze-project`, assert composition
+- Per-repo verification step: run `analyze-repo`, assert composition
   fields absent in output
 
 ### Migration Item 5: TTY-aware stdout — suppress markdown when piped ✅ FIXED (2026-05-05)
@@ -719,15 +719,15 @@ human-facing channel. Move markdown rendering to a TTY-conditional emit.
 
 | Invocation | stdout | stderr |
 |---|---|---|
-| Direct user run (`bash analyze-project.sh owner/repo`) — TTY attached | JSON file path (single line, last) | Progress traces + full markdown report |
-| Piped/captured (`r=$(bash analyze-project.sh owner/repo)`) — no TTY | JSON file path only | Progress traces (no markdown) |
-| Forced quiet (`bash analyze-project.sh -q owner/repo`) | JSON file path only | Minimal progress (no markdown) |
-| Forced verbose (`bash analyze-project.sh -v owner/repo`) | JSON file path | Full markdown regardless of TTY |
+| Direct user run (`bash analyze-repo.sh owner/repo`) — TTY attached | JSON file path (single line, last) | Progress traces + full markdown report |
+| Piped/captured (`r=$(bash analyze-repo.sh owner/repo)`) — no TTY | JSON file path only | Progress traces (no markdown) |
+| Forced quiet (`bash analyze-repo.sh -q owner/repo`) | JSON file path only | Minimal progress (no markdown) |
+| Forced verbose (`bash analyze-repo.sh -v owner/repo`) | JSON file path | Full markdown regardless of TTY |
 
 **Detection:** `[ -t 1 ]` — true if stdout is a terminal.
 
 **Action items:**
-- Add `-q|--quiet` and `-v|--verbose` flag parsing to `analyze-project.sh`
+- Add `-q|--quiet` and `-v|--verbose` flag parsing to `analyze-repo.sh`
 - Determine effective mode at startup:
   ```bash
   if [[ "$QUIET" == "1" ]]; then EMIT_MD=0
@@ -746,14 +746,14 @@ human-facing channel. Move markdown rendering to a TTY-conditional emit.
       sys.stderr.write(md)
   ```
 - Keep final `echo "$JSON_FILE"` to stdout — unchanged. Wrappers capture
-  via standard stdout-capture pattern: `result=$(analyze-project.sh repo)`
+  via standard stdout-capture pattern: `result=$(analyze-repo.sh repo)`
   yields JSON path with no markdown noise.
 - Update `SKILL.md` usage section to document flags
 - Update `DATA_SCHEMA.md` to clarify stdout contract (JSON path only)
 - Update `TESTING.md` — verify both modes (TTY emit, piped suppress)
 
 **Why this matters:**
-- build-workflow can capture JSON path cleanly: `path=$(analyze-project.sh r)`
+- build-workflow can capture JSON path cleanly: `path=$(analyze-repo.sh r)`
   no longer pollutes its prompt with 500 lines of report
 - Direct users still get the report — same UX as today when run from a shell
 - Standard Unix idiom (auto-detect + explicit override) — no surprise
@@ -816,7 +816,7 @@ Original `ts_imports`/`py_imports` arrays retained (raw input to dedup).
 
 ## Integration with build-workspace
 
-When `analyze-project` feeds `build-workspace`, the consumer mapping is:
+When `analyze-repo` feeds `build-workspace`, the consumer mapping is:
 
 | analysis.json field | build-workspace layer | Usage |
 |---|---|---|
@@ -876,7 +876,7 @@ be called non-interactively from `build-workspace`.
 ### lib.sh dependency
 Sources `../build-workspace/lib.sh` for `read_input`, color vars (`$BLUE`, `$GREEN`,
 `$RED`, `$NC`). All display output goes to `>&2` so stdout carries only the
-JSON file path for capture: `result=$(bash analyze-project.sh repo 2>/dev/tty)`.
+JSON file path for capture: `result=$(bash analyze-repo.sh repo 2>/dev/tty)`.
 
 ### Builds registry
 Results saved to `builds/<owner>/<repo>/analysis.json` inside the builder-project repo,
@@ -904,7 +904,7 @@ dependency names in naive regex (`workspace`, `package`, `lib`, etc.). TOML_SECT
 is a legitimate hardcoded set — it's defined by Cargo's fixed schema, not opinions.
 
 ### tool-deps.json
-Stored at `.claude/skills/analyze-project/tool-deps.json` alongside the skill.
+Stored at `.claude/skills/analyze-repo/tool-deps.json` alongside the skill.
 Initial state: `{}`. Grows over time as new tools are discovered across analyzed repos.
 Committed to version control so it persists across sessions and containers.
 The file is written only when new tools are encountered (cache_updated flag).

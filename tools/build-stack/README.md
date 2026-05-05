@@ -1,6 +1,6 @@
 # build-stack tool
 
-Composition engine for the `/build-stack` skill. Reads a `build.json` describing user intent, runs `analyze-project` on each referenced repo, aggregates dependencies, picks the minimum L1 variant covering all deps, composes L4 devcontainer features, and emits `devcontainer.json` + `workspace.env`.
+Composition engine for the `/build-stack` skill. Reads a `build.json` describing user intent, runs `analyze-repo` on each referenced repo, aggregates dependencies, picks the minimum L1 variant covering all deps, composes L4 devcontainer features, and emits `devcontainer.json` + `workspace.env`.
 
 See `.claude/plans/build-workflow-stack-composition.md` for the full design.
 
@@ -34,7 +34,7 @@ python -m build_stack <subcommand> <args>
 ```
 build_stack/
 ├── cli.py            # argparse subcommand dispatch
-├── analyze.py        # Phase 3: invokes analyze-project (skill or Python port)
+├── analyze.py        # Phase 3: invokes analyze-repo (skill or Python port)
 ├── aggregate.py      # Phase 4: multi-repo merge (per plan §1 merge rules)
 ├── select.py         # Phase 5a: L1 capability cover, L3 plugin layer pick
 ├── compose.py        # Phase 5b: L4 features, version overlays, firewall, init chain

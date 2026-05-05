@@ -1,6 +1,6 @@
 #!/bin/bash
-# analyze-project: Deep scan a GitHub repo for all container stack dependencies
-# Usage: analyze-project.sh [owner/repo]
+# analyze-repo: Deep scan a GitHub repo for all container stack dependencies
+# Usage: analyze-repo.sh [owner/repo]
 # stdout: path to builds/<owner>/<repo>/analysis.json
 # exit 0=success, 1=error
 
@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
     -v|--verbose) VERBOSE=1; shift ;;
     -h|--help)
       cat >&2 <<EOF
-Usage: analyze-project.sh [-q|--quiet] [-v|--verbose] [owner/repo]
+Usage: analyze-repo.sh [-q|--quiet] [-v|--verbose] [owner/repo]
 
   -q  Suppress markdown report on stderr (still saves analysis.md file).
   -v  Always emit markdown report regardless of TTY detection.
@@ -54,7 +54,7 @@ elif [[ "$VERBOSE" == "1" ]]; then EMIT_MD=1
 elif [[ -t 1 ]]; then EMIT_MD=1
 else EMIT_MD=0
 fi
-export AP_EMIT_MD="$EMIT_MD"
+export AR_EMIT_MD="$EMIT_MD"
 
 if [[ ! "$REPO" =~ ^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ ]]; then
   echo -e "${RED}✘ Invalid format. Use owner/repo (e.g. sun2admin/myapp)${NC}" >&2
@@ -68,7 +68,7 @@ REPO_NAME="${REPO##*/}"
 # Clone
 # ============================================================================
 
-echo -e "\n${BLUE}=== analyze-project: ${REPO} ===${NC}" >&2
+echo -e "\n${BLUE}=== analyze-repo: ${REPO} ===${NC}" >&2
 echo "" >&2
 
 # Fetch repo metadata from GitHub API before cloning
@@ -95,7 +95,7 @@ NODE_BUILTINS_JSON="[]"
 if command -v node >/dev/null 2>&1; then
   NODE_BUILTINS_JSON=$(node -e "console.log(JSON.stringify(require('module').builtinModules))" 2>/dev/null || echo "[]")
 fi
-export AP_NODE_BUILTINS="$NODE_BUILTINS_JSON"
+export AR_NODE_BUILTINS="$NODE_BUILTINS_JSON"
 
 # ============================================================================
 # Project purpose (README first paragraph + repo description)
@@ -1184,7 +1184,7 @@ for py in Path('.').rglob('*.py'):
 
 # ── TS/JS imports — Node builtins from Node itself, not a hardcoded list ──────
 try:
-    node_builtins_raw = os.environ.get('AP_NODE_BUILTINS', '[]')
+    node_builtins_raw = os.environ.get('AR_NODE_BUILTINS', '[]')
     _node_list = json.loads(node_builtins_raw)
     node_builtins = frozenset(m.replace('node:', '') for m in _node_list)
 except Exception:
@@ -1285,36 +1285,36 @@ INFERRED_PY_JSON=$(_to_json_arr "${INFERRED_PY_IMPORTS[@]:-}")
 INFERRED_TS_JSON=$(_to_json_arr "${INFERRED_TS_IMPORTS[@]:-}")
 INFERRED_CI_TOOLS_JSON=$(_to_json_arr "${INFERRED_CI_TOOLS[@]:-}")
 
-export AP_SKILL_DIR="$SKILL_DIR"
-export AP_REPO="$REPO" AP_PROJECT="$REPO_NAME" AP_TODAY="$TODAY"
-export AP_PURPOSE="$PURPOSE" AP_REPO_LANG="$REPO_LANG"
-export AP_DOCKERFILE_BASE="$DOCKERFILE_BASE"
-export AP_LANGS="$LANGS_JSON" AP_RUNTIME_EXTRAS="$RUNTIME_EXTRAS_JSON"
-export AP_NODE_VER="$NODE_VER" AP_GO_VER="$GO_VER" AP_PYTHON_VER="$PYTHON_VER"
-export AP_SYS_PKGS="$SYS_PACKAGES" AP_EXTRA_BINS="$EXTRA_BIN_JSON"
-export AP_JS_GLOBAL="$JS_GLOBAL_JSON"
-export AP_PY_INSTALLS="$PY_INSTALLS_JSON" AP_GO_INSTALLS="$GO_INSTALLS_JSON"
-export AP_NODE_LIBS="$NODE_LIBS" AP_PYTHON_LIBS="$PYTHON_LIBS" AP_GO_LIBS="$GO_LIBS"
-export AP_INBOUND_PORTS="$INBOUND_PORTS"
-export AP_EXT_DOMAINS="$EXT_DOMAINS_JSON" AP_EXT_SOURCE="$EXT_SOURCE"
-export AP_ENV_VARS="$ENV_VARS"
-export AP_BROWSER="$BROWSER_JSON" AP_GITHUB_API="$GITHUB_API"
-export AP_DC_CAPS="$DC_CAPABILITIES" AP_DC_VOLUMES="$DC_VOLUMES"
-export AP_DC_CONTAINER_ENV="$DC_CONTAINER_ENV"
-export AP_DC_POST_START="$DC_POST_START" AP_DC_POST_CREATE="$DC_POST_CREATE"
-export AP_DC_POST_START_CHAIN="$DC_POST_START_CHAIN" AP_DC_POST_CREATE_CHAIN="$DC_POST_CREATE_CHAIN"
-export AP_DC_INIT_SCRIPTS="$DC_INIT_SCRIPTS"
-export AP_DC_EXTENSIONS="$DC_EXTENSIONS" AP_DC_REMOTE_USER="$DC_REMOTE_USER"
-export AP_CRED_KEYS="$CRED_KEYS_JSON" AP_CRED_TOKENS="$CRED_TOKENS_JSON"
-export AP_CRED_SSH="$CRED_SSH" AP_CRED_OTHER="$CRED_OTHER_JSON"
-export AP_MCP_SERVERS="$MCP_JSON" AP_CLAUDE_PLUGINS="$CLAUDE_PLUGINS_JSON"
-export AP_PLUGIN_COUNT="$plugin_count"
-export AP_INFERRED_TOOLS="$INFERRED_TOOLS_JSON"
-export AP_INFERRED_PY="$INFERRED_PY_JSON"
-export AP_INFERRED_TS="$INFERRED_TS_JSON"
-export AP_INFERRED_CI_TOOLS="$INFERRED_CI_TOOLS_JSON"
-export AP_RUST_LIBS="$RUST_LIBS" AP_RUST_VER="$RUST_VER"
-export AP_JSON_FILE="$JSON_FILE" AP_MD_FILE="$MD_FILE"
+export AR_SKILL_DIR="$SKILL_DIR"
+export AR_REPO="$REPO" AR_PROJECT="$REPO_NAME" AR_TODAY="$TODAY"
+export AR_PURPOSE="$PURPOSE" AR_REPO_LANG="$REPO_LANG"
+export AR_DOCKERFILE_BASE="$DOCKERFILE_BASE"
+export AR_LANGS="$LANGS_JSON" AR_RUNTIME_EXTRAS="$RUNTIME_EXTRAS_JSON"
+export AR_NODE_VER="$NODE_VER" AR_GO_VER="$GO_VER" AR_PYTHON_VER="$PYTHON_VER"
+export AR_SYS_PKGS="$SYS_PACKAGES" AR_EXTRA_BINS="$EXTRA_BIN_JSON"
+export AR_JS_GLOBAL="$JS_GLOBAL_JSON"
+export AR_PY_INSTALLS="$PY_INSTALLS_JSON" AR_GO_INSTALLS="$GO_INSTALLS_JSON"
+export AR_NODE_LIBS="$NODE_LIBS" AR_PYTHON_LIBS="$PYTHON_LIBS" AR_GO_LIBS="$GO_LIBS"
+export AR_INBOUND_PORTS="$INBOUND_PORTS"
+export AR_EXT_DOMAINS="$EXT_DOMAINS_JSON" AR_EXT_SOURCE="$EXT_SOURCE"
+export AR_ENV_VARS="$ENV_VARS"
+export AR_BROWSER="$BROWSER_JSON" AR_GITHUB_API="$GITHUB_API"
+export AR_DC_CAPS="$DC_CAPABILITIES" AR_DC_VOLUMES="$DC_VOLUMES"
+export AR_DC_CONTAINER_ENV="$DC_CONTAINER_ENV"
+export AR_DC_POST_START="$DC_POST_START" AR_DC_POST_CREATE="$DC_POST_CREATE"
+export AR_DC_POST_START_CHAIN="$DC_POST_START_CHAIN" AR_DC_POST_CREATE_CHAIN="$DC_POST_CREATE_CHAIN"
+export AR_DC_INIT_SCRIPTS="$DC_INIT_SCRIPTS"
+export AR_DC_EXTENSIONS="$DC_EXTENSIONS" AR_DC_REMOTE_USER="$DC_REMOTE_USER"
+export AR_CRED_KEYS="$CRED_KEYS_JSON" AR_CRED_TOKENS="$CRED_TOKENS_JSON"
+export AR_CRED_SSH="$CRED_SSH" AR_CRED_OTHER="$CRED_OTHER_JSON"
+export AR_MCP_SERVERS="$MCP_JSON" AR_CLAUDE_PLUGINS="$CLAUDE_PLUGINS_JSON"
+export AR_PLUGIN_COUNT="$plugin_count"
+export AR_INFERRED_TOOLS="$INFERRED_TOOLS_JSON"
+export AR_INFERRED_PY="$INFERRED_PY_JSON"
+export AR_INFERRED_TS="$INFERRED_TS_JSON"
+export AR_INFERRED_CI_TOOLS="$INFERRED_CI_TOOLS_JSON"
+export AR_RUST_LIBS="$RUST_LIBS" AR_RUST_VER="$RUST_VER"
+export AR_JSON_FILE="$JSON_FILE" AR_MD_FILE="$MD_FILE"
 
 python3 << 'PYEOF'
 import json, os, subprocess
@@ -1326,7 +1326,7 @@ def b(key):                  return os.environ.get(key, "false") == "true"
 # ── Dependency resolution: map discovered tools → apt packages ────────────────
 # Uses tool-deps.json as a persistent cache alongside the skill to avoid
 # re-querying apt on every run.
-skill_dir = s("AP_SKILL_DIR")
+skill_dir = s("AR_SKILL_DIR")
 tool_deps_path = os.path.join(skill_dir, "tool-deps.json") if skill_dir else None
 
 tool_deps_cache = {}
@@ -1336,7 +1336,7 @@ if tool_deps_path and os.path.exists(tool_deps_path):
     except Exception:
         pass
 
-all_tools = set(e("AP_INFERRED_TOOLS") + e("AP_INFERRED_CI_TOOLS"))
+all_tools = set(e("AR_INFERRED_TOOLS") + e("AR_INFERRED_CI_TOOLS"))
 
 def _apt_resolve(tool):
     """Return {'apt_package': str|None, 'apt_depends': [str]} for a tool name."""
@@ -1380,66 +1380,66 @@ system_deps = {t: tool_deps_cache[t] for t in sorted(all_tools)
                if tool_deps_cache.get(t, {}).get('apt_package')}
 
 rv = {}
-for lang, vk in [("node", "AP_NODE_VER"), ("go", "AP_GO_VER"), ("python", "AP_PYTHON_VER"), ("rust", "AP_RUST_VER")]:
+for lang, vk in [("node", "AR_NODE_VER"), ("go", "AR_GO_VER"), ("python", "AR_PYTHON_VER"), ("rust", "AR_RUST_VER")]:
     v = s(vk)
     if v: rv[lang] = v
 
 data = {
-    "repo":             s("AP_REPO"),
-    "project":          s("AP_PROJECT"),
-    "analyzed_at":      s("AP_TODAY"),
-    "purpose":          s("AP_PURPOSE"),
-    "primary_language": s("AP_REPO_LANG"),
-    "languages":        e("AP_LANGS"),
-    "runtime_extras":   e("AP_RUNTIME_EXTRAS"),
+    "repo":             s("AR_REPO"),
+    "project":          s("AR_PROJECT"),
+    "analyzed_at":      s("AR_TODAY"),
+    "purpose":          s("AR_PURPOSE"),
+    "primary_language": s("AR_REPO_LANG"),
+    "languages":        e("AR_LANGS"),
+    "runtime_extras":   e("AR_RUNTIME_EXTRAS"),
     "runtime_versions": rv,
-    "dockerfile_base":  s("AP_DOCKERFILE_BASE"),
-    "system_packages":  e("AP_SYS_PKGS"),
-    "extra_binaries":   e("AP_EXTRA_BINS"),
-    "global_js_packages":     e("AP_JS_GLOBAL"),
-    "dockerfile_python_installs": e("AP_PY_INSTALLS"),
-    "dockerfile_go_installs":     e("AP_GO_INSTALLS"),
+    "dockerfile_base":  s("AR_DOCKERFILE_BASE"),
+    "system_packages":  e("AR_SYS_PKGS"),
+    "extra_binaries":   e("AR_EXTRA_BINS"),
+    "global_js_packages":     e("AR_JS_GLOBAL"),
+    "dockerfile_python_installs": e("AR_PY_INSTALLS"),
+    "dockerfile_go_installs":     e("AR_GO_INSTALLS"),
     "libraries": {
-        "node":   e("AP_NODE_LIBS"),
-        "python": e("AP_PYTHON_LIBS"),
-        "go":     e("AP_GO_LIBS"),
-        "rust":   e("AP_RUST_LIBS"),
+        "node":   e("AR_NODE_LIBS"),
+        "python": e("AR_PYTHON_LIBS"),
+        "go":     e("AR_GO_LIBS"),
+        "rust":   e("AR_RUST_LIBS"),
     },
     "ports": {
-        "inbound":  e("AP_INBOUND_PORTS"),
+        "inbound":  e("AR_INBOUND_PORTS"),
     },
     "external_services": {
-        "domains": e("AP_EXT_DOMAINS"),
-        "source":  s("AP_EXT_SOURCE"),
+        "domains": e("AR_EXT_DOMAINS"),
+        "source":  s("AR_EXT_SOURCE"),
     },
-    "env_vars":          e("AP_ENV_VARS"),
-    "browser_tools":     e("AP_BROWSER"),
-    "github_api_usage":  b("AP_GITHUB_API"),
+    "env_vars":          e("AR_ENV_VARS"),
+    "browser_tools":     e("AR_BROWSER"),
+    "github_api_usage":  b("AR_GITHUB_API"),
     "container": {
-        "capabilities":  e("AP_DC_CAPS"),
-        "volumes":       e("AP_DC_VOLUMES"),
-        "env":           e("AP_DC_CONTAINER_ENV", "{}"),
-        "remote_user":   s("AP_DC_REMOTE_USER"),
-        "post_start":    s("AP_DC_POST_START"),
-        "post_create":   s("AP_DC_POST_CREATE"),
-        "post_start_chain":  e("AP_DC_POST_START_CHAIN"),
-        "post_create_chain": e("AP_DC_POST_CREATE_CHAIN"),
-        "init_scripts":  e("AP_DC_INIT_SCRIPTS"),
-        "extensions":    e("AP_DC_EXTENSIONS"),
+        "capabilities":  e("AR_DC_CAPS"),
+        "volumes":       e("AR_DC_VOLUMES"),
+        "env":           e("AR_DC_CONTAINER_ENV", "{}"),
+        "remote_user":   s("AR_DC_REMOTE_USER"),
+        "post_start":    s("AR_DC_POST_START"),
+        "post_create":   s("AR_DC_POST_CREATE"),
+        "post_start_chain":  e("AR_DC_POST_START_CHAIN"),
+        "post_create_chain": e("AR_DC_POST_CREATE_CHAIN"),
+        "init_scripts":  e("AR_DC_INIT_SCRIPTS"),
+        "extensions":    e("AR_DC_EXTENSIONS"),
     },
     "credentials_required": {
-        "api_keys": e("AP_CRED_KEYS"),
-        "tokens":   e("AP_CRED_TOKENS"),
-        "ssh":      b("AP_CRED_SSH"),
-        "other":    e("AP_CRED_OTHER"),
+        "api_keys": e("AR_CRED_KEYS"),
+        "tokens":   e("AR_CRED_TOKENS"),
+        "ssh":      b("AR_CRED_SSH"),
+        "other":    e("AR_CRED_OTHER"),
     },
-    "mcp_servers":    e("AP_MCP_SERVERS"),
-    "claude_plugins": e("AP_CLAUDE_PLUGINS"),
+    "mcp_servers":    e("AR_MCP_SERVERS"),
+    "claude_plugins": e("AR_CLAUDE_PLUGINS"),
     "inferred": {
-        "tools":      e("AP_INFERRED_TOOLS"),
-        "py_imports": e("AP_INFERRED_PY"),
-        "ts_imports": e("AP_INFERRED_TS"),
-        "ci_tools":   e("AP_INFERRED_CI_TOOLS"),
+        "tools":      e("AR_INFERRED_TOOLS"),
+        "py_imports": e("AR_INFERRED_PY"),
+        "ts_imports": e("AR_INFERRED_TS"),
+        "ci_tools":   e("AR_INFERRED_CI_TOOLS"),
     },
     "system_deps":   system_deps,
     "schema_version": 2,
@@ -1462,7 +1462,7 @@ py_imports = set(data['inferred'].get('py_imports', []))
 data['inferred']['py_imports_new'] = sorted(py_imports - python_libs)
 data['inferred']['py_imports_confirmed'] = sorted(py_imports & python_libs)
 
-with open(os.environ["AP_JSON_FILE"], "w") as f:
+with open(os.environ["AR_JSON_FILE"], "w") as f:
     json.dump(data, f, indent=2)
 
 # ---- Markdown report ----
@@ -1612,10 +1612,10 @@ if sys_deps:
         dep_str = f" (needs: {', '.join(deps[:5])})" if deps else ""
         md += f"  - `{tool}` → `{pkg}`{dep_str}\n"
 
-with open(os.environ["AP_MD_FILE"], "w") as f:
+with open(os.environ["AR_MD_FILE"], "w") as f:
     f.write(md)
 
-if os.environ.get("AP_EMIT_MD") == "1":
+if os.environ.get("AR_EMIT_MD") == "1":
     import sys
     sys.stderr.write(md)
 PYEOF

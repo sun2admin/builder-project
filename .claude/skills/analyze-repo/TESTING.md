@@ -1,4 +1,4 @@
-# analyze-project — Testing Strategy
+# analyze-repo — Testing Strategy
 
 **Read this when changing detection logic, validating gap fixes, or adding
 new categories.** Sibling to `DETECTION_PRINCIPLES.md` and `DATA_SCHEMA.md`.
@@ -24,7 +24,7 @@ caught during prior development. Treat as a regression suite.
 
 For each test repo:
 
-1. **Run cleanly:** `bash analyze-project.sh <owner>/<repo>` — exit 0, no errors
+1. **Run cleanly:** `bash analyze-repo.sh <owner>/<repo>` — exit 0, no errors
 2. **JSON parses:** `jq . builds/<owner>/<repo>/analysis.json >/dev/null`
 3. **Known facts present:** every fact known by manual inspection appears
    in the right field (not lost, not in wrong category)

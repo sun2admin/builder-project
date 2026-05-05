@@ -1,9 +1,9 @@
 ---
-name: analyze-project
-description: Scan a GitHub project repo for all dependencies needed to build a container stack. Use this skill when the user wants to analyze a project's dependencies, detect system packages/libraries/ports/env vars, or prepare inputs for an auto build. Invoke for any request involving scanning a repo, detecting dependencies, or running analyze-project.
+name: analyze-repo
+description: Scan a GitHub project repo for all dependencies needed to build a container stack. Use this skill when the user wants to analyze a project's dependencies, detect system packages/libraries/ports/env vars, or prepare inputs for an auto build. Invoke for any request involving scanning a repo, detecting dependencies, or running analyze-repo.
 ---
 
-# /analyze-project
+# /analyze-repo
 
 Clones a GitHub repo fresh and scans it for all dependencies needed to configure a container stack. Saves findings to `builds/<project>/analysis.json` and `builds/<project>/analysis.md`.
 
@@ -24,7 +24,7 @@ families, not single members (npm+yarn+pnpm+bun, pip+pipx, etc.).
 ## Usage
 
 ```
-/analyze-project [-q|--quiet] [-v|--verbose] [owner/repo]
+/analyze-repo [-q|--quiet] [-v|--verbose] [owner/repo]
 ```
 
 Prompts for repo if not provided.

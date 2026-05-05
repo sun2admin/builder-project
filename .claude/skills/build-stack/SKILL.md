@@ -1,6 +1,6 @@
 ---
 name: build-stack
-description: Compose a complete container stack (L1 base image + L2 AI CLI + L3 plugin layer + L4 devcontainer features) for a project. Walks the user through choosing AI CLI, project repo (or sandbox), 0+ plugin repos. Aggregates dependencies via analyze-project per repo. Picks the minimum L1 variant covering all deps + offers user override. Generates devcontainer.json + workspace.env. Use when the user wants to scaffold, redesign, or rebuild a Claude/Gemini development workspace stack from a repo's actual dependencies.
+description: Compose a complete container stack (L1 base image + L2 AI CLI + L3 plugin layer + L4 devcontainer features) for a project. Walks the user through choosing AI CLI, project repo (or sandbox), 0+ plugin repos. Aggregates dependencies via analyze-repo per repo. Picks the minimum L1 variant covering all deps + offers user override. Generates devcontainer.json + workspace.env. Use when the user wants to scaffold, redesign, or rebuild a Claude/Gemini development workspace stack from a repo's actual dependencies.
 shortcut: bs
 usage: |
   /build-stack [--dry-run]
@@ -45,7 +45,7 @@ Phase 2: Validate + invoke tool (this skill)
    ─ Run: build-stack compose <build.json>
    ↓
 Phase 3-6: Tool work (Python)
-   ─ Analyze project + each plugin via analyze-project
+   ─ Analyze project + each plugin via analyze-repo
    ─ Aggregate analyses
    ─ Pick minimum L1 variant covering deps (user can override upward)
    ─ Compose L4 features, version overlays, firewall, init chain
@@ -81,6 +81,6 @@ The skill calls `build-stack validate` before `compose` — refuses to invoke co
 |---|---|
 | `builds/<name>/build.json` | Skill (Phase 2) |
 | `builds/<name>/aggregated.json` | Tool (Phase 4) |
-| `builds/<owner>/<repo>/analysis.json` (per repo) | Tool (Phase 3, via analyze-project) |
+| `builds/<owner>/<repo>/analysis.json` (per repo) | Tool (Phase 3, via analyze-repo) |
 | `builds/<name>/devcontainer.json` | Tool (Phase 6) |
 | `builds/<name>/workspace.env` | Tool (Phase 6, for backward-compat with old workflow) |
