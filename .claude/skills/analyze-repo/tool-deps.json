@@ -7,6 +7,14 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "acquire_lock": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "acquire_state_lock": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "action": {
     "apt_depends": [],
     "apt_package": null
@@ -208,6 +216,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "auto-managed": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "auto_upgrade": {
     "apt_depends": [],
     "apt_package": null
@@ -290,6 +302,18 @@
       "debianutils"
     ],
     "apt_package": "bash"
+  },
+  "batch-input": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "batch-prompt": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "batch-state": {
+    "apt_depends": [],
+    "apt_package": null
   },
   "bc": {
     "apt_depends": [],
@@ -439,6 +463,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "career-ops": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "cargo": {
     "apt_depends": [],
     "apt_package": null
@@ -452,6 +480,10 @@
     "apt_package": null
   },
   "check_prereq": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "check_prerequisites": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -583,6 +615,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "codeql": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "codesign": {
     "apt_depends": [],
     "apt_package": null
@@ -632,6 +668,10 @@
     "apt_package": null
   },
   "completed": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "completed_at": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -872,6 +912,10 @@
     "apt_package": null
   },
   "dep_str": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "dependency-review": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -1199,7 +1243,31 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "error_msg": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "errors": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "esc_date": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "esc_id": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "esc_jd_file": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "esc_report_num": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "esc_url": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -1299,6 +1367,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "failed": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "federated": {
     "apt_depends": [],
     "apt_package": null
@@ -1324,6 +1396,10 @@
     "apt_package": "findutils"
   },
   "firewall": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "first-interaction": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -1464,6 +1540,14 @@
     "apt_package": null
   },
   "get_repo_owner": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "get_retries": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "get_status": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -1833,6 +1917,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "init_state": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "input": {
     "apt_depends": [],
     "apt_package": null
@@ -1910,6 +1998,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "jd_file": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "join": {
     "apt_depends": [],
     "apt_package": "coreutils"
@@ -1970,6 +2062,10 @@
     "apt_package": null
   },
   "label": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "labeler": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -2125,6 +2221,10 @@
     "apt_depends": [],
     "apt_package": "login"
   },
+  "logs": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "lookup_default": {
     "apt_depends": [],
     "apt_package": null
@@ -2201,6 +2301,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "max_num": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "may": {
     "apt_depends": [],
     "apt_package": null
@@ -2210,6 +2314,10 @@
     "apt_package": null
   },
   "mention": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "merge_tracker": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -2325,6 +2433,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "next_report_num_unlocked": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "nft": {
     "apt_depends": [],
     "apt_package": null
@@ -2394,6 +2506,10 @@
     "apt_package": null
   },
   "official_count": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "old_pid": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -2573,6 +2689,30 @@
     "apt_depends": [],
     "apt_package": "poppler-utils"
   },
+  "pending": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pending_count": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pending_ids": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pending_notes": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pending_sources": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pending_urls": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "perl": {
     "apt_depends": [
       "perl-base",
@@ -2622,6 +2762,14 @@
     "apt_package": null
   },
   "pid": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pid_ids": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "pids": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -2765,6 +2913,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "print_summary": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "prisma": {
     "apt_depends": [],
     "apt_package": null
@@ -2786,6 +2938,10 @@
     "apt_package": null
   },
   "process": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "process_offer": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -2996,6 +3152,18 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "release-please": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "release_lock": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "release_state_lock": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "remote_auth_hint": {
     "apt_depends": [],
     "apt_package": null
@@ -3040,6 +3208,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "report_num": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "request": {
     "apt_depends": [],
     "apt_package": null
@@ -3073,6 +3245,14 @@
     "apt_package": null
   },
   "requirements": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "reserve_report_num": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "reserve_report_num_unlocked": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -3117,6 +3297,10 @@
     "apt_package": null
   },
   "results": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "retries": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -3192,7 +3376,15 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "run_with_state_lock": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "runner": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "running": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -3232,6 +3424,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "sbom": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "scan_out": {
     "apt_depends": [],
     "apt_package": null
@@ -3245,6 +3441,22 @@
     "apt_package": null
   },
   "scope_appetite": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "score": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "score_count": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "score_match": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "score_sum": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -3283,6 +3495,10 @@
   "sed": {
     "apt_depends": [],
     "apt_package": "sed"
+  },
+  "see": {
+    "apt_depends": [],
+    "apt_package": null
   },
   "seed_memory": {
     "apt_depends": [],
@@ -3512,6 +3728,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "stale": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "standard_lib": {
     "apt_depends": [],
     "apt_package": null
@@ -3521,6 +3741,10 @@
     "apt_package": null
   },
   "start_time": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "started_at": {
     "apt_depends": [],
     "apt_package": null
   },
@@ -3839,6 +4063,10 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "total_input": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "total_plugins": {
     "apt_depends": [],
     "apt_package": null
@@ -3858,6 +4086,10 @@
   "tr": {
     "apt_depends": [],
     "apt_package": "coreutils"
+  },
+  "tracker-additions": {
+    "apt_depends": [],
+    "apt_package": null
   },
   "try": {
     "apt_depends": [],
@@ -3903,6 +4135,14 @@
     "apt_depends": [],
     "apt_package": null
   },
+  "update_state": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "update_state_unlocked": {
+    "apt_depends": [],
+    "apt_package": null
+  },
   "upgrade_prompted": {
     "apt_depends": [],
     "apt_package": null
@@ -3920,6 +4160,10 @@
     "apt_package": null
   },
   "urllib": {
+    "apt_depends": [],
+    "apt_package": null
+  },
+  "usage": {
     "apt_depends": [],
     "apt_package": null
   },

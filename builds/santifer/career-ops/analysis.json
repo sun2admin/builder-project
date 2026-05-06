@@ -1,18 +1,22 @@
 {
   "repo": "santifer/career-ops",
   "project": "career-ops",
-  "analyzed_at": "2026-05-01",
+  "analyzed_at": "2026-05-05",
   "purpose": "Companies use AI to filter candidates. I just gave candidates AI to choose companies.",
   "primary_language": "JavaScript",
   "languages": [
     "node",
-    "shell"
+    "shell",
+    "go"
   ],
   "runtime_extras": [],
   "runtime_versions": {},
   "dockerfile_base": "",
   "system_packages": [],
   "extra_binaries": [],
+  "global_js_packages": [],
+  "dockerfile_python_installs": [],
+  "dockerfile_go_installs": [],
   "libraries": {
     "node": [
       "@google/generative-ai",
@@ -29,22 +33,39 @@
   },
   "external_services": {
     "domains": [
+      "aistudio.google.com",
+      "api.hh.ru",
+      "api.lever.co",
+      "api.star-history.com",
       "apply.workable.com",
       "boards-api.greenhouse.io",
+      "boards.greenhouse.io",
       "careers.cognigy.com",
       "careers.mastercard.com",
       "careers.salesforce.com",
+      "discord.gg",
+      "docs.renovatebot.com",
+      "example.com",
+      "github.com",
+      "greenhouse.io",
+      "hh.ru",
       "janesmith.dev",
       "job-boards.eu.greenhouse.io",
       "job-boards.greenhouse.io",
       "jobs.ashbyhq.com",
+      "jobs.example.com",
       "jobs.lever.co",
       "langfuse.com",
+      "linkedin.com",
       "liveperson.com",
       "mastercard.wd1.myworkdayjobs.com",
       "openai.com",
+      "private.url",
+      "raw.githubusercontent.com",
       "retool.com",
+      "sam-rivera.example.dev",
       "santifer.io",
+      "trudvsem.ru",
       "www.canva.com",
       "www.dialpad.com",
       "www.genesys.com",
@@ -64,7 +85,6 @@
     "playwright"
   ],
   "github_api_usage": false,
-  "firewall_required": false,
   "container": {
     "capabilities": [],
     "volumes": [],
@@ -72,6 +92,9 @@
     "remote_user": "",
     "post_start": "",
     "post_create": "",
+    "post_start_chain": [],
+    "post_create_chain": [],
+    "init_scripts": [],
     "extensions": []
   },
   "credentials_required": {
@@ -90,24 +113,283 @@
   ],
   "inferred": {
     "tools": [
-      "just",
+      "acquire_lock",
+      "acquire_state_lock",
+      "attempt",
+      "auto-managed",
+      "avg",
+      "awk",
+      "basename",
+      "bash",
+      "batch-input",
+      "batch-prompt",
+      "batch-state",
+      "bc",
+      "career-ops",
+      "cat",
+      "check_prerequisites",
+      "claude",
+      "completed",
+      "completed_at",
+      "cut",
+      "date",
+      "dirname",
+      "error_msg",
+      "esc_date",
+      "esc_id",
+      "esc_jd_file",
+      "esc_report_num",
+      "esc_url",
+      "exit_code",
+      "failed",
+      "found",
+      "get_retries",
+      "get_status",
+      "grep",
+      "head",
+      "id",
+      "init_state",
+      "jd_file",
+      "lock_pid",
+      "logs",
+      "max_num",
+      "merge_tracker",
+      "mkdir",
+      "mv",
+      "next_report_num_unlocked",
       "node",
-      "parallel"
+      "num",
+      "old_pid",
+      "pending",
+      "pending_count",
+      "pending_ids",
+      "pending_notes",
+      "pending_sources",
+      "pending_urls",
+      "pid_ids",
+      "pids",
+      "print",
+      "print_summary",
+      "process_offer",
+      "prompt",
+      "release_lock",
+      "release_state_lock",
+      "report",
+      "report_num",
+      "reserve_report_num",
+      "reserve_report_num_unlocked",
+      "retries",
+      "rm",
+      "rmdir",
+      "run_with_state_lock",
+      "running",
+      "score",
+      "score_count",
+      "score_match",
+      "score_sum",
+      "sed",
+      "see",
+      "sleep",
+      "started_at",
+      "tail",
+      "total",
+      "total_input",
+      "tr",
+      "tracker-additions",
+      "update_state",
+      "update_state_unlocked",
+      "url",
+      "usage",
+      "waited"
     ],
     "py_imports": [],
     "ts_imports": [],
-    "ci_tools": [],
-    "tools_new": [
-      "just",
+    "ci_tools": [
+      "checkout",
+      "codeql",
+      "dependency-review",
+      "first-interaction",
+      "go",
+      "labeler",
       "node",
-      "parallel"
+      "release-please",
+      "sbom",
+      "stale"
     ],
-    "tools_confirmed": []
+    "tools_new": [
+      "acquire_lock",
+      "acquire_state_lock",
+      "attempt",
+      "auto-managed",
+      "avg",
+      "awk",
+      "basename",
+      "bash",
+      "batch-input",
+      "batch-prompt",
+      "batch-state",
+      "bc",
+      "career-ops",
+      "cat",
+      "check_prerequisites",
+      "claude",
+      "completed",
+      "completed_at",
+      "cut",
+      "date",
+      "dirname",
+      "error_msg",
+      "esc_date",
+      "esc_id",
+      "esc_jd_file",
+      "esc_report_num",
+      "esc_url",
+      "exit_code",
+      "failed",
+      "found",
+      "get_retries",
+      "get_status",
+      "grep",
+      "head",
+      "id",
+      "init_state",
+      "jd_file",
+      "lock_pid",
+      "logs",
+      "max_num",
+      "merge_tracker",
+      "mkdir",
+      "mv",
+      "next_report_num_unlocked",
+      "node",
+      "num",
+      "old_pid",
+      "pending",
+      "pending_count",
+      "pending_ids",
+      "pending_notes",
+      "pending_sources",
+      "pending_urls",
+      "pid_ids",
+      "pids",
+      "print",
+      "print_summary",
+      "process_offer",
+      "prompt",
+      "release_lock",
+      "release_state_lock",
+      "report",
+      "report_num",
+      "reserve_report_num",
+      "reserve_report_num_unlocked",
+      "retries",
+      "rm",
+      "rmdir",
+      "run_with_state_lock",
+      "running",
+      "score",
+      "score_count",
+      "score_match",
+      "score_sum",
+      "sed",
+      "see",
+      "sleep",
+      "started_at",
+      "tail",
+      "total",
+      "total_input",
+      "tr",
+      "tracker-additions",
+      "update_state",
+      "update_state_unlocked",
+      "url",
+      "usage",
+      "waited"
+    ],
+    "tools_confirmed": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
+    "py_imports_new": [],
+    "py_imports_confirmed": []
   },
-  "suggested": {
-    "base_image": "playwright_with_chromium",
-    "dockerfile_from": "node:lts",
-    "ai_install": "claude",
-    "plugin_layer": ""
-  }
+  "system_deps": {
+    "awk": {
+      "apt_depends": [],
+      "apt_package": "awk"
+    },
+    "basename": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "bash": {
+      "apt_depends": [
+        "base-files",
+        "debianutils"
+      ],
+      "apt_package": "bash"
+    },
+    "cat": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "cut": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "date": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "dirname": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "grep": {
+      "apt_depends": [
+        "dpkg"
+      ],
+      "apt_package": "grep"
+    },
+    "head": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "id": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "mkdir": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "mv": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "rm": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "rmdir": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "sed": {
+      "apt_depends": [],
+      "apt_package": "sed"
+    },
+    "sleep": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "tail": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "tr": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    }
+  },
+  "schema_version": 2
 }
