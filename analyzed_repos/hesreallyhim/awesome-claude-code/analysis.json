@@ -1,7 +1,7 @@
 {
   "repo": "hesreallyhim/awesome-claude-code",
   "project": "awesome-claude-code",
-  "analyzed_at": "2026-05-01",
+  "analyzed_at": "2026-05-06",
   "purpose": "A curated list of awesome skills, hooks, slash-commands, agent orchestrators, applications, and plugins for Claude Code by Anthropic",
   "primary_language": "Python",
   "languages": [
@@ -12,6 +12,9 @@
   "dockerfile_base": "",
   "system_packages": [],
   "extra_binaries": [],
+  "global_js_packages": [],
+  "dockerfile_python_installs": [],
+  "dockerfile_go_installs": [],
   "libraries": {
     "node": [],
     "python": [],
@@ -42,7 +45,6 @@
   "env_vars": [],
   "browser_tools": [],
   "github_api_usage": true,
-  "firewall_required": false,
   "container": {
     "capabilities": [],
     "volumes": [],
@@ -50,6 +52,9 @@
     "remote_user": "",
     "post_start": "",
     "post_create": "",
+    "post_start_chain": [],
+    "post_create_chain": [],
+    "init_scripts": [],
     "extensions": []
   },
   "credentials_required": {
@@ -76,8 +81,6 @@
       "backup",
       "checks",
       "cp",
-      "d",
-      "f",
       "failure",
       "git",
       "keep_outputs",
@@ -105,15 +108,17 @@
       "checkout",
       "comment_body",
       "comment_id",
+      "console",
       "const",
       "contains",
       "content",
+      "core",
       "cp",
-      "data",
       "env",
       "event_type",
       "first",
       "git",
+      "github",
       "github-api-usage-monitor",
       "github-script",
       "github_url",
@@ -129,12 +134,12 @@
       "max_tokens",
       "messages",
       "model",
-      "open",
       "owner",
       "payload",
       "pip",
+      "pr_body",
       "pr_url",
-      "print",
+      "process",
       "python",
       "python3",
       "reason",
@@ -158,8 +163,6 @@
       "backup",
       "checks",
       "cp",
-      "d",
-      "f",
       "failure",
       "git",
       "keep_outputs",
@@ -172,19 +175,28 @@
       "rm",
       "skipping"
     ],
-    "tools_confirmed": []
+    "tools_confirmed": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
+    "py_imports_new": [
+      "dotenv",
+      "github",
+      "pytest",
+      "requests",
+      "yaml"
+    ],
+    "py_imports_confirmed": []
   },
   "system_deps": {
     "cp": {
-      "apt_package": "coreutils",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "coreutils"
     },
     "env": {
-      "apt_package": "coreutils",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "coreutils"
     },
     "git": {
-      "apt_package": "git",
       "apt_depends": [
         "libc6",
         "libcurl3-gnutls",
@@ -195,63 +207,59 @@
         "liberror-perl",
         "git-man",
         "git-man"
-      ]
+      ],
+      "apt_package": "git"
     },
     "id": {
-      "apt_package": "coreutils",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "coreutils"
     },
     "jq": {
-      "apt_package": "jq",
       "apt_depends": [
         "libjq1",
         "libc6"
-      ]
+      ],
+      "apt_package": "jq"
     },
     "ls": {
-      "apt_package": "coreutils",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "coreutils"
     },
     "make": {
-      "apt_package": "make",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "make"
     },
     "mktemp": {
-      "apt_package": "coreutils",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "coreutils"
     },
     "pip": {
-      "apt_package": "pip",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "pip"
     },
     "python": {
-      "apt_package": "python",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "python"
     },
     "python3": {
-      "apt_package": "python3",
       "apt_depends": [
         "python3.11",
         "libpython3-stdlib"
-      ]
+      ],
+      "apt_package": "python3"
     },
     "rm": {
-      "apt_package": "coreutils",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "coreutils"
     },
     "script": {
-      "apt_package": "bsdutils",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "bsdutils"
     },
     "tail": {
-      "apt_package": "coreutils",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "coreutils"
     }
   },
-  "suggested": {
-    "base_image": "latest",
-    "dockerfile_from": "python:3",
-    "ai_install": "claude",
-    "plugin_layer": ""
-  }
+  "schema_version": 2
 }

@@ -1,7 +1,7 @@
 {
   "repo": "anthropics/claude-code-security-review",
   "project": "claude-code-security-review",
-  "analyzed_at": "2026-05-01",
+  "analyzed_at": "2026-05-06",
   "purpose": "An AI-powered security review GitHub Action using Claude to analyze code changes for security vulnerabilities. This action provides intelligent, context-aware security analysis for pull requests using Anthropic's Claude Code tool for deep semantic security analysis. See our blog post here for more d",
   "primary_language": "Python",
   "languages": [
@@ -15,6 +15,9 @@
   "dockerfile_base": "",
   "system_packages": [],
   "extra_binaries": [],
+  "global_js_packages": [],
+  "dockerfile_python_installs": [],
+  "dockerfile_go_installs": [],
   "libraries": {
     "node": [],
     "python": [],
@@ -31,7 +34,6 @@
   "env_vars": [],
   "browser_tools": [],
   "github_api_usage": true,
-  "firewall_required": false,
   "container": {
     "capabilities": [],
     "volumes": [],
@@ -39,6 +41,9 @@
     "remote_user": "",
     "post_start": "",
     "post_create": "",
+    "post_start_chain": [],
+    "post_create_chain": [],
+    "init_scripts": [],
     "extensions": []
   },
   "credentials_required": {
@@ -58,19 +63,39 @@
     "tools": [],
     "py_imports": [
       "anthropic",
-      "claudecode",
       "pytest",
       "requests"
     ],
     "ts_imports": [],
-    "ci_tools": [],
+    "ci_tools": [
+      "bun",
+      "checkout",
+      "node",
+      "npm",
+      "pip",
+      "pytest",
+      "python"
+    ],
     "tools_new": [],
-    "tools_confirmed": []
+    "tools_confirmed": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
+    "py_imports_new": [
+      "anthropic",
+      "pytest",
+      "requests"
+    ],
+    "py_imports_confirmed": []
   },
-  "suggested": {
-    "base_image": "latest",
-    "dockerfile_from": "python:latest",
-    "ai_install": "claude",
-    "plugin_layer": ""
-  }
+  "system_deps": {
+    "pip": {
+      "apt_depends": [],
+      "apt_package": "pip"
+    },
+    "python": {
+      "apt_depends": [],
+      "apt_package": "python"
+    }
+  },
+  "schema_version": 2
 }

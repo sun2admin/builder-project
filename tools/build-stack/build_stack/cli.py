@@ -6,6 +6,7 @@ Subcommands map to phase modules. See README.md.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -16,7 +17,6 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_compose(args: argparse.Namespace) -> int:
-    from build_stack import analyze, aggregate, select, compose, emit
     raise NotImplementedError(
         "Phase 3-6 pipeline not yet implemented. "
         "See .claude/plans/build-workflow-stack-composition.md migration step 6."
@@ -24,30 +24,27 @@ def cmd_compose(args: argparse.Namespace) -> int:
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
-    from build_stack import analyze
-    return analyze.cmd_analyze(args.repo, human=args.human, quiet=args.quiet)
+    """Single-repo detection. Phase 3 cutover: invokes the Python port
+    directly (the analyze-repo skill is now a thin bash wrapper around
+    this same entry point).
 
-
-def cmd_analyze_port(args: argparse.Namespace) -> int:
-    """Phase 2 dev/parity entry point — invokes the Python port directly.
-
-    Bypasses the bash skill subprocess. Removed at Phase 3 cutover when
-    the skill becomes a thin wrapper around the same package.
+    stdout: path to analyzed_repos/<owner>/<repo>/analysis.json
+    stderr: markdown report when emit enabled (TTY default; -v force; -q suppress)
     """
-    import json
-    from pathlib import Path
-
     from build_stack.analyzers import analyze as port_analyze, write_outputs
+    from build_stack.analyzers import report
 
     data = port_analyze(args.repo)
-    if args.json:
-        print(json.dumps(data, indent=2, sort_keys=True))
-        return 0
-    if args.out:
-        write_outputs(data, Path(args.out))
-        print(Path(args.out).resolve())
-        return 0
-    print(json.dumps(data, indent=2, sort_keys=True))
+
+    repo_root = Path(__file__).resolve().parents[3]
+    out_dir = repo_root / "analyzed_repos" / args.repo
+    json_path = write_outputs(data, out_dir)
+
+    emit_md = args.human or (not args.quiet and sys.stdout.isatty())
+    if emit_md:
+        sys.stderr.write(report.render(data))
+
+    print(json_path)
     return 0
 
 
@@ -82,15 +79,6 @@ def build_parser() -> argparse.ArgumentParser:
     g_analyze.add_argument("--human", "-v", action="store_true", help="Force markdown emit on stderr")
     g_analyze.add_argument("--quiet", "-q", action="store_true", help="Suppress markdown emit")
     p_analyze.set_defaults(func=cmd_analyze)
-
-    p_analyze_port = subs.add_parser(
-        "analyze-port",
-        help="Phase 2 Python-port analyzer (dev/parity only — removed at Phase 3 cutover)",
-    )
-    p_analyze_port.add_argument("repo", help="owner/repo")
-    p_analyze_port.add_argument("--json", action="store_true", help="Print analysis JSON to stdout (default)")
-    p_analyze_port.add_argument("--out", help="Directory to write analysis.json + analysis.md")
-    p_analyze_port.set_defaults(func=cmd_analyze_port)
 
     p_diff = subs.add_parser("diff", help="Stack-diff (future)")
     p_diff.add_argument("build_a")

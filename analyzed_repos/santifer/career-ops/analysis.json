@@ -1,13 +1,13 @@
 {
   "repo": "santifer/career-ops",
   "project": "career-ops",
-  "analyzed_at": "2026-05-05",
+  "analyzed_at": "2026-05-06",
   "purpose": "Companies use AI to filter candidates. I just gave candidates AI to choose companies.",
   "primary_language": "JavaScript",
   "languages": [
+    "go",
     "node",
-    "shell",
-    "go"
+    "shell"
   ],
   "runtime_extras": [],
   "runtime_versions": {},
@@ -202,20 +202,6 @@
       "usage",
       "waited"
     ],
-    "py_imports": [],
-    "ts_imports": [],
-    "ci_tools": [
-      "checkout",
-      "codeql",
-      "dependency-review",
-      "first-interaction",
-      "go",
-      "labeler",
-      "node",
-      "release-please",
-      "sbom",
-      "stale"
-    ],
     "tools_new": [
       "acquire_lock",
       "acquire_state_lock",
@@ -307,88 +293,102 @@
       "waited"
     ],
     "tools_confirmed": [],
+    "py_imports": [],
+    "py_imports_new": [],
+    "py_imports_confirmed": [],
+    "ts_imports": [],
     "ts_imports_new": [],
     "ts_imports_confirmed": [],
-    "py_imports_new": [],
-    "py_imports_confirmed": []
+    "ci_tools": [
+      "checkout",
+      "codeql",
+      "dependency-review",
+      "first-interaction",
+      "go",
+      "labeler",
+      "node",
+      "release-please",
+      "sbom",
+      "stale"
+    ]
   },
   "system_deps": {
     "awk": {
-      "apt_depends": [],
-      "apt_package": "awk"
+      "apt_package": "awk",
+      "apt_depends": []
     },
     "basename": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "bash": {
+      "apt_package": "bash",
       "apt_depends": [
         "base-files",
         "debianutils"
-      ],
-      "apt_package": "bash"
+      ]
     },
     "cat": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "cut": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "date": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "dirname": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "grep": {
+      "apt_package": "grep",
       "apt_depends": [
         "dpkg"
-      ],
-      "apt_package": "grep"
+      ]
     },
     "head": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "id": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "mkdir": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "mv": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "rm": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "rmdir": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "sed": {
-      "apt_depends": [],
-      "apt_package": "sed"
+      "apt_package": "sed",
+      "apt_depends": []
     },
     "sleep": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "tail": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "tr": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     }
   },
   "schema_version": 2

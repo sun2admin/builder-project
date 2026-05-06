@@ -156,12 +156,6 @@
       "user_input",
       "visual"
     ],
-    "py_imports": [
-      "PIL",
-      "numpy"
-    ],
-    "ts_imports": [],
-    "ci_tools": [],
     "tools_new": [
       "added",
       "afplay",
@@ -263,59 +257,66 @@
       "visual"
     ],
     "tools_confirmed": [],
-    "ts_imports_new": [],
-    "ts_imports_confirmed": [],
+    "py_imports": [
+      "PIL",
+      "numpy"
+    ],
     "py_imports_new": [
       "PIL",
       "numpy"
     ],
-    "py_imports_confirmed": []
+    "py_imports_confirmed": [],
+    "ts_imports": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
+    "ci_tools": []
   },
   "system_deps": {
     "awk": {
-      "apt_depends": [],
-      "apt_package": "awk"
+      "apt_package": "awk",
+      "apt_depends": []
     },
     "basename": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "bash": {
+      "apt_package": "bash",
       "apt_depends": [
         "base-files",
         "debianutils"
-      ],
-      "apt_package": "bash"
+      ]
     },
     "cat": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "chmod": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "clear": {
-      "apt_depends": [],
-      "apt_package": "ncurses-bin"
+      "apt_package": "ncurses-bin",
+      "apt_depends": []
     },
     "cp": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "date": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "dirname": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "find": {
-      "apt_depends": [],
-      "apt_package": "findutils"
+      "apt_package": "findutils",
+      "apt_depends": []
     },
     "git": {
+      "apt_package": "git",
       "apt_depends": [
         "libc6",
         "libcurl3-gnutls",
@@ -326,77 +327,76 @@
         "liberror-perl",
         "git-man",
         "git-man"
-      ],
-      "apt_package": "git"
+      ]
     },
     "grep": {
+      "apt_package": "grep",
       "apt_depends": [
         "dpkg"
-      ],
-      "apt_package": "grep"
+      ]
     },
     "head": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "jq": {
+      "apt_package": "jq",
       "apt_depends": [
         "libjq1",
         "libc6"
-      ],
-      "apt_package": "jq"
+      ]
     },
     "ls": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "mkdir": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "mktemp": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "pip": {
-      "apt_depends": [],
-      "apt_package": "pip"
+      "apt_package": "pip",
+      "apt_depends": []
     },
     "ps": {
-      "apt_depends": [],
-      "apt_package": "procps"
+      "apt_package": "procps",
+      "apt_depends": []
     },
     "rm": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "sleep": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "sort": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "stat": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "tail": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "touch": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "tr": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "uname": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     }
   },
   "schema_version": 2

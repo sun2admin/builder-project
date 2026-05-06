@@ -1,7 +1,7 @@
 # Dependency Analysis: build-containers-with-claude
 
 **Repo:** sun2admin/build-containers-with-claude
-**Analyzed:** 2026-04-30
+**Analyzed:** 2026-05-06
 **Purpose:** Layer 4 Part 1 devcontainer config for building containers with Claude Code
 
 ---
@@ -13,6 +13,15 @@
 - Base image: `not specified`
 
 ## System Packages
+none detected
+
+## Global JS Package Installs *(Dockerfile npm/pnpm/yarn/bun globals)*
+none detected
+
+## Dockerfile Python Installs *(`pip` / `pipx` in RUN blocks)*
+none detected
+
+## Dockerfile Go Installs *(`go install` in RUN blocks)*
 none detected
 
 ## Libraries
@@ -40,10 +49,20 @@ CLAUDE_CONFIG_DIR, NODE_OPTIONS, SSH_AUTH_SOCK
   - ENV: `CLAUDE_CONFIG_DIR`
   - ENV: `SSH_AUTH_SOCK`
 
+## Init Script Chain *(decomposed `postStartCommand` / `postCreateCommand`)*
+  - **post_start_chain**:
+      - ○ baked/external (sudo): `/usr/local/bin/init-firewall.sh`
+      - ✓ in-repo: `.devcontainer/scripts/init-ssh.sh`
+      - ✓ in-repo: `.devcontainer/scripts/init-gh-token.sh`
+      - ✓ in-repo: `.devcontainer/scripts/init-github-mcp.sh`
+      - ✓ in-repo: `.devcontainer/scripts/load-projects.sh` `-live sun2admin/builder-project`
+  - post_create_chain: none
+  - **init_scripts (in-repo)**: .devcontainer/scripts/init-gh-token.sh, .devcontainer/scripts/init-github-mcp.sh, .devcontainer/scripts/init-ssh.sh, .devcontainer/scripts/load-projects.sh
+
+
 ## Credentials Required
   - Tokens: GITHUB_TOKEN
   - SSH key required
-  - Other: GITHUB_TOKEN
 
 ## MCP Servers
 none detected
@@ -57,15 +76,25 @@ none detected
 ## GitHub API Usage
 No
 
-## Firewall Required
-Yes — NET_ADMIN/NET_RAW capabilities needed
-
 ## Inferred from Source *(tools/commands found in repo files)*
-  - **Tools/binaries**: git, ssh-add, ssh-agent
+  - **Tools/binaries (not in Dockerfile)**: aarch64, basename, canonical_id, canonicalize_path, cat, chmod, clone_repo, cp, cut, dirname, git, live_count, live_name, live_path, live_repo, mkdir, non-fatal, other_repos, parse_args, pre-installed, repo_name, rm, sed, seed_memory, ssh-agent, ssh-keyscan, target, target_memory, touch, uname, x86_64
+  - **CI toolchain (GitHub Actions)**: cat, checkout, env, gh, git
 
-## Suggested Stack
-| Setting | Value |
-|---|---|
-| Base image | `latest` |
-| AI CLI | `claude` |
-| Plugin layer | (query dynamically at build time) |
+## System Dependencies *(tools → apt packages, via tool-deps.json cache)*
+  - `basename` → `coreutils`
+  - `cat` → `coreutils`
+  - `chmod` → `coreutils`
+  - `cp` → `coreutils`
+  - `cut` → `coreutils`
+  - `dirname` → `coreutils`
+  - `env` → `coreutils`
+  - `gh` → `gh` (needs: libc6)
+  - `git` → `git` (needs: libc6, libcurl3-gnutls, libexpat1, libpcre2-8-0, zlib1g)
+  - `mkdir` → `coreutils`
+  - `rm` → `coreutils`
+  - `sed` → `sed`
+  - `ssh-agent` → `openssh-client`
+  - `ssh-keyscan` → `openssh-client`
+  - `touch` → `coreutils`
+  - `uname` → `coreutils`
+  - `x86_64` → `util-linux`

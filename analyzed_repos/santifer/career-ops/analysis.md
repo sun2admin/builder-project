@@ -1,13 +1,13 @@
 # Dependency Analysis: career-ops
 
 **Repo:** santifer/career-ops
-**Analyzed:** 2026-05-05
+**Analyzed:** 2026-05-06
 **Purpose:** Companies use AI to filter candidates. I just gave candidates AI to choose companies.
 
 ---
 
 ## Languages & Runtimes
-- Languages: node, shell, go
+- Languages: go, node, shell
 - Runtime extras: none detected
 - Versions: none detected
 - Base image: `not specified`

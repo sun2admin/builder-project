@@ -1,7 +1,7 @@
 # Dependency Analysis: awesome-claude-code
 
 **Repo:** hesreallyhim/awesome-claude-code
-**Analyzed:** 2026-05-01
+**Analyzed:** 2026-05-06
 **Purpose:** A curated list of awesome skills, hooks, slash-commands, agent orchestrators, applications, and plugins for Claude Code by Anthropic
 
 ---
@@ -13,6 +13,15 @@
 - Base image: `not specified`
 
 ## System Packages
+none detected
+
+## Global JS Package Installs *(Dockerfile npm/pnpm/yarn/bun globals)*
+none detected
+
+## Dockerfile Python Installs *(`pip` / `pipx` in RUN blocks)*
+none detected
+
+## Dockerfile Go Installs *(`go install` in RUN blocks)*
 none detected
 
 ## Libraries
@@ -29,6 +38,11 @@ none detected
 
 ## Container Requirements
   standard (no special requirements)
+
+## Init Script Chain *(decomposed `postStartCommand` / `postCreateCommand`)*
+  - post_start_chain: none
+  - post_create_chain: none
+
 
 ## Credentials Required
   - API keys: ANTHROPIC_API_KEY
@@ -48,13 +62,10 @@ none detected
 ## GitHub API Usage
 Yes
 
-## Firewall Required
-No
-
 ## Inferred from Source *(tools/commands found in repo files)*
-  - **Tools/binaries (not in Dockerfile)**: after, allow_diff, backup, checks, cp, d, f, failure, git, keep_outputs, ls, make, mktemp, near, restore, restoring, rm, skipping
-  - **CI toolchain (GitHub Actions)**: await, body, changes, checkout, comment_body, comment_id, const, contains, content, cp, data, env, event_type, first, git, github-api-usage-monitor, github-script, github_url, has_broken_links, https, id, is_github_repo, issue_number, jq, labels, maintainer, make, max_tokens, messages, model, open, owner, payload, pip, pr_url, print, python, python3, reason, repo, repo_url, resource_name, rm, role, script, state, state_reason, success, system, tail, upload-artifact, uses
-  - **Python imports**: dotenv, github, pytest, requests, yaml
+  - **Tools/binaries (not in Dockerfile)**: after, allow_diff, backup, checks, cp, failure, git, keep_outputs, ls, make, mktemp, near, restore, restoring, rm, skipping
+  - **CI toolchain (GitHub Actions)**: await, body, changes, checkout, comment_body, comment_id, console, const, contains, content, core, cp, env, event_type, first, git, github, github-api-usage-monitor, github-script, github_url, has_broken_links, https, id, is_github_repo, issue_number, jq, labels, maintainer, make, max_tokens, messages, model, owner, payload, pip, pr_body, pr_url, process, python, python3, reason, repo, repo_url, resource_name, rm, role, script, state, state_reason, success, system, tail, upload-artifact, uses
+  - **Python imports (not in manifest)**: dotenv, github, pytest, requests, yaml
 
 ## System Dependencies *(tools → apt packages, via tool-deps.json cache)*
   - `cp` → `coreutils`
@@ -71,11 +82,3 @@ No
   - `rm` → `coreutils`
   - `script` → `bsdutils`
   - `tail` → `coreutils`
-
-## Suggested Stack
-| Setting | Value |
-|---|---|
-| Base image (layer1 variant) | `latest` |
-| Dockerfile FROM | `python:3` |
-| AI CLI | `claude` |
-| Plugin layer | (query dynamically at build time) |

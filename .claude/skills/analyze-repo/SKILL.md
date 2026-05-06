@@ -7,13 +7,22 @@ description: Scan a GitHub project repo for all dependencies needed to build a c
 
 Clones a GitHub repo fresh and scans it for all dependencies needed to configure a container stack. Saves findings to `analyzed_repos/<owner>/<repo>/analysis.json` and `analyzed_repos/<owner>/<repo>/analysis.md`.
 
+## Architecture (Phase 3 cutover)
+
+This skill is now a thin bash wrapper around the build-stack tool.
+Detection logic lives in `tools/build-stack/build_stack/analyzers/`
+(Python). The skill preserves the historical CLI contract
+(`-q/--quiet`, `-v/--verbose`, `owner/repo`) so existing callers keep
+working. Edits to detection rules belong in the analyzers package, not
+this skill.
+
 ## Reference Docs — Read Before Modifying
 
 | File | When to load |
 |---|---|
-| [`DETECTION_PRINCIPLES.md`](./DETECTION_PRINCIPLES.md) | Editing detection logic (regex, parsers, filters, bash/Python idioms) |
-| [`DATA_SCHEMA.md`](./DATA_SCHEMA.md) | Editing output JSON shape, builds dir layout, tool-deps.json, consumer contract |
-| [`TESTING.md`](./TESTING.md) | Validating gap fixes, adding test repos, regression checking |
+| [`tools/build-stack/docs/DETECTION_PRINCIPLES.md`](../../../tools/build-stack/docs/DETECTION_PRINCIPLES.md) | Editing detection logic (regex, parsers, filters, Python idioms) |
+| [`tools/build-stack/docs/DATA_SCHEMA.md`](../../../tools/build-stack/docs/DATA_SCHEMA.md) | Editing output JSON shape, dirs, tool-deps.json, consumer contract |
+| [`tools/build-stack/tests/test_analyze_parity.py`](../../../tools/build-stack/tests/test_analyze_parity.py) | Validating detector changes against the corpus |
 
 Core detection rule: derive from the artifact, never compare against an
 opinion list. No `KNOWN_TOOLS`/`STDLIB_*`/`COMMON_DOMAINS` arrays. Use

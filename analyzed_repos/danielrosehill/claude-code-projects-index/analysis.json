@@ -1,18 +1,22 @@
 {
   "repo": "danielrosehill/claude-code-projects-index",
   "project": "claude-code-projects-index",
-  "analyzed_at": "2026-05-01",
+  "analyzed_at": "2026-05-06",
   "purpose": "A curated collection of Claude Code projects, agent workspace blueprints, and related resources \u2014 organized by use case. Most patterns here adapt to other agentic AI CLIs and frameworks.",
   "primary_language": "Astro",
   "languages": [
     "node",
-    "shell"
+    "shell",
+    "python"
   ],
   "runtime_extras": [],
   "runtime_versions": {},
   "dockerfile_base": "",
   "system_packages": [],
   "extra_binaries": [],
+  "global_js_packages": [],
+  "dockerfile_python_installs": [],
+  "dockerfile_go_installs": [],
   "libraries": {
     "node": [
       "astro"
@@ -29,14 +33,14 @@
       "anthropic.com",
       "claude.com",
       "danielrosehill.com",
-      "dsrholdings.cloud"
+      "github.com",
+      "img.shields.io"
     ],
     "source": "source_scan"
   },
   "env_vars": [],
   "browser_tools": [],
   "github_api_usage": false,
-  "firewall_required": false,
   "container": {
     "capabilities": [],
     "volumes": [],
@@ -44,6 +48,9 @@
     "remote_user": "",
     "post_start": "",
     "post_create": "",
+    "post_start_chain": [],
+    "post_create_chain": [],
+    "init_scripts": [],
     "extensions": []
   },
   "credentials_required": {
@@ -56,22 +63,67 @@
   "claude_plugins": [],
   "inferred": {
     "tools": [
+      "basename",
+      "bash",
       "git",
+      "ln",
+      "name",
       "python3"
     ],
     "py_imports": [],
     "ts_imports": [],
     "ci_tools": [],
     "tools_new": [
+      "basename",
+      "bash",
       "git",
+      "ln",
+      "name",
       "python3"
     ],
-    "tools_confirmed": []
+    "tools_confirmed": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
+    "py_imports_new": [],
+    "py_imports_confirmed": []
   },
-  "suggested": {
-    "base_image": "latest",
-    "dockerfile_from": "node:lts",
-    "ai_install": "claude",
-    "plugin_layer": ""
-  }
+  "system_deps": {
+    "basename": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "bash": {
+      "apt_depends": [
+        "base-files",
+        "debianutils"
+      ],
+      "apt_package": "bash"
+    },
+    "git": {
+      "apt_depends": [
+        "libc6",
+        "libcurl3-gnutls",
+        "libexpat1",
+        "libpcre2-8-0",
+        "zlib1g",
+        "perl",
+        "liberror-perl",
+        "git-man",
+        "git-man"
+      ],
+      "apt_package": "git"
+    },
+    "ln": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "python3": {
+      "apt_depends": [
+        "python3.11",
+        "libpython3-stdlib"
+      ],
+      "apt_package": "python3"
+    }
+  },
+  "schema_version": 2
 }

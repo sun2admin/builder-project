@@ -1,11 +1,13 @@
 {
   "repo": "anthropics/claude-code",
   "project": "claude-code",
-  "analyzed_at": "2026-04-30",
+  "analyzed_at": "2026-05-06",
   "purpose": "Claude Code is an agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster by executing routine tasks, explaining complex code, and handling git workflows -- all through natural language commands. Use it in your terminal, IDE, or tag @claude on Github.",
   "primary_language": "Shell",
   "languages": [
-    "shell"
+    "shell",
+    "node",
+    "python"
   ],
   "runtime_extras": [
     "bun"
@@ -36,10 +38,16 @@
     "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb",
     "zsh-in-docker.sh)"
   ],
+  "global_js_packages": [
+    "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+  ],
+  "dockerfile_python_installs": [],
+  "dockerfile_go_installs": [],
   "libraries": {
     "node": [],
     "python": [],
-    "go": []
+    "go": [],
+    "rust": []
   },
   "ports": {
     "inbound": []
@@ -71,7 +79,6 @@
   ],
   "browser_tools": [],
   "github_api_usage": false,
-  "firewall_required": true,
   "container": {
     "capabilities": [
       "NET_ADMIN",
@@ -97,6 +104,17 @@
     "remote_user": "node",
     "post_start": "sudo /usr/local/bin/init-firewall.sh",
     "post_create": "",
+    "post_start_chain": [
+      {
+        "raw": "sudo /usr/local/bin/init-firewall.sh",
+        "sudo": true,
+        "script": "/usr/local/bin/init-firewall.sh",
+        "args": "",
+        "in_repo": false
+      }
+    ],
+    "post_create_chain": [],
+    "init_scripts": [],
     "extensions": [
       "anthropic.claude-code",
       "dbaeumer.vscode-eslint",
@@ -116,11 +134,7 @@
     ],
     "ssh": true,
     "other": [
-      "ANTHROPIC_API_KEY",
-      "GITHUB_TOKEN",
-      "ISSUE_OPENED_DISPATCH_TARGET_REPO",
-      "ISSUE_OPENED_DISPATCH_TOKEN",
-      "STATSIG_API_KEY"
+      "ISSUE_OPENED_DISPATCH_TARGET_REPO"
     ]
   },
   "mcp_servers": [],
@@ -141,41 +155,443 @@
   ],
   "inferred": {
     "tools": [
+      "active",
+      "agent",
+      "aggregate",
+      "arg",
+      "assistant",
+      "awk",
+      "bash",
+      "best",
+      "blue",
+      "can",
+      "cat",
+      "check_script",
+      "chmod",
+      "combines",
+      "completion_promise",
+      "content",
+      "content_size",
+      "create_sample",
       "curl",
+      "cut",
+      "cyan",
+      "date",
+      "decision",
+      "denied",
+      "desc_length",
+      "dig",
+      "duration",
+      "end_time",
+      "error_count",
+      "errors",
+      "event_type",
+      "exit_code",
+      "fed",
+      "field",
+      "file_path",
+      "first_line",
+      "flag",
+      "found",
+      "frontmatter",
       "gh",
-      "git",
-      "go",
-      "gradle",
-      "java",
+      "gh_ranges",
+      "got",
+      "green",
+      "grep",
+      "haiku",
+      "hard",
+      "head",
+      "helper",
+      "hook_array_count",
+      "hook_count",
+      "hook_type",
+      "hooks",
+      "https",
+      "inherit",
+      "injection",
+      "input",
+      "ip",
+      "ips",
+      "ipset",
+      "iptables",
+      "iptables-save",
+      "iteration",
+      "join",
       "jq",
-      "just",
-      "python",
-      "sudo",
-      "xargs"
+      "length",
+      "ls",
+      "magenta",
+      "map",
+      "matched",
+      "matcher",
+      "max",
+      "max_iterations",
+      "maximum",
+      "minimum",
+      "missing",
+      "mkdir",
+      "must",
+      "mv",
+      "name",
+      "name_length",
+      "need",
+      "next",
+      "nothing",
+      "only",
+      "opus",
+      "output",
+      "over",
+      "perl",
+      "print",
+      "process",
+      "prompt",
+      "prompt_length",
+      "recommended",
+      "red",
+      "rm",
+      "runs",
+      "sed",
+      "self-referential",
+      "should",
+      "show_usage",
+      "skip_next",
+      "sonnet",
+      "start_time",
+      "started_at",
+      "steps",
+      "strict",
+      "tail",
+      "timeout",
+      "tool",
+      "tool_name",
+      "total_errors",
+      "tr",
+      "unless",
+      "unlimited",
+      "valid",
+      "validity",
+      "value",
+      "warning_count",
+      "warnings",
+      "wc",
+      "whoami",
+      "xargs",
+      "yellow"
     ],
     "py_imports": [
       "hookify"
     ],
     "ts_imports": [],
-    "tools_new": [
+    "ci_tools": [
+      "bun",
+      "checkout",
+      "claude-code",
       "curl",
-      "go",
-      "gradle",
-      "java",
-      "just",
-      "python",
-      "xargs"
+      "date",
+      "events",
+      "floor",
+      "gh",
+      "github-script",
+      "head",
+      "http_code",
+      "issue_number",
+      "jq",
+      "metadata",
+      "now",
+      "repository",
+      "sed",
+      "tail",
+      "tonumber",
+      "tostring",
+      "triggered_by",
+      "value",
+      "workflow_run_id"
+    ],
+    "tools_new": [
+      "active",
+      "agent",
+      "arg",
+      "assistant",
+      "awk",
+      "bash",
+      "best",
+      "blue",
+      "can",
+      "cat",
+      "check_script",
+      "chmod",
+      "combines",
+      "completion_promise",
+      "content",
+      "content_size",
+      "create_sample",
+      "curl",
+      "cut",
+      "cyan",
+      "date",
+      "decision",
+      "denied",
+      "desc_length",
+      "dig",
+      "duration",
+      "end_time",
+      "error_count",
+      "errors",
+      "event_type",
+      "exit_code",
+      "fed",
+      "field",
+      "file_path",
+      "first_line",
+      "flag",
+      "found",
+      "frontmatter",
+      "gh_ranges",
+      "got",
+      "green",
+      "grep",
+      "haiku",
+      "hard",
+      "head",
+      "helper",
+      "hook_array_count",
+      "hook_count",
+      "hook_type",
+      "hooks",
+      "https",
+      "inherit",
+      "injection",
+      "input",
+      "ip",
+      "ips",
+      "iptables-save",
+      "iteration",
+      "join",
+      "length",
+      "ls",
+      "magenta",
+      "map",
+      "matched",
+      "matcher",
+      "max",
+      "max_iterations",
+      "maximum",
+      "minimum",
+      "missing",
+      "mkdir",
+      "must",
+      "mv",
+      "name",
+      "name_length",
+      "need",
+      "next",
+      "nothing",
+      "only",
+      "opus",
+      "output",
+      "over",
+      "perl",
+      "print",
+      "process",
+      "prompt",
+      "prompt_length",
+      "recommended",
+      "red",
+      "rm",
+      "runs",
+      "sed",
+      "self-referential",
+      "should",
+      "show_usage",
+      "skip_next",
+      "sonnet",
+      "start_time",
+      "started_at",
+      "steps",
+      "strict",
+      "tail",
+      "timeout",
+      "tool",
+      "tool_name",
+      "total_errors",
+      "tr",
+      "unless",
+      "unlimited",
+      "valid",
+      "validity",
+      "value",
+      "warning_count",
+      "warnings",
+      "wc",
+      "whoami",
+      "xargs",
+      "yellow"
     ],
     "tools_confirmed": [
+      "aggregate",
       "gh",
-      "git",
-      "jq",
-      "sudo"
-    ]
+      "ipset",
+      "iptables",
+      "jq"
+    ],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
+    "py_imports_new": [
+      "hookify"
+    ],
+    "py_imports_confirmed": []
   },
-  "suggested": {
-    "base_image": "latest",
-    "ai_install": "claude",
-    "plugin_layer": ""
-  }
+  "system_deps": {
+    "aggregate": {
+      "apt_depends": [
+        "libc6"
+      ],
+      "apt_package": "aggregate"
+    },
+    "awk": {
+      "apt_depends": [],
+      "apt_package": "awk"
+    },
+    "bash": {
+      "apt_depends": [
+        "base-files",
+        "debianutils"
+      ],
+      "apt_package": "bash"
+    },
+    "cat": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "chmod": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "curl": {
+      "apt_depends": [
+        "libc6",
+        "libcurl4",
+        "zlib1g"
+      ],
+      "apt_package": "curl"
+    },
+    "cut": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "date": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "dig": {
+      "apt_depends": [],
+      "apt_package": "bind9-dnsutils"
+    },
+    "gh": {
+      "apt_depends": [
+        "libc6"
+      ],
+      "apt_package": "gh"
+    },
+    "grep": {
+      "apt_depends": [
+        "dpkg"
+      ],
+      "apt_package": "grep"
+    },
+    "head": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "ip": {
+      "apt_depends": [],
+      "apt_package": "iproute2"
+    },
+    "ipset": {
+      "apt_depends": [
+        "libc6",
+        "libipset13"
+      ],
+      "apt_package": "ipset"
+    },
+    "iptables": {
+      "apt_depends": [
+        "libip4tc2",
+        "libip6tc2",
+        "libxtables12",
+        "netbase",
+        "libc6",
+        "libmnl0",
+        "libnetfilter-conntrack3",
+        "libnfnetlink0",
+        "libnftnl11"
+      ],
+      "apt_package": "iptables"
+    },
+    "join": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "jq": {
+      "apt_depends": [
+        "libjq1",
+        "libc6"
+      ],
+      "apt_package": "jq"
+    },
+    "ls": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "mkdir": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "mv": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "perl": {
+      "apt_depends": [
+        "perl-base",
+        "perl-modules-5.36",
+        "libperl5.36"
+      ],
+      "apt_package": "perl"
+    },
+    "rm": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "sed": {
+      "apt_depends": [],
+      "apt_package": "sed"
+    },
+    "tail": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "timeout": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "tr": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "wc": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "whoami": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "xargs": {
+      "apt_depends": [],
+      "apt_package": "findutils"
+    }
+  },
+  "schema_version": 2
 }

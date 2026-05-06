@@ -1,7 +1,7 @@
 {
   "repo": "garrytan/gstack",
   "project": "gstack",
-  "analyzed_at": "2026-05-01",
+  "analyzed_at": "2026-05-06",
   "purpose": "When I heard Karpathy say this, I wanted to find out how. How does one person ship like a team of twenty? Peter Steinberger built OpenClaw \u2014 247K GitHub stars \u2014 essentially solo with AI agents. The revolution is here. A single builder with the right tooling can move faster than a traditional team.",
   "primary_language": "TypeScript",
   "languages": [
@@ -27,6 +27,11 @@
     "xz-utils"
   ],
   "extra_binaries": [],
+  "global_js_packages": [
+    "@anthropic-ai/claude-code"
+  ],
+  "dockerfile_python_installs": [],
+  "dockerfile_go_installs": [],
   "libraries": {
     "node": [
       "@huggingface/transformers",
@@ -616,7 +621,6 @@
     "puppeteer"
   ],
   "github_api_usage": false,
-  "firewall_required": false,
   "container": {
     "capabilities": [],
     "volumes": [],
@@ -624,6 +628,9 @@
     "remote_user": "",
     "post_start": "",
     "post_create": "",
+    "post_start_chain": [],
+    "post_create_chain": [],
+    "init_scripts": [],
     "extensions": []
   },
   "credentials_required": {
@@ -1922,7 +1929,20 @@
       "git",
       "jq",
       "sleep"
-    ]
+    ],
+    "ts_imports_new": [
+      "@anthropic-ai",
+      "@huggingface",
+      "@ngrok",
+      "node:dns",
+      "node:fs",
+      "node:path"
+    ],
+    "ts_imports_confirmed": [
+      "playwright"
+    ],
+    "py_imports_new": [],
+    "py_imports_confirmed": []
   },
   "system_deps": {
     "apt-get": {
@@ -2193,10 +2213,5 @@
       "apt_package": "coreutils"
     }
   },
-  "suggested": {
-    "base_image": "playwright_with_chromium",
-    "dockerfile_from": "ubuntu:24.04",
-    "ai_install": "claude",
-    "plugin_layer": ""
-  }
+  "schema_version": 2
 }

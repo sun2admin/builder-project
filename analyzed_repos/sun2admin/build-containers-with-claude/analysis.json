@@ -1,7 +1,7 @@
 {
   "repo": "sun2admin/build-containers-with-claude",
   "project": "build-containers-with-claude",
-  "analyzed_at": "2026-04-30",
+  "analyzed_at": "2026-05-06",
   "purpose": "Layer 4 Part 1 devcontainer config for building containers with Claude Code",
   "primary_language": "Shell",
   "languages": [
@@ -12,10 +12,14 @@
   "dockerfile_base": "",
   "system_packages": [],
   "extra_binaries": [],
+  "global_js_packages": [],
+  "dockerfile_python_installs": [],
+  "dockerfile_go_installs": [],
   "libraries": {
     "node": [],
     "python": [],
-    "go": []
+    "go": [],
+    "rust": []
   },
   "ports": {
     "inbound": [
@@ -35,7 +39,6 @@
   ],
   "browser_tools": [],
   "github_api_usage": false,
-  "firewall_required": true,
   "container": {
     "capabilities": [
       "NET_ADMIN",
@@ -76,6 +79,50 @@
     "remote_user": "claude",
     "post_start": "sudo /usr/local/bin/init-firewall.sh && /workspace/.devcontainer/scripts/init-ssh.sh && /workspace/.devcontainer/scripts/init-gh-token.sh && /workspace/.devcontainer/scripts/init-github-mcp.sh && /workspace/.devcontainer/scripts/load-projects.sh -live sun2admin/builder-project",
     "post_create": "",
+    "post_start_chain": [
+      {
+        "raw": "sudo /usr/local/bin/init-firewall.sh",
+        "sudo": true,
+        "script": "/usr/local/bin/init-firewall.sh",
+        "args": "",
+        "in_repo": false
+      },
+      {
+        "raw": "/workspace/.devcontainer/scripts/init-ssh.sh",
+        "sudo": false,
+        "script": ".devcontainer/scripts/init-ssh.sh",
+        "args": "",
+        "in_repo": true
+      },
+      {
+        "raw": "/workspace/.devcontainer/scripts/init-gh-token.sh",
+        "sudo": false,
+        "script": ".devcontainer/scripts/init-gh-token.sh",
+        "args": "",
+        "in_repo": true
+      },
+      {
+        "raw": "/workspace/.devcontainer/scripts/init-github-mcp.sh",
+        "sudo": false,
+        "script": ".devcontainer/scripts/init-github-mcp.sh",
+        "args": "",
+        "in_repo": true
+      },
+      {
+        "raw": "/workspace/.devcontainer/scripts/load-projects.sh -live sun2admin/builder-project",
+        "sudo": false,
+        "script": ".devcontainer/scripts/load-projects.sh",
+        "args": "-live sun2admin/builder-project",
+        "in_repo": true
+      }
+    ],
+    "post_create_chain": [],
+    "init_scripts": [
+      ".devcontainer/scripts/init-gh-token.sh",
+      ".devcontainer/scripts/init-github-mcp.sh",
+      ".devcontainer/scripts/init-ssh.sh",
+      ".devcontainer/scripts/load-projects.sh"
+    ],
     "extensions": [
       "anthropic.claude-code",
       "dbaeumer.vscode-eslint",
@@ -90,24 +137,173 @@
       "GITHUB_TOKEN"
     ],
     "ssh": true,
-    "other": [
-      "GITHUB_TOKEN"
-    ]
+    "other": []
   },
   "mcp_servers": [],
   "claude_plugins": [],
   "inferred": {
     "tools": [
+      "aarch64",
+      "basename",
+      "canonical_id",
+      "canonicalize_path",
+      "cat",
+      "chmod",
+      "clone_repo",
+      "cp",
+      "cut",
+      "dirname",
       "git",
-      "ssh-add",
-      "ssh-agent"
+      "live_count",
+      "live_name",
+      "live_path",
+      "live_repo",
+      "mkdir",
+      "non-fatal",
+      "other_repos",
+      "parse_args",
+      "pre-installed",
+      "repo_name",
+      "rm",
+      "sed",
+      "seed_memory",
+      "ssh-agent",
+      "ssh-keyscan",
+      "target",
+      "target_memory",
+      "touch",
+      "uname",
+      "x86_64"
     ],
     "py_imports": [],
-    "ts_imports": []
+    "ts_imports": [],
+    "ci_tools": [
+      "cat",
+      "checkout",
+      "env",
+      "gh",
+      "git"
+    ],
+    "tools_new": [
+      "aarch64",
+      "basename",
+      "canonical_id",
+      "canonicalize_path",
+      "cat",
+      "chmod",
+      "clone_repo",
+      "cp",
+      "cut",
+      "dirname",
+      "git",
+      "live_count",
+      "live_name",
+      "live_path",
+      "live_repo",
+      "mkdir",
+      "non-fatal",
+      "other_repos",
+      "parse_args",
+      "pre-installed",
+      "repo_name",
+      "rm",
+      "sed",
+      "seed_memory",
+      "ssh-agent",
+      "ssh-keyscan",
+      "target",
+      "target_memory",
+      "touch",
+      "uname",
+      "x86_64"
+    ],
+    "tools_confirmed": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
+    "py_imports_new": [],
+    "py_imports_confirmed": []
   },
-  "suggested": {
-    "base_image": "latest",
-    "ai_install": "claude",
-    "plugin_layer": ""
-  }
+  "system_deps": {
+    "basename": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "cat": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "chmod": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "cp": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "cut": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "dirname": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "env": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "gh": {
+      "apt_depends": [
+        "libc6"
+      ],
+      "apt_package": "gh"
+    },
+    "git": {
+      "apt_depends": [
+        "libc6",
+        "libcurl3-gnutls",
+        "libexpat1",
+        "libpcre2-8-0",
+        "zlib1g",
+        "perl",
+        "liberror-perl",
+        "git-man",
+        "git-man"
+      ],
+      "apt_package": "git"
+    },
+    "mkdir": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "rm": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "sed": {
+      "apt_depends": [],
+      "apt_package": "sed"
+    },
+    "ssh-agent": {
+      "apt_depends": [],
+      "apt_package": "openssh-client"
+    },
+    "ssh-keyscan": {
+      "apt_depends": [],
+      "apt_package": "openssh-client"
+    },
+    "touch": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "uname": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "x86_64": {
+      "apt_depends": [],
+      "apt_package": "util-linux"
+    }
+  },
+  "schema_version": 2
 }
