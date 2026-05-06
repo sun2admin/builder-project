@@ -10,7 +10,13 @@
 
 set -euo pipefail
 
-source "$(dirname "$0")/../build-workspace/lib.sh"
+RED=$'\033[0;31m'
+NC=$'\033[0m'
+
+read_input() {
+  printf '%s' "$1" >&2
+  read -r input
+}
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SKILL_DIR}/../../.." && pwd)"
