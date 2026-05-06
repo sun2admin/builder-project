@@ -76,10 +76,16 @@ def _empty_aggregate(build_project: str) -> dict:
             "remote_user": "",
             "post_start": "",
             "post_create": "",
+            "post_attach": "",
             "post_start_chain": [],
             "post_create_chain": [],
             "init_scripts": [],
             "extensions": [],
+            "vscode_settings": {},
+            "workspace_mount": "",
+            "workspace_folder": "",
+            "wait_for": "",
+            "shutdown_action": "",
         },
         "credentials_required": {
             "api_keys": [],
@@ -241,6 +247,21 @@ def _merge_container(out: dict, analysis: dict, source: str, is_project: bool) -
             dst["post_start"] = src.get("post_start", "")
         if not dst.get("post_create"):
             dst["post_create"] = src.get("post_create", "")
+        if not dst.get("post_attach"):
+            dst["post_attach"] = src.get("post_attach", "")
+        if not dst.get("workspace_mount"):
+            dst["workspace_mount"] = src.get("workspace_mount", "")
+        if not dst.get("workspace_folder"):
+            dst["workspace_folder"] = src.get("workspace_folder", "")
+        if not dst.get("wait_for"):
+            dst["wait_for"] = src.get("wait_for", "")
+        if not dst.get("shutdown_action"):
+            dst["shutdown_action"] = src.get("shutdown_action", "")
+        src_settings = src.get("vscode_settings") or {}
+        if src_settings:
+            merged = dict(dst.get("vscode_settings") or {})
+            merged.update(src_settings)
+            dst["vscode_settings"] = merged
 
     dst["post_start_chain"] = list(dst["post_start_chain"]) + list(
         src.get("post_start_chain", []) or []

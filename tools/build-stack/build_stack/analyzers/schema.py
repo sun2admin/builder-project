@@ -61,10 +61,16 @@ class Container:
     remote_user: str = ""
     post_start: str = ""
     post_create: str = ""
+    post_attach: str = ""
     post_start_chain: list[PostChainStep] = field(default_factory=list)
     post_create_chain: list[PostChainStep] = field(default_factory=list)
     init_scripts: list[str] = field(default_factory=list)
     extensions: list[str] = field(default_factory=list)
+    vscode_settings: dict = field(default_factory=dict)
+    workspace_mount: str = ""
+    workspace_folder: str = ""
+    wait_for: str = ""
+    shutdown_action: str = ""
 
 
 @dataclass

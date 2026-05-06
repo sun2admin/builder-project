@@ -47,13 +47,38 @@ def _parse_jsonc(text: str) -> dict:
 # ─── devcontainer.json ────────────────────────────────────────────────────────
 
 def _parse_mount_string(s: str) -> dict:
-    """`source=X,target=Y,type=Z[,readonly,...]` → {name, target, type}."""
-    parts = dict(p.split("=", 1) for p in s.split(",") if "=" in p)
-    return {
-        "name": parts.get("source", ""),
-        "target": parts.get("target", ""),
-        "type": parts.get("type", "volume"),
-    }
+    """`source=X,target=Y,type=Z[,readonly][,consistency=W]` → dict.
+
+    Preserves `consistency` (cached/delegated/consistent) and `readonly`
+    flags so the emitter can round-trip them when composing devcontainer
+    mount strings.
+    """
+    out = {"name": "", "target": "", "type": "volume"}
+    flags: list[str] = []
+    for token in s.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if "=" in token:
+            k, v = token.split("=", 1)
+            k = k.strip()
+            v = v.strip()
+            if k == "source":
+                out["name"] = v
+            elif k == "target":
+                out["target"] = v
+            elif k == "type":
+                out["type"] = v
+            elif k == "consistency":
+                out["consistency"] = v
+            else:
+                flags.append(token)
+        else:
+            if token == "readonly":
+                out["readonly"] = True
+            else:
+                flags.append(token)
+    return out
 
 
 def _parse_devcontainer(repo_path: Path) -> dict:
@@ -66,9 +91,15 @@ def _parse_devcontainer(repo_path: Path) -> dict:
         "container_env": {},
         "post_start": "",
         "post_create": "",
+        "post_attach": "",
         "extensions": [],
+        "vscode_settings": {},
         "forward_ports": [],
         "remote_user": "",
+        "workspace_mount": "",
+        "workspace_folder": "",
+        "wait_for": "",
+        "shutdown_action": "",
     }
     f = repo_path / ".devcontainer" / "devcontainer.json"
     if not f.is_file():
@@ -88,27 +119,43 @@ def _parse_devcontainer(repo_path: Path) -> dict:
         if isinstance(m, str) and "source=" in m:
             mounts.append(_parse_mount_string(m))
         elif isinstance(m, dict):
-            mounts.append({
+            entry = {
                 "name": m.get("source", ""),
                 "target": m.get("target", ""),
                 "type": m.get("type", "volume"),
-            })
+            }
+            if m.get("consistency"):
+                entry["consistency"] = m["consistency"]
+            if m.get("readonly"):
+                entry["readonly"] = True
+            mounts.append(entry)
 
-    exts = ((d.get("customizations") or {}).get("vscode") or {}).get("extensions") or []
+    vscode = (d.get("customizations") or {}).get("vscode") or {}
+    exts = vscode.get("extensions") or []
+    settings = vscode.get("settings") or {}
     post_start = d.get("postStartCommand", "") or ""
     post_create = d.get("postCreateCommand", "") or ""
+    post_attach = d.get("postAttachCommand", "") or ""
 
-    # postStart/Create may be a string or list — normalize to string for the
-    # back-compat raw field. The spec also allows dicts of named commands;
+    # postStart/Create/Attach may be a string or list — normalize to string for
+    # the back-compat raw field. The spec also allows dicts of named commands;
     # for now stringify their values (rare in practice).
-    if isinstance(post_start, list):
-        post_start = " && ".join(str(x) for x in post_start)
-    elif isinstance(post_start, dict):
-        post_start = " && ".join(str(v) for v in post_start.values())
-    if isinstance(post_create, list):
-        post_create = " && ".join(str(x) for x in post_create)
-    elif isinstance(post_create, dict):
-        post_create = " && ".join(str(v) for v in post_create.values())
+    def _stringify(cmd):
+        if isinstance(cmd, list):
+            return " && ".join(str(x) for x in cmd)
+        if isinstance(cmd, dict):
+            return " && ".join(str(v) for v in cmd.values())
+        return cmd
+    post_start = _stringify(post_start)
+    post_create = _stringify(post_create)
+    post_attach = _stringify(post_attach)
+
+    wait_for = d.get("waitFor", "") or ""
+    if isinstance(wait_for, (list, dict)):
+        wait_for = ""
+    shutdown_action = d.get("shutdownAction", "") or ""
+    workspace_mount = d.get("workspaceMount", "") or ""
+    workspace_folder = d.get("workspaceFolder", "") or ""
 
     return {
         "capabilities": caps,
@@ -116,9 +163,15 @@ def _parse_devcontainer(repo_path: Path) -> dict:
         "container_env": d.get("containerEnv", {}) or {},
         "post_start": post_start,
         "post_create": post_create,
+        "post_attach": post_attach,
         "extensions": list(exts),
+        "vscode_settings": dict(settings) if isinstance(settings, dict) else {},
         "forward_ports": list(d.get("forwardPorts", []) or []),
         "remote_user": d.get("remoteUser", "") or "",
+        "workspace_mount": workspace_mount,
+        "workspace_folder": workspace_folder,
+        "wait_for": wait_for,
+        "shutdown_action": shutdown_action,
     }
 
 
@@ -539,7 +592,13 @@ def detect(repo_path: Path, result: AnalysisResult) -> None:
     result.container.env = dc["container_env"]
     result.container.post_start = dc["post_start"]
     result.container.post_create = dc["post_create"]
+    result.container.post_attach = dc["post_attach"]
     result.container.remote_user = dc["remote_user"]
+    result.container.vscode_settings = dc["vscode_settings"]
+    result.container.workspace_mount = dc["workspace_mount"]
+    result.container.workspace_folder = dc["workspace_folder"]
+    result.container.wait_for = dc["wait_for"]
+    result.container.shutdown_action = dc["shutdown_action"]
 
     # Merge .vscode/extensions.json recommendations after dc extensions, dedup
     exts = list(dc["extensions"])

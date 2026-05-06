@@ -168,15 +168,41 @@ def write_devcontainer(
     if forward_ports:
         dc["forwardPorts"] = forward_ports
 
+    workspace_mount = container.get("workspace_mount") or ""
+    if workspace_mount:
+        dc["workspaceMount"] = workspace_mount
+
+    workspace_folder = container.get("workspace_folder") or ""
+    if workspace_folder:
+        dc["workspaceFolder"] = workspace_folder
+
     if post_start:
         dc["postStartCommand"] = post_start
+
+    wait_for = container.get("wait_for") or ""
+    if wait_for:
+        dc["waitFor"] = wait_for
 
     post_create = container.get("post_create") or ""
     if post_create:
         dc["postCreateCommand"] = post_create
 
-    if extensions:
-        dc["customizations"] = {"vscode": {"extensions": extensions}}
+    post_attach = container.get("post_attach") or ""
+    if post_attach:
+        dc["postAttachCommand"] = post_attach
+
+    shutdown_action = container.get("shutdown_action") or ""
+    if shutdown_action:
+        dc["shutdownAction"] = shutdown_action
+
+    vscode_settings = container.get("vscode_settings") or {}
+    if extensions or vscode_settings:
+        vscode: dict = {}
+        if extensions:
+            vscode["extensions"] = extensions
+        if vscode_settings:
+            vscode["settings"] = vscode_settings
+        dc["customizations"] = {"vscode": vscode}
 
     path = out_dir / "devcontainer.json"
     path.write_text(json.dumps(dc, sort_keys=True, indent=2) + "\n")
