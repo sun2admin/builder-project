@@ -42,10 +42,16 @@
     "remote_user": "",
     "post_start": "",
     "post_create": "",
+    "post_attach": "",
     "post_start_chain": [],
     "post_create_chain": [],
     "init_scripts": [],
-    "extensions": []
+    "extensions": [],
+    "vscode_settings": {},
+    "workspace_mount": "",
+    "workspace_folder": "",
+    "wait_for": "",
+    "shutdown_action": ""
   },
   "credentials_required": {
     "api_keys": [],

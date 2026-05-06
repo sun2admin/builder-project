@@ -7,7 +7,7 @@
 ---
 
 ## Languages & Runtimes
-- Languages: node, shell, python
+- Languages: node, python, shell
 - Runtime extras: none detected
 - Versions: none detected
 - Base image: `not specified`

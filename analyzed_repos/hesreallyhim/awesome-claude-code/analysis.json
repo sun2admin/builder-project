@@ -93,6 +93,25 @@
       "rm",
       "skipping"
     ],
+    "tools_new": [
+      "after",
+      "allow_diff",
+      "backup",
+      "checks",
+      "cp",
+      "failure",
+      "git",
+      "keep_outputs",
+      "ls",
+      "make",
+      "mktemp",
+      "near",
+      "restore",
+      "restoring",
+      "rm",
+      "skipping"
+    ],
+    "tools_confirmed": [],
     "py_imports": [
       "dotenv",
       "github",
@@ -100,7 +119,17 @@
       "requests",
       "yaml"
     ],
+    "py_imports_new": [
+      "dotenv",
+      "github",
+      "pytest",
+      "requests",
+      "yaml"
+    ],
+    "py_imports_confirmed": [],
     "ts_imports": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
     "ci_tools": [
       "await",
       "body",
@@ -156,47 +185,19 @@
       "tail",
       "upload-artifact",
       "uses"
-    ],
-    "tools_new": [
-      "after",
-      "allow_diff",
-      "backup",
-      "checks",
-      "cp",
-      "failure",
-      "git",
-      "keep_outputs",
-      "ls",
-      "make",
-      "mktemp",
-      "near",
-      "restore",
-      "restoring",
-      "rm",
-      "skipping"
-    ],
-    "tools_confirmed": [],
-    "ts_imports_new": [],
-    "ts_imports_confirmed": [],
-    "py_imports_new": [
-      "dotenv",
-      "github",
-      "pytest",
-      "requests",
-      "yaml"
-    ],
-    "py_imports_confirmed": []
+    ]
   },
   "system_deps": {
     "cp": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "env": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "git": {
+      "apt_package": "git",
       "apt_depends": [
         "libc6",
         "libcurl3-gnutls",
@@ -207,58 +208,57 @@
         "liberror-perl",
         "git-man",
         "git-man"
-      ],
-      "apt_package": "git"
+      ]
     },
     "id": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "jq": {
+      "apt_package": "jq",
       "apt_depends": [
         "libjq1",
         "libc6"
-      ],
-      "apt_package": "jq"
+      ]
     },
     "ls": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "make": {
-      "apt_depends": [],
-      "apt_package": "make"
+      "apt_package": "make",
+      "apt_depends": []
     },
     "mktemp": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "pip": {
-      "apt_depends": [],
-      "apt_package": "pip"
+      "apt_package": "pip",
+      "apt_depends": []
     },
     "python": {
-      "apt_depends": [],
-      "apt_package": "python"
+      "apt_package": "python",
+      "apt_depends": []
     },
     "python3": {
+      "apt_package": "python3",
       "apt_depends": [
         "python3.11",
         "libpython3-stdlib"
-      ],
-      "apt_package": "python3"
+      ]
     },
     "rm": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "script": {
-      "apt_depends": [],
-      "apt_package": "bsdutils"
+      "apt_package": "bsdutils",
+      "apt_depends": []
     },
     "tail": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     }
   },
   "schema_version": 2

@@ -5,9 +5,9 @@
   "purpose": "A Tower-based Rust implementation of ConnectRPC, serving Connect, gRPC, and gRPC-Web clients over HTTP with binary or JSON protobuf messages.",
   "primary_language": "Rust",
   "languages": [
+    "go",
     "rust",
-    "shell",
-    "go"
+    "shell"
   ],
   "runtime_extras": [],
   "runtime_versions": {
@@ -218,34 +218,6 @@
       "wasm-pack",
       "x86_64"
     ],
-    "py_imports": [],
-    "ts_imports": [],
-    "ci_tools": [
-      "apt-get",
-      "attest-build-provenance",
-      "cargo",
-      "cat",
-      "checkout",
-      "chmod",
-      "cosign",
-      "cosign-installer",
-      "cp",
-      "crate",
-      "crates-io-auth",
-      "download-artifact",
-      "exists",
-      "file",
-      "gh-release",
-      "grep",
-      "protoc",
-      "rust",
-      "sha256sum",
-      "shell",
-      "skipping",
-      "tee",
-      "upload-artifact",
-      "uploaded"
-    ],
     "tools_new": [
       "aarch64",
       "amd64",
@@ -318,121 +290,149 @@
       "x86_64"
     ],
     "tools_confirmed": [],
+    "py_imports": [],
+    "py_imports_new": [],
+    "py_imports_confirmed": [],
+    "ts_imports": [],
     "ts_imports_new": [],
     "ts_imports_confirmed": [],
-    "py_imports_new": [],
-    "py_imports_confirmed": []
+    "ci_tools": [
+      "apt-get",
+      "attest-build-provenance",
+      "cargo",
+      "cat",
+      "checkout",
+      "chmod",
+      "cosign",
+      "cosign-installer",
+      "cp",
+      "crate",
+      "crates-io-auth",
+      "download-artifact",
+      "exists",
+      "file",
+      "gh-release",
+      "grep",
+      "protoc",
+      "rust",
+      "sha256sum",
+      "shell",
+      "skipping",
+      "tee",
+      "upload-artifact",
+      "uploaded"
+    ]
   },
   "system_deps": {
     "apt-get": {
-      "apt_depends": [],
-      "apt_package": "apt"
+      "apt_package": "apt",
+      "apt_depends": []
     },
     "basename": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "bash": {
+      "apt_package": "bash",
       "apt_depends": [
         "base-files",
         "debianutils"
-      ],
-      "apt_package": "bash"
+      ]
     },
     "cat": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "chmod": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "cp": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "dir": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "dirname": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "env": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "fmt": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "gh": {
+      "apt_package": "gh",
       "apt_depends": [
         "libc6"
-      ],
-      "apt_package": "gh"
+      ]
     },
     "grep": {
+      "apt_package": "grep",
       "apt_depends": [
         "dpkg"
-      ],
-      "apt_package": "grep"
+      ]
     },
     "head": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "ln": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "mkdir": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "mktemp": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "python3": {
+      "apt_package": "python3",
       "apt_depends": [
         "python3.11",
         "libpython3-stdlib"
-      ],
-      "apt_package": "python3"
+      ]
     },
     "rm": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "seq": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "sha256sum": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "sleep": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "tar": {
-      "apt_depends": [],
-      "apt_package": "tar"
+      "apt_package": "tar",
+      "apt_depends": []
     },
     "tee": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "uname": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "x86_64": {
-      "apt_depends": [],
-      "apt_package": "util-linux"
+      "apt_package": "util-linux",
+      "apt_depends": []
     }
   },
   "schema_version": 2

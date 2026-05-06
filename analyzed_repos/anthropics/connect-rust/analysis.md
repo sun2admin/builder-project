@@ -7,7 +7,7 @@
 ---
 
 ## Languages & Runtimes
-- Languages: rust, shell, go
+- Languages: go, rust, shell
 - Runtime extras: none detected
 - Versions: rust 1.88
 - Base image: `not specified`

@@ -5,9 +5,9 @@
   "purpose": "Claude Code is an agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster by executing routine tasks, explaining complex code, and handling git workflows -- all through natural language commands. Use it in your terminal, IDE, or tag @claude on Github.",
   "primary_language": "Shell",
   "languages": [
-    "shell",
     "node",
-    "python"
+    "python",
+    "shell"
   ],
   "runtime_extras": [
     "bun"
@@ -279,35 +279,6 @@
       "xargs",
       "yellow"
     ],
-    "py_imports": [
-      "hookify"
-    ],
-    "ts_imports": [],
-    "ci_tools": [
-      "bun",
-      "checkout",
-      "claude-code",
-      "curl",
-      "date",
-      "events",
-      "floor",
-      "gh",
-      "github-script",
-      "head",
-      "http_code",
-      "issue_number",
-      "jq",
-      "metadata",
-      "now",
-      "repository",
-      "sed",
-      "tail",
-      "tonumber",
-      "tostring",
-      "triggered_by",
-      "value",
-      "workflow_run_id"
-    ],
     "tools_new": [
       "active",
       "agent",
@@ -435,87 +406,117 @@
       "iptables",
       "jq"
     ],
-    "ts_imports_new": [],
-    "ts_imports_confirmed": [],
+    "py_imports": [
+      "hookify"
+    ],
     "py_imports_new": [
       "hookify"
     ],
-    "py_imports_confirmed": []
+    "py_imports_confirmed": [],
+    "ts_imports": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
+    "ci_tools": [
+      "bun",
+      "checkout",
+      "claude-code",
+      "curl",
+      "date",
+      "events",
+      "floor",
+      "gh",
+      "github-script",
+      "head",
+      "http_code",
+      "issue_number",
+      "jq",
+      "metadata",
+      "now",
+      "repository",
+      "sed",
+      "tail",
+      "tonumber",
+      "tostring",
+      "triggered_by",
+      "value",
+      "workflow_run_id"
+    ]
   },
   "system_deps": {
     "aggregate": {
+      "apt_package": "aggregate",
       "apt_depends": [
         "libc6"
-      ],
-      "apt_package": "aggregate"
+      ]
     },
     "awk": {
-      "apt_depends": [],
-      "apt_package": "awk"
+      "apt_package": "awk",
+      "apt_depends": []
     },
     "bash": {
+      "apt_package": "bash",
       "apt_depends": [
         "base-files",
         "debianutils"
-      ],
-      "apt_package": "bash"
+      ]
     },
     "cat": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "chmod": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "curl": {
+      "apt_package": "curl",
       "apt_depends": [
         "libc6",
         "libcurl4",
         "zlib1g"
-      ],
-      "apt_package": "curl"
+      ]
     },
     "cut": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "date": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "dig": {
-      "apt_depends": [],
-      "apt_package": "bind9-dnsutils"
+      "apt_package": "bind9-dnsutils",
+      "apt_depends": []
     },
     "gh": {
+      "apt_package": "gh",
       "apt_depends": [
         "libc6"
-      ],
-      "apt_package": "gh"
+      ]
     },
     "grep": {
+      "apt_package": "grep",
       "apt_depends": [
         "dpkg"
-      ],
-      "apt_package": "grep"
+      ]
     },
     "head": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "ip": {
-      "apt_depends": [],
-      "apt_package": "iproute2"
+      "apt_package": "iproute2",
+      "apt_depends": []
     },
     "ipset": {
+      "apt_package": "ipset",
       "apt_depends": [
         "libc6",
         "libipset13"
-      ],
-      "apt_package": "ipset"
+      ]
     },
     "iptables": {
+      "apt_package": "iptables",
       "apt_depends": [
         "libip4tc2",
         "libip6tc2",
@@ -526,71 +527,70 @@
         "libnetfilter-conntrack3",
         "libnfnetlink0",
         "libnftnl11"
-      ],
-      "apt_package": "iptables"
+      ]
     },
     "join": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "jq": {
+      "apt_package": "jq",
       "apt_depends": [
         "libjq1",
         "libc6"
-      ],
-      "apt_package": "jq"
+      ]
     },
     "ls": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "mkdir": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "mv": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "perl": {
+      "apt_package": "perl",
       "apt_depends": [
         "perl-base",
         "perl-modules-5.36",
         "libperl5.36"
-      ],
-      "apt_package": "perl"
+      ]
     },
     "rm": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "sed": {
-      "apt_depends": [],
-      "apt_package": "sed"
+      "apt_package": "sed",
+      "apt_depends": []
     },
     "tail": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "timeout": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "tr": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "wc": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "whoami": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "xargs": {
-      "apt_depends": [],
-      "apt_package": "findutils"
+      "apt_package": "findutils",
+      "apt_depends": []
     }
   },
   "schema_version": 2

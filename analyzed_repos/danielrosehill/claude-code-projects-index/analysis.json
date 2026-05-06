@@ -6,8 +6,8 @@
   "primary_language": "Astro",
   "languages": [
     "node",
-    "shell",
-    "python"
+    "python",
+    "shell"
   ],
   "runtime_extras": [],
   "runtime_versions": {},
@@ -70,9 +70,6 @@
       "name",
       "python3"
     ],
-    "py_imports": [],
-    "ts_imports": [],
-    "ci_tools": [],
     "tools_new": [
       "basename",
       "bash",
@@ -82,24 +79,28 @@
       "python3"
     ],
     "tools_confirmed": [],
+    "py_imports": [],
+    "py_imports_new": [],
+    "py_imports_confirmed": [],
+    "ts_imports": [],
     "ts_imports_new": [],
     "ts_imports_confirmed": [],
-    "py_imports_new": [],
-    "py_imports_confirmed": []
+    "ci_tools": []
   },
   "system_deps": {
     "basename": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "bash": {
+      "apt_package": "bash",
       "apt_depends": [
         "base-files",
         "debianutils"
-      ],
-      "apt_package": "bash"
+      ]
     },
     "git": {
+      "apt_package": "git",
       "apt_depends": [
         "libc6",
         "libcurl3-gnutls",
@@ -110,19 +111,18 @@
         "liberror-perl",
         "git-man",
         "git-man"
-      ],
-      "apt_package": "git"
+      ]
     },
     "ln": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "python3": {
+      "apt_package": "python3",
       "apt_depends": [
         "python3.11",
         "libpython3-stdlib"
-      ],
-      "apt_package": "python3"
+      ]
     }
   },
   "schema_version": 2

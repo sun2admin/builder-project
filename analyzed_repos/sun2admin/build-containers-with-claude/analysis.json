@@ -58,17 +58,20 @@
       {
         "name": "${localEnv:HOME}/Downloads/ClaudeFiles/SharedFiles",
         "target": "/home/claude/data",
-        "type": "bind"
+        "type": "bind",
+        "consistency": "cached"
       },
       {
         "name": "${localEnv:HOME}/Downloads/ClaudeFiles/Config/gh_claude_ed25519",
         "target": "/run/credentials/gh_claude_ed25519",
-        "type": "bind"
+        "type": "bind",
+        "readonly": true
       },
       {
         "name": "${localEnv:HOME}/Downloads/ClaudeFiles/Config/gh_pat",
         "target": "/run/credentials/gh_pat",
-        "type": "bind"
+        "type": "bind",
+        "readonly": true
       }
     ],
     "env": {
@@ -79,6 +82,7 @@
     "remote_user": "claude",
     "post_start": "sudo /usr/local/bin/init-firewall.sh && /workspace/.devcontainer/scripts/init-ssh.sh && /workspace/.devcontainer/scripts/init-gh-token.sh && /workspace/.devcontainer/scripts/init-github-mcp.sh && /workspace/.devcontainer/scripts/load-projects.sh -live sun2admin/builder-project",
     "post_create": "",
+    "post_attach": "bash --login -c 'cd $(cat ~/live-project 2>/dev/null || echo ~) && claude --dangerously-skip-permissions'",
     "post_start_chain": [
       {
         "raw": "sudo /usr/local/bin/init-firewall.sh",
@@ -129,7 +133,17 @@
       "esbenp.prettier-vscode",
       "eamodio.gitlens",
       "ms-toolsai.jupyter"
-    ]
+    ],
+    "vscode_settings": {
+      "claudeCode.useTerminal": true,
+      "editor.formatOnSave": true,
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "terminal.integrated.defaultProfile.linux": "bash"
+    },
+    "workspace_mount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
+    "workspace_folder": "/workspace",
+    "wait_for": "postStartCommand",
+    "shutdown_action": "stopContainer"
   },
   "credentials_required": {
     "api_keys": [],
@@ -175,15 +189,6 @@
       "uname",
       "x86_64"
     ],
-    "py_imports": [],
-    "ts_imports": [],
-    "ci_tools": [
-      "cat",
-      "checkout",
-      "env",
-      "gh",
-      "git"
-    ],
     "tools_new": [
       "aarch64",
       "basename",
@@ -218,47 +223,57 @@
       "x86_64"
     ],
     "tools_confirmed": [],
+    "py_imports": [],
+    "py_imports_new": [],
+    "py_imports_confirmed": [],
+    "ts_imports": [],
     "ts_imports_new": [],
     "ts_imports_confirmed": [],
-    "py_imports_new": [],
-    "py_imports_confirmed": []
+    "ci_tools": [
+      "cat",
+      "checkout",
+      "env",
+      "gh",
+      "git"
+    ]
   },
   "system_deps": {
     "basename": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "cat": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "chmod": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "cp": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "cut": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "dirname": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "env": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "gh": {
+      "apt_package": "gh",
       "apt_depends": [
         "libc6"
-      ],
-      "apt_package": "gh"
+      ]
     },
     "git": {
+      "apt_package": "git",
       "apt_depends": [
         "libc6",
         "libcurl3-gnutls",
@@ -269,40 +284,39 @@
         "liberror-perl",
         "git-man",
         "git-man"
-      ],
-      "apt_package": "git"
+      ]
     },
     "mkdir": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "rm": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "sed": {
-      "apt_depends": [],
-      "apt_package": "sed"
+      "apt_package": "sed",
+      "apt_depends": []
     },
     "ssh-agent": {
-      "apt_depends": [],
-      "apt_package": "openssh-client"
+      "apt_package": "openssh-client",
+      "apt_depends": []
     },
     "ssh-keyscan": {
-      "apt_depends": [],
-      "apt_package": "openssh-client"
+      "apt_package": "openssh-client",
+      "apt_depends": []
     },
     "touch": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "uname": {
-      "apt_depends": [],
-      "apt_package": "coreutils"
+      "apt_package": "coreutils",
+      "apt_depends": []
     },
     "x86_64": {
-      "apt_depends": [],
-      "apt_package": "util-linux"
+      "apt_package": "util-linux",
+      "apt_depends": []
     }
   },
   "schema_version": 2

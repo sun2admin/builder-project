@@ -61,12 +61,22 @@
   "claude_plugins": [],
   "inferred": {
     "tools": [],
+    "tools_new": [],
+    "tools_confirmed": [],
     "py_imports": [
       "anthropic",
       "pytest",
       "requests"
     ],
+    "py_imports_new": [
+      "anthropic",
+      "pytest",
+      "requests"
+    ],
+    "py_imports_confirmed": [],
     "ts_imports": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
     "ci_tools": [
       "bun",
       "checkout",
@@ -75,26 +85,16 @@
       "pip",
       "pytest",
       "python"
-    ],
-    "tools_new": [],
-    "tools_confirmed": [],
-    "ts_imports_new": [],
-    "ts_imports_confirmed": [],
-    "py_imports_new": [
-      "anthropic",
-      "pytest",
-      "requests"
-    ],
-    "py_imports_confirmed": []
+    ]
   },
   "system_deps": {
     "pip": {
-      "apt_depends": [],
-      "apt_package": "pip"
+      "apt_package": "pip",
+      "apt_depends": []
     },
     "python": {
-      "apt_depends": [],
-      "apt_package": "python"
+      "apt_package": "python",
+      "apt_depends": []
     }
   },
   "schema_version": 2

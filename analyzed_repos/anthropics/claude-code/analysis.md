@@ -7,7 +7,7 @@
 ---
 
 ## Languages & Runtimes
-- Languages: shell, node, python
+- Languages: node, python, shell
 - Runtime extras: bun
 - Versions: none detected
 - Base image: `node:20`
