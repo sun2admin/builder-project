@@ -1,7 +1,7 @@
 #!/bin/bash
 # analyze-repo: Deep scan a GitHub repo for all container stack dependencies
 # Usage: analyze-repo.sh [owner/repo]
-# stdout: path to builds/<owner>/<repo>/analysis.json
+# stdout: path to analyzed_repos/<owner>/<repo>/analysis.json
 # exit 0=success, 1=error
 
 set -euo pipefail
@@ -10,7 +10,7 @@ source "$(dirname "$0")/../build-workspace/lib.sh"
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SKILL_DIR}/../../.." && pwd)"
-BUILDS_DIR="${REPO_ROOT}/builds"
+ANALYZED_REPOS_DIR="${REPO_ROOT}/analyzed_repos"
 
 TEMP_DIR=""
 cleanup() { [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"; }
@@ -35,7 +35,7 @@ Usage: analyze-repo.sh [-q|--quiet] [-v|--verbose] [owner/repo]
   -v  Always emit markdown report regardless of TTY detection.
   Default: emit markdown to stderr only when stdout is a TTY.
 
-stdout: path to builds/<owner>/<repo>/analysis.json (single line)
+stdout: path to analyzed_repos/<owner>/<repo>/analysis.json (single line)
 stderr: progress traces, plus markdown report when emitted
 EOF
       exit 0 ;;
@@ -1257,9 +1257,9 @@ fi
 echo "" >&2
 echo "Generating report..." >&2
 
-mkdir -p "${BUILDS_DIR}/${REPO_OWNER}/${REPO_NAME}"
-JSON_FILE="${BUILDS_DIR}/${REPO_OWNER}/${REPO_NAME}/analysis.json"
-MD_FILE="${BUILDS_DIR}/${REPO_OWNER}/${REPO_NAME}/analysis.md"
+mkdir -p "${ANALYZED_REPOS_DIR}/${REPO_OWNER}/${REPO_NAME}"
+JSON_FILE="${ANALYZED_REPOS_DIR}/${REPO_OWNER}/${REPO_NAME}/analysis.json"
+MD_FILE="${ANALYZED_REPOS_DIR}/${REPO_OWNER}/${REPO_NAME}/analysis.md"
 TODAY=$(date +%Y-%m-%d)
 
 # Serialize bash arrays to JSON

@@ -5,7 +5,7 @@ description: Scan a GitHub project repo for all dependencies needed to build a c
 
 # /analyze-repo
 
-Clones a GitHub repo fresh and scans it for all dependencies needed to configure a container stack. Saves findings to `builds/<project>/analysis.json` and `builds/<project>/analysis.md`.
+Clones a GitHub repo fresh and scans it for all dependencies needed to configure a container stack. Saves findings to `analyzed_repos/<owner>/<repo>/analysis.json` and `analyzed_repos/<owner>/<repo>/analysis.md`.
 
 ## Reference Docs — Read Before Modifying
 
@@ -43,8 +43,8 @@ floods the wrapper's terminal. Default TTY-aware behavior keeps wrapper
 output clean while preserving direct-user UX.
 
 **Files saved regardless of emit:**
-- `builds/<owner>/<repo>/analysis.json`
-- `builds/<owner>/<repo>/analysis.md`
+- `analyzed_repos/<owner>/<repo>/analysis.json`
+- `analyzed_repos/<owner>/<repo>/analysis.md`
 
 ## What It Detects
 
@@ -60,8 +60,8 @@ output clean while preserving direct-user UX.
 
 ## Output
 
-- `builds/<project>/analysis.json` — machine-readable, consumed by build-workspace for auto builds
-- `builds/<project>/analysis.md` — human-readable summary displayed to user
+- `analyzed_repos/<owner>/<repo>/analysis.json` — machine-readable, consumed by `/build-stack` skill + tool
+- `analyzed_repos/<owner>/<repo>/analysis.md` — human-readable summary displayed to user
 - **stdout**: path to analysis.json (for skill-to-skill consumption)
 
 ## Suggested Stack Logic
@@ -70,13 +70,13 @@ output clean while preserving direct-user UX.
 - `ai_install`: `claude` (default)
 - `plugin_layer`: empty — build-workspace queries GitHub dynamically at build time
 
-## Integration with build-workspace
+## Integration with build-stack
 
-When `build-workspace` runs in auto mode, it reads `suggested` from `analysis.json`:
+The `/build-stack` skill invokes `/analyze-repo` once per referenced repo (project repo + each plugin repo). The tool's compose pipeline then reads pre-existing `analyzed_repos/<owner>/<repo>/analysis.json` files and aggregates them into a single build composition. The skill never re-runs analyze inside the tool — it only reads from cache.
 
 ```bash
-BASE_IMAGE=$(jq -r '.suggested.base_image' builds/<project>/analysis.json)
-AI_INSTALL=$(jq -r '.suggested.ai_install' builds/<project>/analysis.json)
+BASE_IMAGE=$(jq -r '.suggested.base_image' analyzed_repos/<owner>/<repo>/analysis.json)
+AI_INSTALL=$(jq -r '.suggested.ai_install' analyzed_repos/<owner>/<repo>/analysis.json)
 ```
 
 The full findings (languages, ports, packages) are preserved in `analysis.json` for future reference and can inform dedicated layer creation.

@@ -2,6 +2,8 @@
 
 **Status:** Active — sub-plan of [`build-workflow-stack-composition.md`](./build-workflow-stack-composition.md). Scope-bounded execution recipe for the `analyze-repo` migration phases (Phase 1 → 3) defined in the parent plan.
 
+**Sequencing decision (2026-05-06):** Sub-plan Phases 1.5 + 2 + 3 execute **NOW**, before parent plan §6 Phases 4-6 (aggregate/select/compose/emit). Rationale: clean arch upfront. Build-stack composition development against a real Python detector beats developing against a bash-shell-out wrapper that gets thrown away later. User-mandated ordering (see prior iteration of this plan and parent plan §"Recommended ordering").
+
 **Parent plan migration step:** §6 Phase 3 ("analyze: shell out to existing analyze-repo skill"); also implements parent §"analyze-repo migration phases" Phase 1, 2, 3.
 
 **Why this sub-plan:** The parent plan defines architecture and merge rules but treats `analyze` as one bullet. Absorbing the 1629-line bash detector into the Python tool is the first slice that gives the tool real logic — it must be planned independently or it derails the parent.
@@ -12,14 +14,17 @@
 
 End state (after all phases of this sub-plan):
 
-1. `tools/build-stack/build_stack/analyze.py` is the **single source of truth** for repo detection.
+1. `tools/build-stack/build_stack/analyze.py` (+ `analyzers/*.py`) is the **single source of truth** for repo detection.
 2. `/analyze-repo` skill is a **thin bash wrapper** (~50 lines) that shells out to `python -m build_stack analyze --human <repo>`.
 3. `tool-deps.json` cache lives at `tools/build-stack/build_stack/data/tool-deps.json` (moved from skill dir).
-4. Parity validated against existing test corpus — same `analysis.json` byte output for the same input repo.
+4. **All analyzer output lands under `analyzed_repos/<owner>/<repo>/`**, not `builds/<owner>/<repo>/`. `builds/` becomes exclusively build-stack composition output (skill+tool produces `build.json`, `aggregated.json`, `devcontainer.json`, `workspace.env` per build).
+5. **Existing pre-rename `builds/<owner>/<repo>/` analysis dirs are migrated** to `analyzed_repos/<owner>/<repo>/` via `git mv` — preserves history.
+6. Parity validated against migrated test corpus (now at `analyzed_repos/`) — same `analysis.json` byte output for the same input repo.
 
 Out of scope:
 - Composition logic (`select.py`, `compose.py`, `emit.py`) — belongs in parent plan §6 Phases 5-6.
 - New detection fields beyond what `analyze-repo.sh` already emits — pure port, not refactor.
+- Build-stack skill body (`/build-stack`) — belongs in parent plan; kicks off after this sub-plan completes.
 
 ---
 
@@ -35,7 +40,7 @@ Mapped to the parent plan's "analyze-repo migration phases" table (§Architectur
 - `pip install -e tools/build-stack/` from repo root. Editable install registers the `build_stack` package via a `.pth` file and adds the `build-stack` console script to PATH. No source copy; live edits reflect immediately. Re-install only required when `pyproject.toml` dependencies or `[project.scripts]` change.
 
 **Deliverables (implemented):**
-1. ✅ `analyze.py::analyze(repo: str) -> dict` — invokes `analyze-repo.sh -q <repo>` via `subprocess`, reads emitted `builds/<owner>/<repo>/analysis.json` from skill stdout, returns parsed dict. Used in-process by `compose.py` aggregation.
+1. ✅ `analyze.py::analyze(repo: str) -> dict` — invokes `analyze-repo.sh -q <repo>` via `subprocess`, reads emitted `analyzed_repos/<owner>/<repo>/analysis.json` from skill stdout, returns parsed dict. Used in-process by `compose.py` aggregation. (Path moved from `builds/` to `analyzed_repos/` in Phase 1.5.)
 2. ✅ `analyze.py::cmd_analyze(repo: str, *, human: bool, quiet: bool) -> int` — CLI wrapper. Pure passthrough to skill: `--human` → `-v`, `--quiet` → `-q`, default = skill TTY-detect. Skill writes JSON path to stdout, markdown to stderr.
 3. ✅ `cli.py` wires `analyze` subcommand with mutually-exclusive `--human/-v` and `--quiet/-q` flags. `cmd_analyze(args)` dispatches to `analyze.cmd_analyze`.
 4. 🔜 `compose.py` will call `analyze.analyze()` per-repo (parent plan §6 aggregation work — not Phase 1 scope).
@@ -45,6 +50,35 @@ Mapped to the parent plan's "analyze-repo migration phases" table (§Architectur
 **Tool side does not yet own detection.** Skill remains canonical detector. Tool is a passthrough.
 
 **Exit criterion (verified):** `build-stack analyze --quiet sun2admin/builder-project` returns `exit=0`, stdout = path to `analysis.json`, stderr = progress traces only. In-process `analyze.analyze('sun2admin/builder-project')` returns dict with 27 keys including `schema_version=2`, `repo`, `languages`. Parity with `bash .claude/skills/analyze-repo/analyze-repo.sh` confirmed for the smoke-test repo.
+
+### Phase 1.5 — OUT_DIR migration (NEW — sequenced before Phase 2)
+
+**Goal:** Move analyze output from `builds/<owner>/<repo>/` → `analyzed_repos/<owner>/<repo>/`. Migrate existing artifacts. Decouples the analyze-output namespace from the build-stack-output namespace.
+
+**Why before Phase 2 port:**
+- Parity test corpus must live at the new path before the Python port runs against it.
+- Smaller, atomic change. If the dir migration regresses skill output, easy to bisect without Python port noise.
+- Build-stack skill (when written) needs `analyzed_repos/` to exist as the canonical analyze cache from day one.
+
+**Deliverables:**
+1. Update `analyze-repo.sh`: `OUT_DIR` constant changes from `builds/<owner>/<repo>/` to `analyzed_repos/<owner>/<repo>/`. Single constant flip; logic unchanged.
+2. Update skill docs (`SKILL.md`, `DATA_SCHEMA.md`) — output paths in tables and examples.
+3. `git mv builds/<owner>/<repo>/ analyzed_repos/<owner>/<repo>/` for every existing detection artifact dir. Inventory at sub-plan write time:
+   - `builds/anthropics/`
+   - `builds/danielrosehill/`
+   - `builds/garrytan/`
+   - `builds/hesreallyhim/`
+   - `builds/peterkrueck/`
+   - `builds/santifer/`
+   - `builds/sun2admin/`
+4. Update `tools/build-stack/build_stack/analyze.py` (Phase 1 wrapper): no code changes — wrapper passes through skill stdout (the path), which now points into `analyzed_repos/`. Just update doc comments.
+5. Update parent plan migration step §6 Phase 3 reference to new path.
+6. Delete-or-skip protection: ensure `builds/` is empty of pre-existing detection artifacts after migration. After this phase, `builds/` should be untouched until first `/build-stack` invocation creates `builds/<category>/<project>/`.
+
+**Exit criterion:**
+- `analyze-repo.sh sun2admin/builder-project` writes to `analyzed_repos/sun2admin/builder-project/analysis.json`
+- `git log --follow analyzed_repos/sun2admin/builder-project/analysis.json` shows the original commit history (rename detected by git)
+- `builds/` is empty of pre-existing artifacts (cleanly available for build-stack composition output)
 
 ### Phase 2 — Python port (parallel implementation)
 
@@ -132,14 +166,14 @@ Bumping format requires a schema-version field — not currently present, deferr
 
 ## Parity Test (Phase 2 exit gate)
 
-**Test corpus:** existing `builds/<owner>/<repo>/analysis.json` files committed to repo. They are the golden output of the bash detector.
+**Test corpus:** existing `analyzed_repos/<owner>/<repo>/analysis.json` files committed to repo (post-Phase 1.5 migration). They are the golden output of the bash detector.
 
 **Test driver** (lives at `tools/build-stack/tests/test_analyze_parity.py`):
 ```python
 import json, subprocess
 from pathlib import Path
 
-CORPUS = Path("builds")  # iterate every existing analysis.json
+CORPUS = Path("analyzed_repos")  # iterate every existing analysis.json
 
 def test_parity():
     for analysis in CORPUS.rglob("analysis.json"):
@@ -157,14 +191,30 @@ def test_parity():
 
 **Diff failures handled how:** treat as port bugs in the Python detector, not as schema bumps. The bash detector is the spec until Phase 3 cutover; only after cutover can the Python port be the spec.
 
-**Required commit:** Phase 2 cannot land unless parity test is green on every analysis.json in `builds/`.
+**Required commit:** Phase 2 cannot land unless parity test is green on every analysis.json in `analyzed_repos/`.
 
 ---
 
 ## File Inventory
 
 ### New files (Phase 1)
-- `tools/build-stack/build_stack/analyze.py` — replaces stub (currently raises NotImplementedError)
+- `tools/build-stack/build_stack/analyze.py` — replaces stub (currently raises NotImplementedError) ✅ DONE
+
+### Modified files (Phase 1.5 — OUT_DIR migration)
+- `.claude/skills/analyze-repo/analyze-repo.sh` — flip `OUT_DIR` constant
+- `.claude/skills/analyze-repo/SKILL.md` — output path table updates
+- `.claude/skills/analyze-repo/DATA_SCHEMA.md` — output path examples
+- `.claude/plans/build-workflow-stack-composition.md` — parent plan §6 Phase 3 path references
+- `tools/build-stack/build_stack/analyze.py` — doc comment updates (no logic change)
+
+### Renamed files (Phase 1.5 — `git mv`)
+- `builds/anthropics/` → `analyzed_repos/anthropics/`
+- `builds/danielrosehill/` → `analyzed_repos/danielrosehill/`
+- `builds/garrytan/` → `analyzed_repos/garrytan/`
+- `builds/hesreallyhim/` → `analyzed_repos/hesreallyhim/`
+- `builds/peterkrueck/` → `analyzed_repos/peterkrueck/`
+- `builds/santifer/` → `analyzed_repos/santifer/`
+- `builds/sun2admin/` → `analyzed_repos/sun2admin/`
 
 ### New files (Phase 2)
 - `tools/build-stack/build_stack/analyzers/__init__.py`
@@ -211,19 +261,132 @@ All must be true before Phase 3 lands:
 
 ## Dependencies on Parent Plan
 
-This sub-plan unblocks parent plan migration step §6 Phase 3 ("analyze: shell out to existing analyze-repo skill"). Specifically:
+This sub-plan now **blocks** parent plan migration step §6 Phases 4-6 (aggregate/select/compose/emit). Sequencing reversal from earlier draft.
 
-- Sub-plan Phase 1 = parent plan Phase 1 (shell-out wrapper present)
-- Sub-plan Phase 2-3 happen after parent plan migration steps §6 Phases 4-6 (aggregate/select/compose/emit) are at least skeletally done — no point porting detection until the consumer exists and can drive integration tests.
+- Sub-plan Phase 1 ✅ DONE — shell-out wrapper present
+- Sub-plan Phase 1.5 (OUT_DIR + dir migration) — runs **before** any composition work
+- Sub-plan Phase 2 (Python port + parity test) — runs **before** parent plan §6 Phases 4-6
+- Sub-plan Phase 3 (cutover) — runs **before** parent plan §6 Phases 4-6
+- Parent plan composition phases consume the **post-cutover** Python detector directly (no shell-out)
 
-**Recommended ordering:** sub-plan Phase 1 → parent plan §6 Phase 4-6 (skeleton compose pipeline) → sub-plan Phase 2 (port + parity test) → sub-plan Phase 3 (cutover).
+**Recommended ordering (revised 2026-05-06):**
+sub-plan Phase 1 ✅ →
+sub-plan Phase 1.5 (OUT_DIR + migrate) →
+sub-plan Phase 2 (Python port) →
+sub-plan Phase 3 (cutover) →
+parent plan §6 Phases 4-6 (compose pipeline) →
+parent plan: write `/build-stack` skill body.
+
+Rationale: clean architecture upfront. Composition logic developed against real Python detector, not throwaway bash-shell-out wrapper.
 
 ---
 
-## Open Questions
+## Resolved Decisions (2026-05-06)
 
-- **Tool entry mode for analyze:** `python -m build_stack analyze <repo>` (current cli.py shape) vs `python -m build_stack.analyze <repo>` (module main)? Pick first — keeps subcommand surface uniform.
-- **`--json-only` flag:** add for parity test convenience (suppress all stderr), or test driver passes `--quiet` and parses stdout only? Pick `--quiet` if existing flag covers it.
-- **Reference doc location post-cutover:** skill dir vs tool dir? Lean tool dir — single source of truth.
-- **Test corpus growth:** parity test runs on whatever lands in `builds/`. Should the corpus include explicitly synthetic fixtures (plugin repos, sandbox-only scenarios), or rely on real repo runs accumulating naturally? Lean synthetic — reproducibility.
-- **Apt-cache cache during CI:** does CI environment have `apt-cache` available for `apt_resolve.py`? If not, parity test must mock or use `tool-deps.json` as authoritative. Pick: read-only from cache during tests, no live `apt-cache` queries.
+| # | Question | Decision |
+|---|---|---|
+| OQ1 | PR boundary | **(b)** 3 commits in 1 PR — atomic per-phase, single review boundary |
+| OQ2 | Phase 1.5 commit shape | **(a)** code change + git mv in single atomic commit |
+| OQ3 | Port scope | **(b)** idiomatic Python — modules, dataclasses, type hints |
+| OQ4 | Parity test mode | **(b)** semantic equivalence; driver normalizes (sort arrays + recursive compare) |
+| OQ5 | Apt-cache during tests | **(a)** read tool-deps.json only; no live `apt-cache` queries |
+| OQ6 | Reference docs location | **(b)** `tools/build-stack/docs/` |
+| OQ7 | `--json-only` flag | **(b)** reuse existing `--quiet` flag; no new surface |
+| OQ8 | Corpus growth | **(c)** both — synthetic required, real best-effort (skip if no `gh auth`) |
+| OQ9 | Python deps | **(a)** `pyyaml` PyPI dep allowed; `tomllib` from stdlib |
+| OQ10 | Self-analysis special case | **(a)** out of scope; defer to skill body work |
+
+---
+
+## Original Open Questions (preserved for context)
+
+### OQ1 — Phase boundaries: one PR or three?
+
+(a) Single mega-commit — Phase 1.5 + 2 + 3 land together
+(b) Three commits in one PR — atomic per-phase, easier review
+(c) Three PRs — small atomic landings
+
+Lean (b): atomic per-phase commits, single PR boundary, parity test gates Phase 2→3 cleanly.
+
+### OQ2 — Phase 1.5 OUT_DIR: code + git mv same commit, or separate?
+
+(a) Single commit: bump `OUT_DIR` constant + `git mv builds/* analyzed_repos/*`
+(b) Two commits: code change, then dir migration
+(c) Reverse two: dir migration, then code change (but skill broken between commits)
+
+Lean (a): atomic. Skill never broken. Re-running skill against same repo just rewrites.
+
+### OQ3 — Python port scope: pure bash translation, or refactor while porting?
+
+(a) **Pure translation** — line-for-line equivalent. Easy parity test pass. Ugly Python.
+(b) **Idiomatic Python** — restructure for clarity (modules per detector, dataclass schemas, type hints). Higher regression risk; requires more careful parity test.
+
+Lean (b) — given user mandate "clean arch upfront". Add idiomatic structure. Pay parity-test cost.
+
+### OQ4 — Parity test: byte-exact JSON match, or semantic equivalence?
+
+Detection emits sets in JSON arrays. Bash output may have undefined order; Python output may differ in ordering. Options:
+
+(a) Byte-exact — sort all arrays before output in both bash AND Python (modify bash skill to add sort step pre-Phase 2)
+(b) Semantic — test driver normalizes (sort arrays + recursive dict compare)
+(c) Hybrid — Python emits sorted; bash either sorts now or test driver pre-sorts old output
+
+Lean (b): semantic comparison in driver. Cleanest, no bash modifications.
+
+### OQ5 — Apt-cache during parity test (CI)?
+
+Container build CI may not have `apt-cache` populated for the same packages as dev environment. `apt_resolve.py` results could differ across envs.
+
+(a) Mock `apt_resolve` in test — read from committed `tool-deps.json` only, no live queries
+(b) Skip `system_deps` field comparison in parity test
+(c) Require CI to seed apt cache before tests
+
+Lean (a): tool-deps.json is the cache anyway; tests should use it as authoritative.
+
+### OQ6 — Reference docs post-cutover?
+
+`DETECTION_PRINCIPLES.md`, `DATA_SCHEMA.md`, `TESTING.md` currently in skill dir. After cutover skill is thin wrapper — these docs describe tool internals. Move where?
+
+(a) `tools/build-stack/build_stack/analyzers/docs/` — co-located with implementation
+(b) `tools/build-stack/docs/` — top-level tool docs
+(c) Stay at `.claude/skills/analyze-repo/` — discoverable via skill reference reading
+(d) `.claude/plans/analyze-repo/` — alongside other architecture docs
+
+Lean (b): one tool docs dir, easy to find.
+
+### OQ7 — `--json-only` flag for parity tests?
+
+Bash skill emits markdown to stderr by default (TTY-detected). Tests need clean stdout. Options:
+
+(a) Add `--json-only` flag (suppresses everything except JSON path on stdout, no markdown to stderr)
+(b) Test driver passes existing `--quiet` flag (suppresses markdown only, progress traces still on stderr)
+
+Lean (b): existing flag covers test need. No new surface.
+
+### OQ8 — Test corpus growth strategy?
+
+(a) Synthetic fixtures committed to `tools/build-stack/tests/fixtures/` — reproducible, deterministic
+(b) Real-repo corpus at `analyzed_repos/` — grows naturally with usage
+(c) Both — synthetic for edge cases, real for breadth
+
+Lean (c).
+
+### OQ9 — Python deps allowed?
+
+Port may need: `pyyaml` (compose_yaml), `tomli`/`tomllib` (pyproject.toml). Standard-lib parsers prefer to keep `pyproject.toml` deps minimal.
+
+(a) Allow `pyyaml` (PyPI dep)
+(b) Shell out to `yq`/`python3 -c "import yaml"`
+(c) Parse YAML by hand (regex)
+
+Lean (a): pyyaml is universal, well-maintained. tomllib is stdlib in Python ≥ 3.11.
+
+### OQ10 — Builder-project's own analysis migration
+
+`builds/sun2admin/builder-project/` contains analysis of THIS repo. After migration: `analyzed_repos/sun2admin/builder-project/`. Does build-stack skill (later) treat self-analysis specially? Out of scope for this sub-plan (skill body work). Just flagging.
+
+---
+
+## Old Open Questions (resolved or absorbed)
+
+- ~~Tool entry mode for analyze~~ → resolved: `python -m build_stack analyze <repo>`

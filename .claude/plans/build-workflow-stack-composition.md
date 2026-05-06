@@ -172,30 +172,141 @@ Phase 4 (skill removal) explicitly NOT planned — independent invocation valuab
 
 The skill+tool boundary. Skill writes; tool reads.
 
-**Location:** `builds/<build_name>/build.json`
+**Location:** `builds/<build_category>/<build_project>/build.json`
 
-**Schema (v1.0):**
+**Schema (v1.0) — locked 2026-05-06:**
 ```json
 {
   "schema_version": "1.0",
-  "build_name": "my-stack",
-  "ai_cli": "claude",                       // "claude" | "gemini"
-  "project_repo": "owner/repo",             // OR null = sandbox (no repo)
-  "plugin_repos": ["owner/plugin-a"],       // 0..N entries
-  "overrides": {
-    "base_image": null,                     // null = auto-pick; else L1 variant name
-    "additional_l4_features": [],           // user-added devcontainer features beyond auto
-    "credentials_delivery": {               // per-cred override; null = auto-pick policy
-      "GITHUB_TOKEN": "containerEnv"        // "containerEnv" | "mount"
-    }
-  },
+  "build_category": "santifer",             // 1st path level (default = repo's GH owner; gh_user for sandbox)
+  "build_project": "career-ops",            // 2nd path level (default = repo basename; "sandbox" for sandbox)
+  "project_repo": "santifer/career-ops",    // OR null = sandbox build (plugins-only or empty)
+  "plugin_repos": ["postman/postman-mcp"],  // 0..N entries; each maps to analyzed_repos/<owner>/<repo>/
+  "ai_clis": ["claude", "gemini"],          // ordered list; index 0 = primary (L2 image variant); 1+ = L4 init-script installs
   "tool_min_version": "1.0",
-  "created": "2026-05-05T18:30:00Z",
-  "last_modified": "2026-05-05T18:30:00Z"
+  "created": "2026-05-06T00:00:00Z",
+  "last_modified": "2026-05-06T00:00:00Z"
 }
 ```
 
+**v1 MVP scope:** No `overrides` block (deferred to v2). All composition decisions (base_image, L4 features, credentials_delivery, firewall, etc.) made by tool from analysis facts. Users edit `build.json` by hand or rerun skill to change decisions.
+
 JSON Schema lives at `tools/build-stack/build_stack/schema/build-input.schema.json`. Skill calls `build-stack validate <path>` before invoking compose; tool refuses unknown schema_version.
+
+---
+
+## Skill UX Design (locked 2026-05-06)
+
+Phase 1 of the `/build-stack` skill collects user intent through the following ordered flow. Decisions resolved 2026-05-06; full Q&A history in conversation log.
+
+### Pre-flight checks (skill entry, fail-fast)
+
+1. `gh auth status` — must be authenticated (skill cannot validate repos or clone otherwise)
+2. `python -m build_stack --version` — tool installed (else: "run `pip install -e tools/build-stack/`")
+3. `git` available
+4. `gh` available
+
+If any precheck fails, skill exits with clear remediation message before any prompts.
+
+### Phase 1 prompt order
+
+```
+Step 1 — Project repo prompt
+  Input: owner/repo OR empty (= sandbox)
+  Validation: gh api repos/<owner>/<repo>
+    200 OK         → proceed
+    404            → re-prompt (typo recovery)
+    401/403/network → hard-fail with clear remediation (gh re-auth, retry later)
+
+Step 2 — Cache check (analyze)
+  Path: analyzed_repos/<owner>/<repo>/analysis.json
+  If exists: prompt
+    [1] use cached  (default — press ENTER, shows mtime "23 days old")
+    [2] reanalyze
+  If missing OR user picks reanalyze: invoke /analyze-repo
+  Failure menu (analyze step):
+    [r] retry      (re-invoke same repo)
+    [n] new name   (re-prompt project repo, full re-validate, re-derive defaults)
+    [q] quit
+  Loop until success.
+
+Step 3 — Category prompt
+  Default: project_repo's GH owner (e.g. "santifer") OR gh_user when sandbox
+  Stored: BUILD[CATEGORY]
+
+Step 4 — Collision pre-check (silent)
+  candidate = project_repo basename if real, else "sandbox"
+  scan builds/<CATEGORY>/ for candidate, candidate-2, ...
+  determine first-free-suffix
+  set collision-flag
+
+Step 5 — Project name menu
+  No collision: prompt with candidate as default → ENTER accepts
+  Collision detected: 3-option menu
+    [1] career-ops-3              (suffix, default — first free slot found)
+    [2] overwrite career-ops      (the original base, no suffix; always offered)
+    [3] custom name               (free-text re-prompt; if collides → recurse this menu)
+  Custom name path can recurse via [3] indefinitely. Each menu's overwrite targets that menu's specific collision.
+
+Step 6 — AI CLI selection (multi-select toggle menu)
+  Detection signals: claude_plugins, mcp_servers, package deps, CLAUDE.md / GEMINI.md presence
+  Default selected: claude (recommended) shown highlighted; user can change.
+  Menu shape: extensible toggle TUI
+    [x] claude    (selected, primary)
+    [ ] gemini
+    [ ] <future-cli>
+    [s] submit
+    [q] quit
+  Numeric input toggles entry. Re-toggle deselects. First-toggled = primary.
+  Deselecting primary → next-selected auto-promotes to primary. Submit blocked if zero selected.
+  Available CLI list comes from tool: `build-stack list-ai-clis`.
+
+Step 7 — Plugin repos loop
+  Menu pattern (build-workspace style — flagged for revisit):
+    [1] sun2admin/claude-plugins-coding   (from GHCR query)
+    [2] sun2admin/claude-plugins-base
+    ...
+    [c] custom owner/repo (free entry)
+    [d] done
+  Each pick:
+    a. Validate via gh api repos/<owner>/<repo> (404 reprompt; auth/network hard-fail)
+    b. Cache check (use cached / reanalyze) per Step 2 pattern
+    c. Invoke /analyze-repo on miss/reanalyze
+    d. Failure menu: [r] retry / [s] skip / [q] quit
+  Loop until [d] done.
+
+Step 8 — Atomic stage + tool invoke
+  Stage dir: builds/.staging/<random>/  (same filesystem as final dest → atomic mv guaranteed)
+  .staging/ in .gitignore
+  Skill writes build.json to staging
+  Skill: build-stack validate <staging>/build.json
+  Skill: build-stack compose <staging>/build.json
+  Tool writes outputs alongside input file (in staging dir): aggregated.json, devcontainer.json, workspace.env
+  On full success: mv staging → builds/<build_category>/<build_project>/
+  On any failure: rm -rf staging; builds/ untouched (atomic guarantee)
+
+Step 9 — Verbose summary printed (BSQ14 (b))
+  Inputs: project, plugins, ai_clis
+  Picks: L1/L2/L3/L4 selections
+  Outputs: written file paths
+  Next-step hint: cp builds/<cat>/<prj>/devcontainer.json .devcontainer/
+```
+
+### DRY-RUN mode (`--dry-run`)
+
+Pure preview: prints final `build.json` to stdout, exits. NO analyze invocations, NO staging dir, NO tool calls, NO filesystem writes anywhere.
+
+### Failure-mode summary table
+
+| Failure point | Behavior |
+|---|---|
+| Pre-flight check fails | Hard-fail with remediation message; no prompts shown |
+| Project repo validation 404 | Re-prompt project repo |
+| Project repo validation auth/network error | Hard-fail with gh auth or retry hint |
+| Project repo analyze fails | Menu: `[r]/[n]/[q]` (retry / new name / quit), loop until success |
+| Plugin repo analyze fails | Menu: `[r]/[s]/[q]` (retry / skip / quit) |
+| Tool validate fails | Hard-fail before compose; staging dir cleaned |
+| Tool compose fails | Hard-fail; staging dir cleaned; `builds/` untouched |
 
 ---
 
@@ -205,19 +316,20 @@ All sections below describe behavior of the **tool**, not the skill. Skill only 
 
 ### 1. Multi-repo analysis aggregation
 
-`build-stack compose` invokes analyze-repo on multiple repos:
+**Updated 2026-05-06:** Skill (not tool) invokes `/analyze-repo` per repo. Tool's `compose` subcommand only READS pre-existing `analyzed_repos/<owner>/<repo>/analysis.json` files. Skill is responsible for ensuring all referenced analyses exist before invoking compose.
 
 ```python
+# Tool's compose pseudo-code (no analyze invocations)
 analyses = []
 if build.project_repo:
-    analyses.append(analyze_project(build.project_repo))
+    analyses.append(load_analysis(f"analyzed_repos/{build.project_repo}/analysis.json"))
 for plugin_repo in build.plugin_repos:
-    analyses.append(analyze_project(plugin_repo))
+    analyses.append(load_analysis(f"analyzed_repos/{plugin_repo}/analysis.json"))
 # Sandbox case: project_repo = null → analyses may be empty (plugins-only)
-# or just plugin analyses
+# Tool fails with clear error if any referenced analysis.json missing.
 ```
 
-Each call writes to `builds/<owner>/<repo>/analysis.json`. Tool reads each, merges by category. Merge rules:
+Each `analysis.json` lives at `analyzed_repos/<owner>/<repo>/analysis.json` (path layout post-sub-plan Phase 1.5). Tool reads each, merges by category. Merge rules:
 
 | Field | Merge rule |
 |---|---|
@@ -516,6 +628,8 @@ When a feature becomes ubiquitous:
 
 ## Migration steps from current state
 
+**Sequencing (revised 2026-05-06):** Sub-plan `build-stack-absorb-analyze.md` Phases 1.5+2+3 execute BEFORE parent steps 6.4-6.6 (compose pipeline). Rationale: clean architecture upfront; composition logic developed against real Python detector, not throwaway bash-shell-out wrapper.
+
 1. ✅ DONE — Removed `suggested` block from analyze-repo.sh
 2. ✅ DONE — Removed `firewall_required` from analyze-repo.sh
 3. ✅ DONE — Create `build-stack` skill skeleton:
@@ -527,16 +641,24 @@ When a feature becomes ubiquitous:
    - `tools/build-stack/build_stack/__main__.py` + `cli.py`
    - JSON schema at `tools/build-stack/build_stack/schema/build-input.schema.json`
 5. ✅ DONE — Implement tool subcommand `validate` (JSON schema check)
-6. 🚧 IN PROGRESS — Implement tool subcommand `compose`:
-   - ✅ Phase 3 (analyze): shells out to `.claude/skills/analyze-repo/analyze-repo.sh` via `analyze.analyze()` (in-process dict API) and `analyze.cmd_analyze()` (CLI wrapper). See sub-plan `build-stack-absorb-analyze.md` Phase 1.
-   - 🚧 Phase 4 (aggregate): merge rules per §1
-   - 🚧 Phase 5a (select): L1 capability cover per §2; L3 plugin pick per §4
-   - 🚧 Phase 5b (compose): L4 features per §5; firewall per §7; init chain per §8
-   - 🚧 Phase 6 (emit): devcontainer.json + workspace.env writers
-7. 🚧 TODO — Add OCI source label requirement to L3 build CI (per §1 plugin source-repo discovery)
-8. 🚧 TODO — Update reference docs (DATA_SCHEMA, DETECTION_PRINCIPLES, TESTING) to reflect removed fields + boundary rule
-9. 🚧 TODO — Validate end-to-end: scaffold a stack from this builder-project repo using /build-stack, compare output to existing devcontainer.json
-10. 🚧 TODO — Delete `build-workspace` skill + `build-layer1..4` sub-skills (after build-stack validates)
+6. 🚧 IN PROGRESS — Sub-plan `build-stack-absorb-analyze.md` (BLOCKS step 7):
+   - ✅ Phase 1 (shell-out wrapper): `analyze.py::analyze()` + `cmd_analyze()` shell out to skill.
+   - 🚧 Phase 1.5 (OUT_DIR migration): `builds/<owner>/<repo>/` → `analyzed_repos/<owner>/<repo>/`. Migrate 7 existing dirs via `git mv`. Single atomic commit.
+   - 🚧 Phase 2 (Python port): port 1629-line `analyze-repo.sh` → idiomatic Python under `tools/build-stack/build_stack/analyzers/*.py`. Move `tool-deps.json` to `tools/build-stack/build_stack/data/`. Add parity test (semantic equivalence).
+   - 🚧 Phase 3 (cutover): replace `analyze-repo.sh` with thin ~50-line wrapper that execs `python -m build_stack analyze`. Move docs to `tools/build-stack/docs/`.
+7. 🚧 TODO — Implement tool subcommands for skill consumption:
+   - `build-stack list-ai-clis` — returns valid CLI choices for skill's AI CLI menu
+   - `build-stack compose <build.json>` — full Phase 4-6 pipeline:
+     - Phase 4 (aggregate): merge rules per §1
+     - Phase 5a (select): L1 capability cover per §2; L3 plugin pick per §4
+     - Phase 5b (compose): L4 features per §5; firewall per §7; init chain per §8
+     - Phase 6 (emit): aggregated.json, devcontainer.json, workspace.env writers; output alongside input file (skill controls placement via staging dir)
+8. 🚧 TODO — Implement `/build-stack` skill body per "Skill UX Design" section above.
+9. 🚧 TODO — Add `.gitignore` entry for `builds/.staging/` (atomic-write staging dir).
+10. 🚧 TODO — Add OCI source label requirement to L3 build CI (per §1 plugin source-repo discovery).
+11. 🚧 TODO — Update reference docs (DATA_SCHEMA, DETECTION_PRINCIPLES, TESTING) to reflect removed fields + boundary rule (subsumed in sub-plan Phase 2-3).
+12. 🚧 TODO — Validate end-to-end: scaffold a stack from this builder-project repo using `/build-stack`, compare output to existing devcontainer.json.
+13. 🚧 TODO — Delete `build-workspace` skill + `build-layer1..4` sub-skills (after build-stack validates).
 
 ---
 
@@ -552,16 +674,25 @@ Three rules for analyze-repo / build-stack boundary:
 
 ## Open Questions — resolved
 
-- ~~Aggregation artifact location~~ → §1: `builds/<build_name>/aggregated.json`
+- ~~Aggregation artifact location~~ → §1: `builds/<build_category>/<build_project>/aggregated.json`
 - ~~runtime_versions conflict~~ → §1 merge table: highest pinned wins, latest loses to any pin, cross-pin conflict fails
 - ~~Plugin source repo discovery~~ → §1: OCI source label
 - ~~Implementation language (bash vs Python)~~ → Architecture section: skill = bash, tool = Python
 - ~~Skill split (per-layer vs single)~~ → Architecture section: single skill, internal phases
 - ~~analyze-repo independent invocation~~ → Architecture section: `/analyze-repo` skill stays as thin wrapper post-Phase 3 migration
+- ~~Workspace name derivation~~ → Skill UX Design Step 5: `<build_category>/<build_project>` derived from project repo, collision menu provides 3 options (suffix/overwrite/custom recursive). Sandbox: `<gh_user>/sandbox`.
+- ~~Skill prompt order~~ → Skill UX Design (locked 2026-05-06)
+- ~~Atomic skill behavior~~ → Skill UX Design Step 8: `builds/.staging/<random>/` staged, atomic mv on success, no `builds/` writes on failure
+- ~~Multi-CLI handling~~ → Skill UX Design Step 6: ordered `ai_clis[]`, [0]=primary (L2 baked), 1+ = L4 init scripts. Toggle TUI menu. Future: revisit as devcontainer features (tracked).
+- ~~MVP scope (overrides)~~ → JSON Contract: no overrides in v1; rerun skill or hand-edit build.json to change.
+- ~~Analyze ownership~~ → §1 update: skill invokes `/analyze-repo`, tool's compose only reads pre-existing `analyzed_repos/`.
+- ~~Pre-flight checks~~ → Skill UX Design pre-flight: gh auth + tool installed + git + gh.
 
 ## Open Questions — remaining
 
-- Workspace name derivation for `builds/<build_name>/`: matches `build.name` from JSON. Conflict policy if name collides with existing build entry: append timestamp or prompt user?
 - Promotion threshold window (§Promotion path "last 30 days, last N runs, all-time"?)
-- gemini-plugins-* images don't exist yet — when L2=gemini, §4 has no candidates. Skip L3 entirely, or prompt user, or build empty plugin layer?
+- gemini-plugins-* images don't exist yet — when ai_clis[0]=gemini, §4 has no L3 candidates. Skip L3 entirely, prompt user, or build empty plugin layer?
 - Tool distribution: stay in `tools/build-stack/` indefinitely, or promote to standalone repo once stable? Promotion criteria: external reuse, version cadence diverges from builder-project.
+- AI CLIs as devcontainer features (tracked in TaskCreate #11): replace L2 image variants with feature installs at L4. Pro: multi-CLI trivial, smaller L2 images. Con: install delay on first start. Decide post v1 ship.
+- Plugin loop UX revisit (tracked in TaskCreate #10): GHCR menu + free entry confirmed for v1; possible refinements later (search filter, cap, plugin layer composition options).
+- AI CLI signal-detection rules in skill: precise priority/scoring when multiple signals present? (e.g. project has CLAUDE.md AND `@google/gemini-cli` dep — does claude or gemini win the recommended-default?)

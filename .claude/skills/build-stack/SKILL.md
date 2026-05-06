@@ -81,6 +81,6 @@ The skill calls `build-stack validate` before `compose` — refuses to invoke co
 |---|---|
 | `builds/<name>/build.json` | Skill (Phase 2) |
 | `builds/<name>/aggregated.json` | Tool (Phase 4) |
-| `builds/<owner>/<repo>/analysis.json` (per repo) | Tool (Phase 3, via analyze-repo) |
+| `analyzed_repos/<owner>/<repo>/analysis.json` (per repo) | analyze-repo skill (invoked by /build-stack skill, read by tool) |
 | `builds/<name>/devcontainer.json` | Tool (Phase 6) |
 | `builds/<name>/workspace.env` | Tool (Phase 6, for backward-compat with old workflow) |

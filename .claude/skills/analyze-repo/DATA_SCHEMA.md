@@ -1,6 +1,6 @@
 # analyze-repo — Data Schema & Layout
 
-**Read this when modifying output structure, the builds registry, or
+**Read this when modifying output structure, the analyzed_repos cache, or
 `tool-deps.json`.** Sibling to `DETECTION_PRINCIPLES.md`. Companion files
 serve different concerns:
 
@@ -11,8 +11,8 @@ serve different concerns:
 - `.claude/plans/analyze-repo-skill.md` — active dev plan + gap tracking
 
 If a change here affects detection logic, update both files. If a change
-breaks downstream consumers (`build-workspace`), bump the schema version
-and document the migration.
+breaks downstream consumers (`/build-stack` skill + tool), bump the schema
+version and document the migration.
 
 ---
 
@@ -28,28 +28,34 @@ and document the migration.
 └── DATA_SCHEMA.md            ← this file (load on schema work)
 ```
 
-### Output directory (builds registry)
+### Output directory (analyzed_repos cache)
 Output lives **outside** the skill at the repo root:
 ```
-builds/
+analyzed_repos/
 └── <owner>/
     └── <repo>/
-        ├── analysis.json     ← machine-readable, consumed by build-workspace
+        ├── analysis.json     ← machine-readable, consumed by /build-stack
         └── analysis.md       ← human-readable summary
 ```
 
 **Two-level structure** (`<owner>/<repo>/`) mirrors GitHub's namespace.
 Avoids flat-list confusion when multiple owners share repo names.
 
-**Navigation flow for resuming an analysis** (used by `build-workspace`):
-1. `ls builds/` → owner menu
-2. User picks owner → `ls builds/<owner>/` → repo menu
-3. User picks repo → load `builds/<owner>/<repo>/analysis.json`
+**Why a separate top-level dir** (vs `builds/`): `analyzed_repos/` is a
+content-addressed cache keyed on real GitHub coordinates and reusable
+across multiple builds. `builds/` is user-organized
+(`builds/<category>/<project>/`) and holds composed stack outputs. Keeping
+them split prevents a build dir from shadowing the cache or vice versa.
+
+**Navigation flow for resuming an analysis** (used by `/build-stack`):
+1. `ls analyzed_repos/` → owner menu
+2. User picks owner → `ls analyzed_repos/<owner>/` → repo menu
+3. User picks repo → load `analyzed_repos/<owner>/<repo>/analysis.json`
 
 **Git policy:**
-- `builds/` itself **is** committed (intentional artifact history for diff/audit)
-- Generated cruft inside builds (clones, tmp) is `.gitignore`d
-- Only `analysis.json` and `analysis.md` are committed per build
+- `analyzed_repos/` itself **is** committed (intentional artifact history for diff/audit)
+- Generated cruft inside (clones, tmp) is `.gitignore`d
+- Only `analysis.json` and `analysis.md` are committed per repo
 
 ---
 

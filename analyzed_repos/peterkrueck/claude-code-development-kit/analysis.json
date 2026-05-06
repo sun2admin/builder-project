@@ -1,0 +1,403 @@
+{
+  "repo": "peterkrueck/claude-code-development-kit",
+  "project": "claude-code-development-kit",
+  "analyzed_at": "2026-05-06",
+  "purpose": "A lightweight starter kit for Claude Code subscribers. Gives your project a solid foundation \u2014 documentation structure, code review automation, image tools, and sensible defaults \u2014 that you extend as you go.",
+  "primary_language": "Shell",
+  "languages": [
+    "shell"
+  ],
+  "runtime_extras": [],
+  "runtime_versions": {},
+  "dockerfile_base": "",
+  "system_packages": [],
+  "extra_binaries": [],
+  "global_js_packages": [],
+  "dockerfile_python_installs": [],
+  "dockerfile_go_installs": [],
+  "libraries": {
+    "node": [],
+    "python": [],
+    "go": [],
+    "rust": []
+  },
+  "ports": {
+    "inbound": []
+  },
+  "external_services": {
+    "domains": [
+      "aistudio.google.com",
+      "github.com",
+      "raw.githubusercontent.com"
+    ],
+    "source": "source_scan"
+  },
+  "env_vars": [],
+  "browser_tools": [],
+  "github_api_usage": false,
+  "container": {
+    "capabilities": [],
+    "volumes": [],
+    "env": {},
+    "remote_user": "",
+    "post_start": "",
+    "post_create": "",
+    "post_start_chain": [],
+    "post_create_chain": [],
+    "init_scripts": [],
+    "extensions": []
+  },
+  "credentials_required": {
+    "api_keys": [],
+    "tokens": [],
+    "ssh": true,
+    "other": []
+  },
+  "mcp_servers": [],
+  "claude_plugins": [],
+  "inferred": {
+    "tools": [
+      "added",
+      "afplay",
+      "allow",
+      "allow_entries",
+      "allow_json",
+      "always",
+      "aplay",
+      "ask",
+      "assets",
+      "auto",
+      "awk",
+      "base_add",
+      "base_del",
+      "basename",
+      "bash",
+      "cat",
+      "check_sensitive_content",
+      "chmod",
+      "claude",
+      "cleanup",
+      "clear",
+      "color",
+      "copy_file",
+      "cp",
+      "date",
+      "deleted",
+      "delta",
+      "deny",
+      "deny_entries",
+      "deny_json",
+      "dirname",
+      "existing",
+      "ffplay",
+      "file",
+      "files",
+      "find",
+      "gemini",
+      "git",
+      "grep",
+      "handle_file_conflict",
+      "head",
+      "hooks",
+      "hooks_json",
+      "https",
+      "input",
+      "jq",
+      "line_whitelisted",
+      "log_security_event",
+      "ls",
+      "macOS",
+      "matched_lines",
+      "mkdir",
+      "mktemp",
+      "needs_gemini_cli",
+      "needs_gemini_key",
+      "needs_rembg",
+      "next",
+      "notification_hooks",
+      "or",
+      "paplay",
+      "patterns",
+      "permissions",
+      "pip",
+      "play",
+      "play_sound_file",
+      "powershell",
+      "print",
+      "print_color",
+      "ps",
+      "pw-play",
+      "recommended",
+      "reference",
+      "review",
+      "review-on-stop",
+      "rm",
+      "safe_read",
+      "safe_read_conflict",
+      "safe_read_setup_mode",
+      "safe_read_yn",
+      "sanitized_input",
+      "scan_file_content",
+      "security",
+      "show_workflow_overview",
+      "sleep",
+      "sort",
+      "spec",
+      "spinner",
+      "spinstr",
+      "stat",
+      "tail",
+      "timestamp",
+      "total",
+      "touch",
+      "tr",
+      "uname",
+      "use",
+      "user_input",
+      "visual"
+    ],
+    "py_imports": [
+      "PIL",
+      "numpy"
+    ],
+    "ts_imports": [],
+    "ci_tools": [],
+    "tools_new": [
+      "added",
+      "afplay",
+      "allow",
+      "allow_entries",
+      "allow_json",
+      "always",
+      "aplay",
+      "ask",
+      "assets",
+      "auto",
+      "awk",
+      "base_add",
+      "base_del",
+      "basename",
+      "bash",
+      "cat",
+      "check_sensitive_content",
+      "chmod",
+      "claude",
+      "cleanup",
+      "clear",
+      "color",
+      "copy_file",
+      "cp",
+      "date",
+      "deleted",
+      "delta",
+      "deny",
+      "deny_entries",
+      "deny_json",
+      "dirname",
+      "existing",
+      "ffplay",
+      "file",
+      "files",
+      "find",
+      "gemini",
+      "git",
+      "grep",
+      "handle_file_conflict",
+      "head",
+      "hooks",
+      "hooks_json",
+      "https",
+      "input",
+      "jq",
+      "line_whitelisted",
+      "log_security_event",
+      "ls",
+      "macOS",
+      "matched_lines",
+      "mkdir",
+      "mktemp",
+      "needs_gemini_cli",
+      "needs_gemini_key",
+      "needs_rembg",
+      "next",
+      "notification_hooks",
+      "or",
+      "paplay",
+      "patterns",
+      "permissions",
+      "pip",
+      "play",
+      "play_sound_file",
+      "powershell",
+      "print",
+      "print_color",
+      "ps",
+      "pw-play",
+      "recommended",
+      "reference",
+      "review",
+      "review-on-stop",
+      "rm",
+      "safe_read",
+      "safe_read_conflict",
+      "safe_read_setup_mode",
+      "safe_read_yn",
+      "sanitized_input",
+      "scan_file_content",
+      "security",
+      "show_workflow_overview",
+      "sleep",
+      "sort",
+      "spec",
+      "spinner",
+      "spinstr",
+      "stat",
+      "tail",
+      "timestamp",
+      "total",
+      "touch",
+      "tr",
+      "uname",
+      "use",
+      "user_input",
+      "visual"
+    ],
+    "tools_confirmed": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
+    "py_imports_new": [
+      "PIL",
+      "numpy"
+    ],
+    "py_imports_confirmed": []
+  },
+  "system_deps": {
+    "awk": {
+      "apt_depends": [],
+      "apt_package": "awk"
+    },
+    "basename": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "bash": {
+      "apt_depends": [
+        "base-files",
+        "debianutils"
+      ],
+      "apt_package": "bash"
+    },
+    "cat": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "chmod": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "clear": {
+      "apt_package": "ncurses-bin",
+      "apt_depends": []
+    },
+    "cp": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "date": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "dirname": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "find": {
+      "apt_depends": [],
+      "apt_package": "findutils"
+    },
+    "git": {
+      "apt_depends": [
+        "libc6",
+        "libcurl3-gnutls",
+        "libexpat1",
+        "libpcre2-8-0",
+        "zlib1g",
+        "perl",
+        "liberror-perl",
+        "git-man",
+        "git-man"
+      ],
+      "apt_package": "git"
+    },
+    "grep": {
+      "apt_depends": [
+        "dpkg"
+      ],
+      "apt_package": "grep"
+    },
+    "head": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "jq": {
+      "apt_depends": [
+        "libjq1",
+        "libc6"
+      ],
+      "apt_package": "jq"
+    },
+    "ls": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "mkdir": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "mktemp": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "pip": {
+      "apt_package": "pip",
+      "apt_depends": []
+    },
+    "ps": {
+      "apt_package": "procps",
+      "apt_depends": []
+    },
+    "rm": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "sleep": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "sort": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "stat": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "tail": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "touch": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "tr": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    },
+    "uname": {
+      "apt_depends": [],
+      "apt_package": "coreutils"
+    }
+  },
+  "schema_version": 2
+}

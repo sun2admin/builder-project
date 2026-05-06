@@ -25,12 +25,12 @@ caught during prior development. Treat as a regression suite.
 For each test repo:
 
 1. **Run cleanly:** `bash analyze-repo.sh <owner>/<repo>` — exit 0, no errors
-2. **JSON parses:** `jq . builds/<owner>/<repo>/analysis.json >/dev/null`
+2. **JSON parses:** `jq . analyzed_repos/<owner>/<repo>/analysis.json >/dev/null`
 3. **Known facts present:** every fact known by manual inspection appears
    in the right field (not lost, not in wrong category)
 4. **No false positives:** no comment text, no string-literal tokens, no
    markdown badges, no lock-file URLs in detected output
-5. **Diff vs prior run:** when iterating, `git diff builds/.../analysis.json`
+5. **Diff vs prior run:** when iterating, `git diff analyzed_repos/.../analysis.json`
    shows only intended changes — anything else is regression
 
 ## Adding New Test Repos
