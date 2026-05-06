@@ -28,6 +28,29 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     return analyze.cmd_analyze(args.repo, human=args.human, quiet=args.quiet)
 
 
+def cmd_analyze_port(args: argparse.Namespace) -> int:
+    """Phase 2 dev/parity entry point — invokes the Python port directly.
+
+    Bypasses the bash skill subprocess. Removed at Phase 3 cutover when
+    the skill becomes a thin wrapper around the same package.
+    """
+    import json
+    from pathlib import Path
+
+    from build_stack.analyzers import analyze as port_analyze, write_outputs
+
+    data = port_analyze(args.repo)
+    if args.json:
+        print(json.dumps(data, indent=2, sort_keys=True))
+        return 0
+    if args.out:
+        write_outputs(data, Path(args.out))
+        print(Path(args.out).resolve())
+        return 0
+    print(json.dumps(data, indent=2, sort_keys=True))
+    return 0
+
+
 def cmd_diff(args: argparse.Namespace) -> int:
     raise NotImplementedError("`diff` subcommand is future scope.")
 
@@ -59,6 +82,15 @@ def build_parser() -> argparse.ArgumentParser:
     g_analyze.add_argument("--human", "-v", action="store_true", help="Force markdown emit on stderr")
     g_analyze.add_argument("--quiet", "-q", action="store_true", help="Suppress markdown emit")
     p_analyze.set_defaults(func=cmd_analyze)
+
+    p_analyze_port = subs.add_parser(
+        "analyze-port",
+        help="Phase 2 Python-port analyzer (dev/parity only — removed at Phase 3 cutover)",
+    )
+    p_analyze_port.add_argument("repo", help="owner/repo")
+    p_analyze_port.add_argument("--json", action="store_true", help="Print analysis JSON to stdout (default)")
+    p_analyze_port.add_argument("--out", help="Directory to write analysis.json + analysis.md")
+    p_analyze_port.set_defaults(func=cmd_analyze_port)
 
     p_diff = subs.add_parser("diff", help="Stack-diff (future)")
     p_diff.add_argument("build_a")
