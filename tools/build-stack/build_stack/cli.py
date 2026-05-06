@@ -25,7 +25,7 @@ def cmd_compose(args: argparse.Namespace) -> int:
 
 def cmd_analyze(args: argparse.Namespace) -> int:
     from build_stack import analyze
-    return analyze.analyze_repo(args.repo)
+    return analyze.cmd_analyze(args.repo, human=args.human, quiet=args.quiet)
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
@@ -55,6 +55,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_analyze = subs.add_parser("analyze", help="Standalone single-repo detection")
     p_analyze.add_argument("repo", help="owner/repo")
+    g_analyze = p_analyze.add_mutually_exclusive_group()
+    g_analyze.add_argument("--human", "-v", action="store_true", help="Force markdown emit on stderr")
+    g_analyze.add_argument("--quiet", "-q", action="store_true", help="Suppress markdown emit")
     p_analyze.set_defaults(func=cmd_analyze)
 
     p_diff = subs.add_parser("diff", help="Stack-diff (future)")

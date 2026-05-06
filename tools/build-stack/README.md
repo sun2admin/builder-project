@@ -24,7 +24,7 @@ python -m build_stack <subcommand> <args>
 |---|---|
 | `build-stack validate <build.json>` | JSON-schema check + reachability validation |
 | `build-stack compose <build.json>`  | Full Phase 3-6 pipeline (analyze → aggregate → compose → emit) |
-| `build-stack analyze <owner/repo>`  | Standalone single-repo detection (Phase 2 migration target) |
+| `build-stack analyze [--human\|--quiet] <owner/repo>` | Standalone single-repo detection. Phase 1: shells out to `.claude/skills/analyze-repo/analyze-repo.sh`. Phase 2: Python port. |
 | `build-stack diff <build-a> <build-b>` | Future: stack-diff for review |
 | `build-stack stats <builds-dir>`    | Future: promotion-path metrics |
 | `build-stack rebuild builds/<name>` | Future: re-emit outputs from existing build.json |
@@ -46,4 +46,13 @@ build_stack/
 
 ## Status
 
-Skeleton — phase implementations are stubs. Tracking implementation in `.claude/plans/build-workflow-stack-composition.md` Migration steps.
+| Subcommand | Status |
+|---|---|
+| `validate` | ✅ Implemented (schema check) |
+| `analyze` | ✅ Phase 1 — shells out to `analyze-repo` skill |
+| `compose` | 🚧 Stub — Phases 3-6 pipeline pending |
+| `diff` / `stats` / `rebuild` | 🔜 Future |
+
+Tracking in:
+- `.claude/plans/build-workflow-stack-composition.md` — full design + parent migration steps
+- `.claude/plans/build-stack-absorb-analyze.md` — `analyze` skill→tool absorption sub-plan

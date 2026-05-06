@@ -518,21 +518,21 @@ When a feature becomes ubiquitous:
 
 1. ✅ DONE — Removed `suggested` block from analyze-repo.sh
 2. ✅ DONE — Removed `firewall_required` from analyze-repo.sh
-3. 🚧 TODO — Create `build-stack` skill skeleton:
+3. ✅ DONE — Create `build-stack` skill skeleton:
    - `.claude/skills/build-stack/SKILL.md`
-   - `.claude/skills/build-stack/build-stack.sh` (Phase 1+2)
+   - `.claude/skills/build-stack/build-stack.sh` (Phase 1+2 stub)
    - `.claude/skills/build-stack/lib.sh` (copied from build-workspace)
-4. 🚧 TODO — Create `build-stack` tool skeleton:
+4. ✅ DONE — Create `build-stack` tool skeleton:
    - `tools/build-stack/pyproject.toml`
    - `tools/build-stack/build_stack/__main__.py` + `cli.py`
    - JSON schema at `tools/build-stack/build_stack/schema/build-input.schema.json`
-5. 🚧 TODO — Implement tool subcommand `validate` (JSON schema check)
-6. 🚧 TODO — Implement tool subcommand `compose`:
-   - Phase 3 (analyze): shell out to existing analyze-repo skill (Migration phase 1)
-   - Phase 4 (aggregate): merge rules per §1
-   - Phase 5a (select): L1 capability cover per §2; L3 plugin pick per §4
-   - Phase 5b (compose): L4 features per §5; firewall per §7; init chain per §8
-   - Phase 6 (emit): devcontainer.json + workspace.env writers
+5. ✅ DONE — Implement tool subcommand `validate` (JSON schema check)
+6. 🚧 IN PROGRESS — Implement tool subcommand `compose`:
+   - ✅ Phase 3 (analyze): shells out to `.claude/skills/analyze-repo/analyze-repo.sh` via `analyze.analyze()` (in-process dict API) and `analyze.cmd_analyze()` (CLI wrapper). See sub-plan `build-stack-absorb-analyze.md` Phase 1.
+   - 🚧 Phase 4 (aggregate): merge rules per §1
+   - 🚧 Phase 5a (select): L1 capability cover per §2; L3 plugin pick per §4
+   - 🚧 Phase 5b (compose): L4 features per §5; firewall per §7; init chain per §8
+   - 🚧 Phase 6 (emit): devcontainer.json + workspace.env writers
 7. 🚧 TODO — Add OCI source label requirement to L3 build CI (per §1 plugin source-repo discovery)
 8. 🚧 TODO — Update reference docs (DATA_SCHEMA, DETECTION_PRINCIPLES, TESTING) to reflect removed fields + boundary rule
 9. 🚧 TODO — Validate end-to-end: scaffold a stack from this builder-project repo using /build-stack, compare output to existing devcontainer.json

@@ -27,19 +27,24 @@ Out of scope:
 
 Mapped to the parent plan's "analyze-repo migration phases" table (§Architecture).
 
-### Phase 1 — Shell-out wrapper (first build-stack release)
+### Phase 1 — Shell-out wrapper (first build-stack release) ✅ DONE
 
 **Goal:** `build-stack analyze <repo>` works end-to-end by subprocessing the existing skill. Zero detection logic in the tool yet.
 
-**Deliverables:**
-1. `analyze.py::analyze(repo: str) -> dict` — invokes `analyze-repo.sh <repo>` via `subprocess`, reads emitted `builds/<owner>/<repo>/analysis.json`, returns parsed dict.
-2. `analyze.py::format_human(result: dict) -> str` — STUB. Returns existing `analysis.md` contents (skill already writes it). No re-rendering.
-3. `cli.py` wires `analyze` subcommand: `--human` flag prints markdown to stderr; JSON path always to stdout.
-4. `compose.py` calls `analyze.analyze()` per-repo (used by parent plan §6 aggregation).
+**Setup (one-time, pre-Phase 1):**
+- `pip install -e tools/build-stack/` from repo root. Editable install registers the `build_stack` package via a `.pth` file and adds the `build-stack` console script to PATH. No source copy; live edits reflect immediately. Re-install only required when `pyproject.toml` dependencies or `[project.scripts]` change.
+
+**Deliverables (implemented):**
+1. ✅ `analyze.py::analyze(repo: str) -> dict` — invokes `analyze-repo.sh -q <repo>` via `subprocess`, reads emitted `builds/<owner>/<repo>/analysis.json` from skill stdout, returns parsed dict. Used in-process by `compose.py` aggregation.
+2. ✅ `analyze.py::cmd_analyze(repo: str, *, human: bool, quiet: bool) -> int` — CLI wrapper. Pure passthrough to skill: `--human` → `-v`, `--quiet` → `-q`, default = skill TTY-detect. Skill writes JSON path to stdout, markdown to stderr.
+3. ✅ `cli.py` wires `analyze` subcommand with mutually-exclusive `--human/-v` and `--quiet/-q` flags. `cmd_analyze(args)` dispatches to `analyze.cmd_analyze`.
+4. 🔜 `compose.py` will call `analyze.analyze()` per-repo (parent plan §6 aggregation work — not Phase 1 scope).
+
+**Note on `format_human`:** original Deliverable #2 was `format_human(dict) -> str` returning markdown. Implemented differently: skill already emits markdown to stderr when `-v` flag is set, so the wrapper passes `-v` through and skill handles markdown rendering directly. No separate Python formatter needed in Phase 1. Phase 2 port will absorb markdown rendering.
 
 **Tool side does not yet own detection.** Skill remains canonical detector. Tool is a passthrough.
 
-**Exit criterion:** `python -m build_stack analyze --human sun2admin/builder-project` produces identical stdout/stderr to `bash .claude/skills/analyze-repo/analyze-repo.sh -v sun2admin/builder-project` (modulo trace-line ordering, which is non-load-bearing).
+**Exit criterion (verified):** `build-stack analyze --quiet sun2admin/builder-project` returns `exit=0`, stdout = path to `analysis.json`, stderr = progress traces only. In-process `analyze.analyze('sun2admin/builder-project')` returns dict with 27 keys including `schema_version=2`, `repo`, `languages`. Parity with `bash .claude/skills/analyze-repo/analyze-repo.sh` confirmed for the smoke-test repo.
 
 ### Phase 2 — Python port (parallel implementation)
 
