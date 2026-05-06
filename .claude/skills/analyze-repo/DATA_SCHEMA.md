@@ -22,11 +22,21 @@ version and document the migration.
 ```
 .claude/skills/analyze-repo/
 ├── SKILL.md                  ← discovery / triggering
-├── analyze-repo.sh        ← orchestrator (bash + inline Python)
-├── tool-deps.json            ← cached tool→apt mappings (committed)
+├── analyze-repo.sh           ← orchestrator (bash + inline Python)
 ├── DETECTION_PRINCIPLES.md   ← detection rules (load on edit)
 └── DATA_SCHEMA.md            ← this file (load on schema work)
 ```
+
+### Tool data directory
+```
+tools/build-stack/build_stack/data/
+└── tool-deps.json            ← cached tool→apt mappings (committed)
+```
+
+The `tool-deps.json` cache lives with the build-stack tool (not the
+analyze-repo skill) because it is consumed by both the bash skill (during
+Phase 1/2 of the analyze-repo skill→tool absorption) and the Python port
+(once Phase 3 cutover lands). Single canonical location avoids drift.
 
 ### Output directory (analyzed_repos cache)
 Output lives **outside** the skill at the repo root:
@@ -125,7 +135,7 @@ Checklist:
 
 ## tool-deps.json Schema
 
-Path: `.claude/skills/analyze-repo/tool-deps.json`
+Path: `tools/build-stack/build_stack/data/tool-deps.json`
 Initial state: `{}`. Grows incrementally; committed to version control.
 
 ```json

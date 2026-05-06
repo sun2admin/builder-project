@@ -296,8 +296,8 @@
       "apt_package": "coreutils"
     },
     "clear": {
-      "apt_package": "ncurses-bin",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "ncurses-bin"
     },
     "cp": {
       "apt_depends": [],
@@ -359,12 +359,12 @@
       "apt_package": "coreutils"
     },
     "pip": {
-      "apt_package": "pip",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "pip"
     },
     "ps": {
-      "apt_package": "procps",
-      "apt_depends": []
+      "apt_depends": [],
+      "apt_package": "procps"
     },
     "rm": {
       "apt_depends": [],

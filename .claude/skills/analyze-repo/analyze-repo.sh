@@ -1286,6 +1286,7 @@ INFERRED_TS_JSON=$(_to_json_arr "${INFERRED_TS_IMPORTS[@]:-}")
 INFERRED_CI_TOOLS_JSON=$(_to_json_arr "${INFERRED_CI_TOOLS[@]:-}")
 
 export AR_SKILL_DIR="$SKILL_DIR"
+export AR_TOOL_DEPS_PATH="${REPO_ROOT}/tools/build-stack/build_stack/data/tool-deps.json"
 export AR_REPO="$REPO" AR_PROJECT="$REPO_NAME" AR_TODAY="$TODAY"
 export AR_PURPOSE="$PURPOSE" AR_REPO_LANG="$REPO_LANG"
 export AR_DOCKERFILE_BASE="$DOCKERFILE_BASE"
@@ -1324,10 +1325,10 @@ def s(key, fallback=""):     return os.environ.get(key, fallback)
 def b(key):                  return os.environ.get(key, "false") == "true"
 
 # ── Dependency resolution: map discovered tools → apt packages ────────────────
-# Uses tool-deps.json as a persistent cache alongside the skill to avoid
-# re-querying apt on every run.
-skill_dir = s("AR_SKILL_DIR")
-tool_deps_path = os.path.join(skill_dir, "tool-deps.json") if skill_dir else None
+# Uses tool-deps.json as a persistent cache to avoid re-querying apt
+# on every run. Path is canonicalized in the bash wrapper (build-stack
+# tool data dir) and passed via AR_TOOL_DEPS_PATH.
+tool_deps_path = s("AR_TOOL_DEPS_PATH") or None
 
 tool_deps_cache = {}
 if tool_deps_path and os.path.exists(tool_deps_path):
