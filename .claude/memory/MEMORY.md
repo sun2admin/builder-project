@@ -33,9 +33,15 @@
 - [reference-plugins-vs-skills.md](reference-plugins-vs-skills.md) — Plugins (internal to Claude) vs skills (user-invoked slash commands)
 - [project-claude-code-actions-placement.md](project-claude-code-actions-placement.md) — claude-code-action and security-review are GitHub Actions (CI only), not container config
 
+## Current Focus
+- [project_current_focus.md](project_current_focus.md) — Active: analyzer skill only — do not start build-workspace mode/type changes yet
+
 ## Build Project Design
 - [build-project-design-decisions.md](build-project-design-decisions.md) — Core architectural insights for /build-project skill, memory persistence, open questions
 - [build-project-skill-clarifications.md](build-project-skill-clarifications.md) — Clarifications on /build-project skill scope and design
+
+## Analyze-Project Skill Architecture
+- [feedback-analyze-skill-dynamic-architecture.md](feedback-analyze-skill-dynamic-architecture.md) — Dynamic detection over hardcoded lists: domain context classification, runtime stdlib queries, dynamic command extraction, tool-deps.json cache
 
 ## Feedback
 - [feedback-auto-commit-on-success.md](feedback-auto-commit-on-success.md) — Auto-commit repo changes after successful implementation

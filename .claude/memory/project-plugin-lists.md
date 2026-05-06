@@ -2,12 +2,13 @@
 name: Finalized plugin lists per container layer
 description: Which Anthropic plugins go in base vs coding layers of the plugin container stack
 type: project
+originSessionId: 2e9e7091-4fd0-4a26-8cf6-f6d5cb3e6087
 ---
-
 ## claude-anthropic-base-plugins-container
 
-General-purpose plugins useful for any Claude project:
+General-purpose plugins useful for any Claude project (11 total):
 
+- `caveman` — community plugin, install via: `plugin add marketplace JuliusBrussee/caveman` (ultra-compressed communication mode, token saver)
 - `claude-code-setup`
 - `claude-md-management`
 - `explanatory-output-style`
@@ -20,6 +21,7 @@ General-purpose plugins useful for any Claude project:
 - `skill-creator`
 
 **Why hookify is in base (not coding):** Useful for any project to configure behavioral guardrails. Python 3.7+ stdlib only, no external dependencies.
+**Why caveman is in base:** General productivity plugin for all projects — reduces token usage via compressed communication mode. Community plugin, not from claude-plugins-official.
 
 ## claude-anthropic-coding-plugins-container
 
