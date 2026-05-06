@@ -3,10 +3,10 @@
 L1: capability set algebra. Pick smallest L1 variant whose `provides` covers
 the aggregated `required_caps`. User override allowed only if it still covers.
 
-L3: query GHCR for `claude-plugins-*` images, pick smallest superset of
-required plugin set, or trigger /new-plugin-layer.
+L3: match required `claude_plugins` against pre-discovered images, pick
+smallest superset; fall back to /new-plugin-layer build flow.
 
-See plan §2 and §4.
+See `.claude/plans/build-workflow-stack-composition.md` §2 and §4.
 """
 
 from __future__ import annotations
@@ -58,29 +58,133 @@ L1_VARIANTS = {
 }
 
 
-def required_caps(aggregated: dict) -> set:
-    """Derive required L1 capability set from aggregated analysis."""
-    raise NotImplementedError("select.required_caps is a stub.")
+_CHROMIUM_KEYS = ("chromium", "chrome", "puppeteer-core", "puppeteer")
+_FIREFOX_KEYS = ("firefox", "playwright-firefox", "geckodriver")
+_WEBKIT_KEYS = ("webkit", "safari", "playwright-webkit")
+_GRAPHICS_KEYS = ("cairo", "pango", "gtk", "wxgtk", "xvfb")
+_DEV_TOOL_KEYS = ("gcc", "g++", "make", "cmake", "clang")
 
 
-def pick_l1(aggregated: dict) -> tuple:
-    """Return (variant_name, missing_caps_list).
+def _signals(agg: dict) -> set[str]:
+    out: set[str] = set()
+    for v in agg.get("browser_tools") or []:
+        out.add(str(v).lower())
+    libs = agg.get("libraries") or {}
+    for v in libs.get("node") or []:
+        out.add(str(v).lower())
+    for v in libs.get("python") or []:
+        out.add(str(v).lower())
+    for v in agg.get("system_packages") or []:
+        out.add(str(v).lower())
+    inferred = agg.get("inferred") or {}
+    for v in inferred.get("tools") or []:
+        out.add(str(v).lower())
+    return out
 
-    missing_caps_list is empty when a covering variant exists; otherwise it
-    contains capabilities not covered by any L1 variant — those must be
-    installed via L4 features or init scripts.
-    """
-    raise NotImplementedError("select.pick_l1 is a stub. See plan §2 algorithm.")
+
+def _matches_any(signals: set[str], keys: tuple[str, ...]) -> bool:
+    return any(k in s for s in signals for k in keys)
 
 
-def validate_override(user_choice: str, needed: set) -> tuple:
-    """Return (valid: bool, error_message: str | None)."""
-    raise NotImplementedError("select.validate_override is a stub.")
+def uses_chromium(agg: dict) -> bool:
+    return _matches_any(_signals(agg), _CHROMIUM_KEYS)
 
 
-def pick_l3(aggregated: dict) -> str | None:
-    """Pick L3 plugin image covering aggregated.claude_plugins.
+def uses_firefox(agg: dict) -> bool:
+    return _matches_any(_signals(agg), _FIREFOX_KEYS)
 
-    Returns image name or None if /new-plugin-layer build is required.
-    """
-    raise NotImplementedError("select.pick_l3 is a stub. See plan §4.")
+
+def uses_webkit(agg: dict) -> bool:
+    return _matches_any(_signals(agg), _WEBKIT_KEYS)
+
+
+def needs_graphics(agg: dict) -> bool:
+    sig = _signals(agg)
+    if _matches_any(sig, _GRAPHICS_KEYS):
+        return True
+    return bool(agg.get("browser_tools"))
+
+
+def needs_dev_tools(agg: dict) -> bool:
+    return _matches_any(_signals(agg), _DEV_TOOL_KEYS)
+
+
+def required_caps(agg: dict) -> set[str]:
+    caps: set[str] = {"node", "shell"}
+    languages = agg.get("languages") or []
+    if "python" in languages:
+        caps.add("python")
+    browser_tools = agg.get("browser_tools") or []
+    has_playwright = "playwright" in browser_tools
+    if has_playwright:
+        caps.add("playwright-core")
+    chromium = uses_chromium(agg)
+    firefox = uses_firefox(agg)
+    webkit = uses_webkit(agg)
+    if chromium:
+        caps.add("chromium")
+    if firefox:
+        caps.add("firefox")
+    if webkit:
+        caps.add("webkit")
+    if has_playwright and not (chromium or firefox or webkit):
+        caps.add("chromium")
+    if needs_graphics(agg):
+        caps.add("graphics-libs")
+    if needs_dev_tools(agg):
+        caps.add("dev-tools")
+    return caps
+
+
+def pick_l1(agg: dict) -> tuple[str, list[str]]:
+    needed = required_caps(agg)
+    candidates = [
+        (name, variant)
+        for name, variant in L1_VARIANTS.items()
+        if needed <= variant["provides"]
+    ]
+    if candidates:
+        candidates.sort(key=lambda x: (x[1]["rank"], x[0]))
+        return candidates[0][0], []
+    max_rank = max(v["rank"] for v in L1_VARIANTS.values())
+    fallback = sorted(
+        ((n, v) for n, v in L1_VARIANTS.items() if v["rank"] == max_rank),
+        key=lambda x: x[0],
+    )[0]
+    name, variant = fallback
+    return name, sorted(needed - variant["provides"])
+
+
+def validate_override(user_choice: str, agg: dict) -> tuple[bool, str | None]:
+    if user_choice not in L1_VARIANTS:
+        return False, f"unknown variant {user_choice!r}"
+    needed = required_caps(agg)
+    missing = needed - L1_VARIANTS[user_choice]["provides"]
+    if missing:
+        return False, (
+            f"override {user_choice!r} missing required capabilities: "
+            f"{sorted(missing)}"
+        )
+    return True, None
+
+
+def pick_l3_plugins(
+    agg: dict,
+    available_images: list[dict] | None = None,
+) -> dict:
+    needed = set(agg.get("claude_plugins") or [])
+    if not needed:
+        return {"image": None, "missing": []}
+    if not available_images:
+        return {"image": None, "missing": sorted(needed)}
+    candidates = [
+        img for img in available_images
+        if needed <= set(img.get("plugin_set") or [])
+    ]
+    if candidates:
+        chosen = min(
+            candidates,
+            key=lambda i: (len(i.get("plugin_set") or []), i.get("name", "")),
+        )
+        return {"image": chosen.get("name"), "missing": []}
+    return {"image": None, "missing": sorted(needed)}
