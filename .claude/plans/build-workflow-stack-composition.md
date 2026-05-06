@@ -641,11 +641,11 @@ When a feature becomes ubiquitous:
    - `tools/build-stack/build_stack/__main__.py` + `cli.py`
    - JSON schema at `tools/build-stack/build_stack/schema/build-input.schema.json`
 5. ✅ DONE — Implement tool subcommand `validate` (JSON schema check)
-6. 🚧 IN PROGRESS — Sub-plan `build-stack-absorb-analyze.md` (BLOCKS step 7):
+6. ✅ DONE — Sub-plan `build-stack-absorb-analyze.md` (UNBLOCKS step 7):
    - ✅ Phase 1 (shell-out wrapper): `analyze.py::analyze()` + `cmd_analyze()` shell out to skill.
-   - 🚧 Phase 1.5 (OUT_DIR migration): `builds/<owner>/<repo>/` → `analyzed_repos/<owner>/<repo>/`. Migrate 7 existing dirs via `git mv`. Single atomic commit.
-   - 🚧 Phase 2 (Python port): port 1629-line `analyze-repo.sh` → idiomatic Python under `tools/build-stack/build_stack/analyzers/*.py`. Move `tool-deps.json` to `tools/build-stack/build_stack/data/`. Add parity test (semantic equivalence).
-   - 🚧 Phase 3 (cutover): replace `analyze-repo.sh` with thin ~50-line wrapper that execs `python -m build_stack analyze`. Move docs to `tools/build-stack/docs/`.
+   - ✅ Phase 1.5 (OUT_DIR migration, commit `e592e9f`): `builds/<owner>/<repo>/` → `analyzed_repos/<owner>/<repo>/`. Migrated 7 existing dirs via `git mv`.
+   - ✅ Phase 2 (Python port, commits `e52183f` → `cd1938e` → `572fca5`): ported 1629-line `analyze-repo.sh` → 7-module Python package under `tools/build-stack/build_stack/analyzers/`. Moved `tool-deps.json` to `tools/build-stack/build_stack/data/`. Parity test (semantic equivalence) at `tools/build-stack/tests/test_analyze_parity.py` — 10/10 corpus repos green.
+   - ✅ Phase 3 (cutover, commit `404950e`): replaced `analyze-repo.sh` (1629 → 59 lines) with thin wrapper that execs `python -m build_stack analyze`. Moved docs to `tools/build-stack/docs/`.
 7. 🚧 TODO — Implement tool subcommands for skill consumption:
    - `build-stack list-ai-clis` — returns valid CLI choices for skill's AI CLI menu
    - `build-stack compose <build.json>` — full Phase 4-6 pipeline:

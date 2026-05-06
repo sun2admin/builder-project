@@ -48,6 +48,21 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_list_ai_clis(args: argparse.Namespace) -> int:
+    """Return valid AI CLI choices for the skill's AI CLI menu.
+
+    Single source of truth for L2 AI CLI options. Skill consumes this so
+    new CLIs (gemini, future variants) only need to register here.
+    """
+    clis = ["claude", "gemini"]
+    if args.json:
+        print(json.dumps(clis))
+    else:
+        for c in clis:
+            print(c)
+    return 0
+
+
 def cmd_diff(args: argparse.Namespace) -> int:
     raise NotImplementedError("`diff` subcommand is future scope.")
 
@@ -79,6 +94,10 @@ def build_parser() -> argparse.ArgumentParser:
     g_analyze.add_argument("--human", "-v", action="store_true", help="Force markdown emit on stderr")
     g_analyze.add_argument("--quiet", "-q", action="store_true", help="Suppress markdown emit")
     p_analyze.set_defaults(func=cmd_analyze)
+
+    p_list_ai = subs.add_parser("list-ai-clis", help="List valid AI CLI choices for /build-stack skill menu")
+    p_list_ai.add_argument("--json", action="store_true", help="Emit JSON array on stdout")
+    p_list_ai.set_defaults(func=cmd_list_ai_clis)
 
     p_diff = subs.add_parser("diff", help="Stack-diff (future)")
     p_diff.add_argument("build_a")

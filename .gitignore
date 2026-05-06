@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 *.egg-info/
 .pytest_cache/
+
+# Atomic-write staging dir for /build-stack skill (per parent plan §Skill UX Design)
+builds/.staging/
