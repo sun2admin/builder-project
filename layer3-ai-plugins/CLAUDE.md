@@ -40,6 +40,41 @@ Use the `/new-plugin-layer` skill (`.claude/skills/new-plugin-layer/`) to create
 
 Plugin definitions are tracked in `standards.json` (built images) and `plugin-lists.json` (plugin selections).
 
+## Required OCI Label: `org.opencontainers.image.source`
+
+Every L3 plugin image MUST declare its source GitHub repo via OCI label at build time:
+
+```yaml
+# In each plugin repo's .github/workflows/build-and-push.yml
+- name: Build and push
+  uses: docker/build-push-action@v5
+  with:
+    push: true
+    tags: ghcr.io/sun2admin/<plugin-image>:latest
+    labels: |
+      org.opencontainers.image.source=https://github.com/sun2admin/<plugin-repo>
+```
+
+**Why:** the `/build-stack` tool (`tools/build-stack/build_stack/select.py::pick_l3_plugins`) discovers plugin images by querying GHCR manifests for this label. Without it, the tool cannot map a published plugin image back to its source repo, breaking automatic L3 selection during stack composition.
+
+**Verify** for any image:
+```bash
+docker manifest inspect ghcr.io/sun2admin/<plugin-image>:latest \
+  | jq -r '.config.Labels["org.opencontainers.image.source"]'
+```
+
+**Plugin repos requiring this CI update** (one-line addition each, untouched by current builder-project commits — handle when each repo is next modified):
+- `sun2admin/claude-anthropic-base-plugins-container`
+- `sun2admin/claude-anthropic-coding-plugins-container`
+- `sun2admin/claude-anthropic-ext-plugins-container`
+- `sun2admin/claude-anthropic-all-plugins-container`
+- `sun2admin/claude-plugins-a7f3d2e8`
+- `sun2admin/claude-plugins-3f889e47`
+- `sun2admin/claude-plugins-34e199d2`
+- `sun2admin/claude-plugins-54ca621f`
+
+When a plugin image is missing the label, the build-stack skill falls back to prompting the user for the source-repo URL and warns that the plugin image needs label backfill at next L3 publish.
+
 ## Plugin Usage Policy
 
 - Always check available plugins (MCP servers, skills, and agents) first.
