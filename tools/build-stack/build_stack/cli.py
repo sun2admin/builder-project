@@ -17,10 +17,37 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_compose(args: argparse.Namespace) -> int:
-    raise NotImplementedError(
-        "Phase 3-6 pipeline not yet implemented. "
-        "See .claude/plans/build-workflow-stack-composition.md migration step 6."
-    )
+    """Run Phase 4-6 pipeline: aggregate → select → compose → emit.
+
+    Reads build.json from `args.build_json`. Outputs (aggregated.json,
+    devcontainer.json, workspace.env) land alongside the input file in
+    its parent dir (skill controls placement via staging dir).
+    """
+    from build_stack import aggregate, select, compose, emit
+
+    build_path = Path(args.build_json)
+    build_data = json.loads(build_path.read_text())
+    out_dir = build_path.parent
+    repo_root = Path(__file__).resolve().parents[3]
+
+    if args.dry_run:
+        print(json.dumps(build_data, indent=2, sort_keys=True))
+        return 0
+
+    agg = aggregate.aggregate(build_data, repo_root)
+
+    l1_variant, l1_extras = select.pick_l1(agg)
+    l3_pick = select.pick_l3_plugins(agg, available_images=None)
+    l2_cli = (build_data.get("ai_clis") or ["claude"])[0]
+
+    cresult = compose.compose_l4(agg, l1_variant, l1_extras, build_data, repo_root)
+
+    emit.write_aggregated(agg, out_dir)
+    emit.write_devcontainer(agg, l1_variant, l2_cli, l3_pick["image"], cresult, build_data, out_dir)
+    emit.write_workspace_env(agg, l1_variant, l2_cli, l3_pick["image"], build_data, out_dir)
+
+    print(out_dir / "devcontainer.json")
+    return 0
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
