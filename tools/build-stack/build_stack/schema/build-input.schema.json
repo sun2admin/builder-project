@@ -6,36 +6,41 @@
   "type": "object",
   "required": [
     "schema_version",
-    "build_name",
-    "ai_cli",
+    "build_category",
+    "build_project",
     "project_repo",
     "plugin_repos",
-    "tool_min_version"
+    "ai_clis"
   ],
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "type": "string",
-      "const": "1.0"
+      "type": "integer",
+      "const": 1
     },
-    "build_name": {
+    "build_category": {
+      "description": "Top-level builds/<category>/ namespace. Default: project_repo owner OR gh user (sandbox).",
       "type": "string",
-      "pattern": "^[a-zA-Z0-9_-]+$",
+      "pattern": "^[a-zA-Z0-9_.-]+$",
       "minLength": 1,
       "maxLength": 64
     },
-    "ai_cli": {
+    "build_project": {
+      "description": "builds/<category>/<project>/ leaf dir name.",
       "type": "string",
-      "enum": ["claude", "gemini"]
+      "pattern": "^[a-zA-Z0-9_.-]+$",
+      "minLength": 1,
+      "maxLength": 64
     },
     "project_repo": {
-      "description": "owner/repo, or null for sandbox (no project repo)",
+      "description": "owner/repo, or null for sandbox (no project repo).",
       "oneOf": [
         { "type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$" },
         { "type": "null" }
       ]
     },
     "plugin_repos": {
+      "description": "0+ plugin repos to merge into the build.",
       "type": "array",
       "items": {
         "type": "string",
@@ -43,12 +48,22 @@
       },
       "uniqueItems": true
     },
+    "ai_clis": {
+      "description": "Ordered list of AI CLIs. ai_clis[0] is the primary (baked into L2 image); ai_clis[1+] install via L4 init scripts.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["claude", "gemini"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
     "overrides": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "base_image": {
-          "description": "L1 variant override; null = auto-pick",
+          "description": "L1 variant override; null = auto-pick.",
           "oneOf": [
             { "type": "string", "enum": ["light", "latest", "playwright_with_chromium", "playwright_with_firefox", "playwright_with_safari"] },
             { "type": "null" }
@@ -60,6 +75,7 @@
           "default": []
         },
         "credentials_delivery": {
+          "description": "Per-credential delivery override. Default: containerEnv passthrough.",
           "type": "object",
           "additionalProperties": {
             "type": "string",
@@ -67,10 +83,6 @@
           }
         }
       }
-    },
-    "tool_min_version": {
-      "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
     },
     "created": {
       "type": "string",

@@ -126,9 +126,22 @@ def _merge_credentials(out: dict, analysis: dict) -> None:
 
 
 def _merge_mcp_servers(out: dict, analysis: dict, source: str) -> None:
-    existing = {s.get("name"): s for s in out["mcp_servers"]}
+    """Merge mcp_servers entries by name.
+
+    Canonical analysis.json emits mcp_servers as list[str] (just names);
+    schema dataclass declares list[dict]. Accept both shapes: a string is
+    treated as a name-only entry equivalent to {"name": <s>}.
+    """
+    def _name_of(entry):
+        if isinstance(entry, str):
+            return entry
+        if isinstance(entry, dict):
+            return entry.get("name")
+        return None
+
+    existing = {_name_of(s): s for s in out["mcp_servers"] if _name_of(s)}
     for server in analysis.get("mcp_servers", []) or []:
-        name = server.get("name")
+        name = _name_of(server)
         if not name:
             continue
         if name in existing and existing[name] != server:
@@ -137,7 +150,10 @@ def _merge_mcp_servers(out: dict, analysis: dict, source: str) -> None:
                 f"{existing[name]!r} (already merged) vs {server!r} (from {source})"
             )
         existing[name] = server
-    out["mcp_servers"] = sorted(existing.values(), key=lambda s: s.get("name", ""))
+    out["mcp_servers"] = sorted(
+        existing.values(),
+        key=lambda s: s if isinstance(s, str) else s.get("name", ""),
+    )
 
 
 def _parse_version_key(raw: str) -> tuple | None:
