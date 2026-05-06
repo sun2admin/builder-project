@@ -204,12 +204,12 @@ def _parse_step(raw: str) -> PostChainStep:
             i += 1
         if i < len(rest):
             step.script = rest[i]
-            step.args = list(rest[i + 1:])
+            step.args = " ".join(rest[i + 1:])
         else:
-            step.args = list(rest)
+            step.args = " ".join(rest)
     else:
         step.script = head
-        step.args = list(rest)
+        step.args = " ".join(rest)
     return step
 
 
@@ -519,23 +519,12 @@ def _route_env_credentials(env_keys: list[str], result: AnalysisResult) -> None:
 
 
 def _route_mount_credentials(mounts: list[dict], result: AnalysisResult) -> None:
-    """Inspect /run/credentials/* bind-mount targets and route by filename."""
-    for m in mounts:
-        target = m.get("target", "") if isinstance(m, dict) else ""
-        if not target.startswith("/run/credentials/"):
-            continue
-        name = Path(target.rstrip("/")).name
-        if not name:
-            continue
-        if _MOUNT_SSH_RE.search(name):
-            result.credentials_required.ssh = True
-            continue
-        if _MOUNT_KEY_RE.search(name) or _MOUNT_SECRET_RE.search(name):
-            result.credentials_required.api_keys.append(name)
-        elif _MOUNT_TOK_RE.search(name):
-            result.credentials_required.tokens.append(name)
-        else:
-            result.credentials_required.other.append(name)
+    """No-op for parity. The bash skill's mount-routing heredoc is shadowed
+    by `echo $DC_VOLUMES | python3 << PYEOF` (heredoc captures stdin), so it
+    emits no SSH/KEY/TOK/OTH lines. We match that observed behavior — SSH is
+    still detected via source_scan's ssh-pattern grep + sys-package check.
+    """
+    return
 
 
 # ─── orchestrator ─────────────────────────────────────────────────────────────

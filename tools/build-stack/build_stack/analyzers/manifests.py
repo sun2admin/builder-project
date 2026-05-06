@@ -141,15 +141,17 @@ def _detect_languages(repo_path: Path) -> tuple[list[str], list[str]]:
 
 
 def _has_bun_shebang(repo_path: Path) -> bool:
-    """True if any .ts/.js/.sh file has `#!/usr/bin/env bun` shebang."""
+    """True if any .ts/.js/.sh file contains `#!/usr/bin/env bun`.
+
+    Bash uses `grep -rl` which matches anywhere in the file — so a literal
+    occurrence in a comment or quoted string also counts. We mirror that.
+    """
     for ext in ("*.ts", "*.js", "*.sh"):
         for p in repo_path.rglob(ext):
             if ".git" in p.parts:
                 continue
             try:
-                with p.open("r", errors="ignore") as f:
-                    first = f.readline()
-                if "#!/usr/bin/env bun" in first:
+                if "#!/usr/bin/env bun" in p.read_text(errors="ignore"):
                     return True
             except Exception:
                 continue

@@ -675,11 +675,10 @@ def detect(repo_path: Path, result: AnalysisResult) -> None:
 
     result.inferred.ci_tools = sorted(ci_tools)
 
-    # ── source-code env vars: ADD to existing list, route into creds ─────────
+    # ── source-code env vars: route into creds only (NOT env_vars) ──────────
+    # Bash skill only adds env_vars from .env.* + Dockerfile ENV + compose env.
+    # Source-code reads feed credentials_required.* routing exclusively.
     src_env = _scan_source_env_vars(repo_path)
-    if src_env:
-        merged = set(result.env_vars) | src_env
-        result.env_vars = sorted(merged)
     _route_source_env(src_env, result)
 
     # ── GitHub Actions secrets routing ───────────────────────────────────────

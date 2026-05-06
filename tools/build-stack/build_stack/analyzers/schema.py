@@ -49,7 +49,7 @@ class PostChainStep:
     raw: str = ""
     sudo: bool = False
     script: str = ""
-    args: list[str] = field(default_factory=list)
+    args: str = ""
     in_repo: bool = False
 
 
