@@ -46,6 +46,23 @@ def _load_analysis(repo_root: Path, owner_repo: str) -> dict:
     return json.loads(path.read_text())
 
 
+def _load_plugin_analysis(repo_root: Path, marketplace: str, plugin: str) -> dict:
+    """Load a per-plugin analysis.json, running analyze_plugin on cache miss.
+
+    Per Q5: aggregate.py orchestrates per-plugin analyze using
+    plugin_selections from build-input.json. The analyze-plugin module
+    handles sparse-checkout + 3 source shapes. Cache lives at
+    analyzed_repos/plugins/<mkt_owner>/<mkt_repo>/<plugin>/analysis.json.
+    """
+    from .analyzers import plugin as plugin_mod
+
+    cache = plugin_mod.plugin_cache_dir(repo_root, marketplace, plugin) / "analysis.json"
+    if not cache.is_file():
+        data = plugin_mod.analyze_plugin(marketplace, plugin, repo_root=repo_root)
+        plugin_mod.write_plugin_outputs(data, repo_root, marketplace, plugin)
+    return json.loads(cache.read_text())
+
+
 def _empty_aggregate(build_project: str) -> dict:
     return {
         "schema_version": 0,
@@ -415,9 +432,14 @@ def _merge_one(out: dict, analysis: dict, source: str, *, is_project: bool) -> N
 
 
 def aggregate(build_json: dict, repo_root: Path) -> dict:
-    """Read all referenced analysis.json files and merge per parent plan §1."""
+    """Read all referenced analysis.json files and merge per parent plan §1.
+
+    Plugin selections (Q5) drive per-plugin sparse-checkout analysis. Each
+    {marketplace, plugin} entry triggers analyze_plugin() on cache miss,
+    then merges its result into the aggregate alongside the project repo.
+    """
     project_repo = build_json.get("project_repo")
-    plugin_repos = list(build_json.get("plugin_repos", []) or [])
+    plugin_selections = list(build_json.get("plugin_selections", []) or [])
     build_project = build_json.get("build_project", "")
 
     out = _empty_aggregate(build_project)
@@ -426,9 +448,14 @@ def aggregate(build_json: dict, repo_root: Path) -> dict:
         analysis = _load_analysis(repo_root, project_repo)
         _merge_one(out, analysis, project_repo, is_project=True)
 
-    for plugin in plugin_repos:
-        analysis = _load_analysis(repo_root, plugin)
-        _merge_one(out, analysis, plugin, is_project=False)
+    for sel in plugin_selections:
+        marketplace = sel.get("marketplace")
+        plugin = sel.get("plugin")
+        if not marketplace or not plugin:
+            continue
+        analysis = _load_plugin_analysis(repo_root, marketplace, plugin)
+        source_label = f"{marketplace}#{plugin}"
+        _merge_one(out, analysis, source_label, is_project=False)
 
     out["repo"] = build_project
     out["project"] = build_project
