@@ -22,7 +22,8 @@ PROJECT_REPO=""           # "" = sandbox
 BUILD_CATEGORY=""
 BUILD_PROJECT=""
 declare -a AI_CLIS=()     # ordered: index 0 is primary
-declare -a PLUGIN_REPOS=()
+declare -a PLUGIN_SELECTIONS=()    # entries: "<marketplace>|<plugin>|<category>"
+USE_RECOMMENDED_L3=0
 GITHUB_USER=""
 
 # ============================================================================
@@ -434,92 +435,73 @@ step6_ai_clis() {
   done
 }
 
-step7_plugin_repos() {
+step7_recommended_prompt() {
+  local rec_file="${REPO_ROOT}/tools/build-stack/build_stack/data/recommended-plugins.json"
   echo "" >&2
-  echo -e "${BLUE}Plugin repos${NC}" >&2
-  echo "Discovering claude-plugins-* under ${GITHUB_USER}..." >&2
+  echo -e "${BLUE}Recommended L3${NC}" >&2
 
-  declare -a discovered=()
-  if [[ $DRY_RUN -eq 0 ]]; then
-    mapfile -t discovered < <(gh repo list "$GITHUB_USER" \
-      --limit 100 \
-      --json nameWithOwner,repositoryTopics \
-      --jq '.[] | select(.nameWithOwner | test("claude-plugins-")) | .nameWithOwner' \
-      2>/dev/null || echo "")
+  if [[ ! -f "$rec_file" ]]; then
+    echo -e "${YELLOW}recommended-plugins.json missing — defaulting to no.${NC}" >&2
+    USE_RECOMMENDED_L3=0
+    return 0
+  fi
+  local count
+  count=$(jq '.plugins | length' "$rec_file")
+  if [[ "$count" -eq 0 ]]; then
+    echo -e "${YELLOW}recommended-plugins.json is empty — defaulting to no.${NC}" >&2
+    USE_RECOMMENDED_L3=0
+    return 0
   fi
 
-  while true; do
-    echo "" >&2
-    if [[ ${#discovered[@]} -gt 0 ]]; then
-      local i=1
-      for repo in "${discovered[@]}"; do
-        local marker=""
-        for chosen in "${PLUGIN_REPOS[@]:-}"; do
-          [[ "$chosen" == "$repo" ]] && marker=" ${GREEN}(selected)${NC}" && break
-        done
-        echo -e "  ${i}) ${repo}${marker}" >&2
-        i=$((i + 1))
-      done
-    fi
-    echo "  [c] custom owner/repo" >&2
-    echo "  [d] done" >&2
-    echo "  [q] quit" >&2
-
-    read_input "Selection: "
-    local sel="${input:-}"
-    case "$sel" in
-      d) return 0 ;;
-      q) echo "Exiting." >&2; exit 0 ;;
-      c)
-        read_input "Custom plugin repo (owner/repo): "
-        plugin_pick "${input:-}"
-        ;;
-      *)
-        if [[ ! "$sel" =~ ^[0-9]+$ ]] || [[ $sel -lt 1 || $sel -gt ${#discovered[@]} ]]; then
-          echo -e "${RED}Invalid.${NC}" >&2
-          continue
-        fi
-        plugin_pick "${discovered[$((sel - 1))]}"
-        ;;
-    esac
-  done
+  echo "Recommended set ($count plugins):" >&2
+  jq -r '.plugins[] | "  - \(.marketplace) :: \(.plugin)"' "$rec_file" >&2
+  echo "" >&2
+  read_input "Include recommended plugins (base on recommended L3)? [y/N]: "
+  case "${input:-}" in
+    y|Y) USE_RECOMMENDED_L3=1; echo -e "${GREEN}✓ recommended L3 enabled${NC}" >&2 ;;
+    *)   USE_RECOMMENDED_L3=0; echo -e "${CYAN}skipping recommended L3 (build off L2)${NC}" >&2 ;;
+  esac
 }
 
-# Validate + analyze a single plugin repo, then append on success.
-plugin_pick() {
-  local repo="$1"
-  if [[ -z "$repo" ]]; then
-    echo -e "${RED}Empty repo.${NC}" >&2
-    return 0
-  fi
-  if [[ ! "$repo" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
-    echo -e "${RED}Invalid format.${NC}" >&2
-    return 0
-  fi
-  for chosen in "${PLUGIN_REPOS[@]:-}"; do
-    if [[ "$chosen" == "$repo" ]]; then
-      echo -e "${YELLOW}${repo} already selected.${NC}" >&2
-      return 0
-    fi
-  done
-  local rc=0
-  gh_repo_check "$repo" || rc=$?
-  case $rc in
-    0) ;;
-    1) echo -e "${YELLOW}Repo ${repo} not found (404).${NC}" >&2; return 0 ;;
-    2) exit 1 ;;
+step8_plugin_selector() {
+  echo "" >&2
+  echo -e "${BLUE}Additional plugins${NC}" >&2
+  read_input "Pick additional plugins via marketplace selector? [y/N]: "
+  case "${input:-}" in
+    y|Y) ;;
+    *) echo -e "${CYAN}skipping plugin selector${NC}" >&2; return 0 ;;
   esac
-  if [[ $DRY_RUN -eq 1 ]]; then
-    echo -e "${CYAN}[DRY-RUN] skip analyze for ${repo}${NC}" >&2
-    PLUGIN_REPOS+=("$repo")
+
+  local selector_lib="${REPO_ROOT}/.claude/skills/_lib/plugin-selector.sh"
+  if [[ ! -f "$selector_lib" ]]; then
+    echo -e "${RED}selector lib missing: $selector_lib${NC}" >&2
     return 0
   fi
-  analyze_with_menu "$repo" "plugin"
-  case "$ANALYZE_RESULT" in
-    ok)   PLUGIN_REPOS+=("$repo") ;;
-    skip) echo -e "${YELLOW}Skipped ${repo}.${NC}" >&2 ;;
-    quit) echo "Exiting." >&2; exit 0 ;;
-  esac
+  # shellcheck disable=SC1090
+  source "$selector_lib"
+
+  local out_file
+  out_file=$(mktemp)
+  local exclude_flag=()
+  [[ "$USE_RECOMMENDED_L3" == "1" ]] && exclude_flag+=(--exclude-recommended)
+
+  if ! plugin_selector_run --mode build-stack "${exclude_flag[@]}" --out "$out_file"; then
+    echo -e "${CYAN}no additional plugins selected${NC}" >&2
+    rm -f "$out_file"
+    return 0
+  fi
+  local picked
+  picked=$(jq 'length' "$out_file")
+  if [[ "$picked" -eq 0 ]]; then
+    rm -f "$out_file"
+    return 0
+  fi
+  while IFS=$'\t' read -r mkt plugin cat; do
+    [[ -z "$mkt" || -z "$plugin" ]] && continue
+    PLUGIN_SELECTIONS+=("$mkt|$plugin|$cat")
+  done < <(jq -r '.[] | [.marketplace, .plugin, (.category // "null")] | @tsv' "$out_file")
+  rm -f "$out_file"
+  echo -e "${GREEN}✓ ${#PLUGIN_SELECTIONS[@]} plugin(s) added${NC}" >&2
 }
 
 # ============================================================================
@@ -540,27 +522,49 @@ emit_build_json() {
   local project_repo_arg=""
   [[ -n "$PROJECT_REPO" ]] && project_repo_arg="$PROJECT_REPO"
 
-  local plugins_json clis_json
-  plugins_json=$(json_array "${PLUGIN_REPOS[@]:-}")
+  local clis_json
   clis_json=$(json_array "${AI_CLIS[@]:-}")
-
-  # Strip empty-string elements that creep in from "${ARR[@]:-}" when ARR is empty.
-  plugins_json=$(echo "$plugins_json" | jq '[.[] | select(. != "")]')
   clis_json=$(echo "$clis_json" | jq '[.[] | select(. != "")]')
+
+  local selections_json="[]"
+  if [[ ${#PLUGIN_SELECTIONS[@]} -gt 0 ]]; then
+    local entries=()
+    local s
+    for s in "${PLUGIN_SELECTIONS[@]}"; do
+      local mkt="${s%%|*}"
+      local rest="${s#*|}"
+      local plugin="${rest%%|*}"
+      local cat="${rest##*|}"
+      local cat_json
+      if [[ "$cat" == "null" || -z "$cat" ]]; then
+        cat_json="null"
+      else
+        cat_json=$(jq -n --arg c "$cat" '$c')
+      fi
+      entries+=("$(jq -n --arg m "$mkt" --arg p "$plugin" --argjson c "$cat_json" \
+        '{marketplace: $m, plugin: $p, category: $c}')")
+    done
+    selections_json=$(printf '%s\n' "${entries[@]}" | jq -s '.')
+  fi
+
+  local use_rec="false"
+  [[ "$USE_RECOMMENDED_L3" == "1" ]] && use_rec="true"
 
   jq -n \
     --arg category "$BUILD_CATEGORY" \
     --arg project  "$BUILD_PROJECT" \
     --arg repo     "$project_repo_arg" \
-    --argjson plugins "$plugins_json" \
-    --argjson clis    "$clis_json" \
+    --argjson selections "$selections_json" \
+    --argjson clis "$clis_json" \
+    --argjson use_rec "$use_rec" \
     '{
-      schema_version: 1,
+      schema_version: 3,
       build_category: $category,
       build_project: $project,
       project_repo: (if $repo == "" then null else $repo end),
-      plugin_repos: $plugins,
-      ai_clis: $clis
+      ai_clis: $clis,
+      use_recommended_l3: $use_rec,
+      plugin_selections: $selections
     }' > "$out_path"
 }
 
@@ -611,10 +615,21 @@ print_summary() {
   echo "" >&2
   echo "Inputs:" >&2
   echo "  Project repo: ${PROJECT_REPO:-sandbox}" >&2
-  if [[ ${#PLUGIN_REPOS[@]} -eq 0 ]]; then
-    echo "  Plugins: (none)" >&2
+  if [[ "$USE_RECOMMENDED_L3" == "1" ]]; then
+    echo "  Recommended L3: yes" >&2
   else
-    echo "  Plugins: ${PLUGIN_REPOS[*]}" >&2
+    echo "  Recommended L3: no (build off L2)" >&2
+  fi
+  if [[ ${#PLUGIN_SELECTIONS[@]} -eq 0 ]]; then
+    echo "  Additional plugins: (none)" >&2
+  else
+    local s
+    for s in "${PLUGIN_SELECTIONS[@]}"; do
+      local mkt="${s%%|*}"
+      local rest="${s#*|}"
+      local plugin="${rest%%|*}"
+      echo "    - ${plugin} (${mkt})" >&2
+    done
   fi
   echo "  AI CLIs: ${AI_CLIS[*]}" >&2
 
@@ -654,7 +669,8 @@ main() {
   step3_category
   step5_project_name
   step6_ai_clis
-  step7_plugin_repos
+  step7_recommended_prompt
+  step8_plugin_selector
 
   if [[ $DRY_RUN -eq 1 ]]; then
     local tmp
