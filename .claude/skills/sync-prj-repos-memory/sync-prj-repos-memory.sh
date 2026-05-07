@@ -77,17 +77,18 @@ commit_project() {
   git -C "$project_root" add -A
 
   if git -C "$project_root" diff --cached --quiet; then
-    echo "  Nothing to sync"
-    return 0
+    echo "  Nothing new to commit"
+  else
+    local modified added deleted
+    modified=$(git -C "$project_root" diff --cached --name-only --diff-filter=M | wc -l | tr -d ' ')
+    added=$(git -C "$project_root" diff --cached --name-only --diff-filter=A | wc -l | tr -d ' ')
+    deleted=$(git -C "$project_root" diff --cached --name-only --diff-filter=D | wc -l | tr -d ' ')
+
+    git -C "$project_root" commit -m "sync-prj-repos-memory: Sync memory and config (modified $modified, added $added, deleted $deleted)"
   fi
 
-  local modified added deleted
-  modified=$(git -C "$project_root" diff --cached --name-only --diff-filter=M | wc -l | tr -d ' ')
-  added=$(git -C "$project_root" diff --cached --name-only --diff-filter=A | wc -l | tr -d ' ')
-  deleted=$(git -C "$project_root" diff --cached --name-only --diff-filter=D | wc -l | tr -d ' ')
-
-  git -C "$project_root" commit -m "sync-prj-repos-memory: Sync memory and config (modified $modified, added $added, deleted $deleted)"
-
+  # Always push at end, even if no new commit. Catches commits made directly
+  # via `git commit` during the session that were never pushed.
   local branch
   branch=$(git -C "$project_root" rev-parse --abbrev-ref HEAD)
   git -C "$project_root" push origin "$branch"
