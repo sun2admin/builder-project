@@ -12,6 +12,19 @@ port (`build_stack.analyzers.analyze`) run on the same clone. Their
 output dicts are normalized (recursively sort all lists) and compared.
 
 Skips real-repo fixtures gracefully if `gh auth` is not configured.
+
+DISABLED BY DEFAULT (F7): the bash-side path invokes
+`python -m build_stack analyze`, whose `cmd_analyze` (cli.py:71-72)
+hardcodes its output to `analyzed_repos/<owner>/<repo>/analysis.json`
+with no opt-out flag. Running this test therefore rewrites live cache
+for every corpus repo as a side effect, with degenerate output that
+silently corrupts ground truth. Re-enable for intentional parity runs:
+
+    BUILD_STACK_PARITY_TEST=1 pytest tests/
+
+Tracked as F7 in plans/build-workflow-stack-composition.md step 7.
+Proper fix is option A: add --out-dir flag to cmd_analyze and
+write_outputs(), then redirect from this test. Until then, skipped.
 """
 
 from __future__ import annotations
@@ -185,6 +198,10 @@ def cloned_repo(request, clone_dir, gh_authed):
 
 # ─── parameterized parity test ────────────────────────────────────────────────
 
+@pytest.mark.skipif(
+    os.environ.get("BUILD_STACK_PARITY_TEST") != "1",
+    reason="F7: rewrites live analyzed_repos/ cache. Set BUILD_STACK_PARITY_TEST=1 to run intentionally.",
+)
 @pytest.mark.parametrize("cloned_repo", CORPUS, indirect=True)
 def test_parity(cloned_repo):
     repo, clone_path = cloned_repo
