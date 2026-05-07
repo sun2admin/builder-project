@@ -19,9 +19,10 @@ Implementation = Required #1 + tasks.json variant of Option 2c (auto-launch term
 | `myclaude` alias = `cd $(cat ~/live-project) && claude --dangerously-skip-permissions` | `layer4-devcontainer/scripts/claude-rc.sh` (NEW) | One alias, single source. User types `myclaude` to launch. |
 | Updated CLAUDE.md docs | `layer4-devcontainer/CLAUDE.md` | Documents new mechanism, removes stale `bash --login` postAttachCommand reference |
 
-**Open follow-ups tracked in `build-workflow-stack-composition.md` "Open Questions — remaining":**
-- Long-term: move alias from L4 template into L2 image bake (AI CLI layer concern).
-- `myclaude` ↔ `load-projects.sh` coupling: fallback behavior for sandbox / no-project_repo builds.
+**Open follow-ups tracked in `claude-user-env.md`:**
+- §1: Long-term migration of `myclaude` alias from L4 template into L2 image bake (AI CLI layer concern).
+- §2: `myclaude` ↔ `load-projects.sh` coupling — fallback behavior for sandbox / no-project_repo builds.
+- §3: VS Code Server keybindings (Shift+Enter for newlines) persistence — currently Option A (interactive accept each rebuild); long-term Option C (idempotent init script).
 
 ## Symptom
 
