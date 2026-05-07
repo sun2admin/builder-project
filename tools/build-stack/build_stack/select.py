@@ -168,10 +168,27 @@ def validate_override(user_choice: str, agg: dict) -> tuple[bool, str | None]:
     return True, None
 
 
+RECOMMENDED_L3_IMAGE = "ghcr.io/sun2admin/ai-addons-recommended:latest"
+
+
 def pick_l3_plugins(
     agg: dict,
     available_images: list[dict] | None = None,
+    use_recommended_l3: bool = False,
 ) -> dict:
+    """Pick the L3 base image.
+
+    When use_recommended_l3 is True, the build bases on the recommended L3
+    image (recommended-plugins.json baked in). Additional plugins from
+    plugin_selections install via L4 features per CPQ1=(b).
+
+    When False, falls back to the legacy plugin-set matching against
+    available_images. The matching path is deprecated under the hybrid
+    plugin delivery model and exists only for transitional builds.
+    """
+    if use_recommended_l3:
+        return {"image": RECOMMENDED_L3_IMAGE, "missing": []}
+
     needed = set(agg.get("claude_plugins") or [])
     if not needed:
         return {"image": None, "missing": []}

@@ -37,7 +37,11 @@ def cmd_compose(args: argparse.Namespace) -> int:
     agg = aggregate.aggregate(build_data, repo_root)
 
     l1_variant, l1_extras = select.pick_l1(agg)
-    l3_pick = select.pick_l3_plugins(agg, available_images=None)
+    l3_pick = select.pick_l3_plugins(
+        agg,
+        available_images=None,
+        use_recommended_l3=bool(build_data.get("use_recommended_l3", False)),
+    )
     l2_cli = (build_data.get("ai_clis") or ["claude"])[0]
 
     cresult = compose.compose_l4(agg, l1_variant, l1_extras, build_data, repo_root)
