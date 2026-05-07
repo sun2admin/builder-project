@@ -14,7 +14,9 @@
 > MCP-server handling open questions MCPQ1–7).
 >
 > Image build / GHCR push / devcontainer rebuild deferred to **`./deploy-stack.md`**
-> (sub-plan stub — not yet written).
+> (stub written 2026-05-07). `/deploy-stack` owns first-time creation of the
+> `claude-plugins-recommended` GitHub repo + image (currently a phantom referenced
+> by `select.py:171`) — no separate item on this parent plan.
 
 > **Reference skill — `build-workspace` (time-bounded):** The existing
 > `.claude/skills/build-workspace/` skill is **reference only** during build-stack
