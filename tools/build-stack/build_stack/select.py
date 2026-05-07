@@ -168,7 +168,7 @@ def validate_override(user_choice: str, agg: dict) -> tuple[bool, str | None]:
     return True, None
 
 
-RECOMMENDED_L3_IMAGE = "ghcr.io/sun2admin/ai-addons-recommended:latest"
+RECOMMENDED_L3_IMAGE = "ghcr.io/sun2admin/claude-plugins-recommended:latest"
 
 
 def pick_l3_plugins(
