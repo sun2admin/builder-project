@@ -188,22 +188,25 @@ The skill+tool boundary. Skill writes; tool reads.
 
 **Location:** `builds/<build_category>/<build_project>/build.json`
 
-**Schema (v1.0) — locked 2026-05-06:**
+**Schema (v3) — locked 2026-05-07 to match implementation at `tools/build-stack/build_stack/schema/build-input.schema.json`:**
 ```json
 {
-  "schema_version": "1.0",
-  "build_category": "santifer",             // 1st path level (default = repo's GH owner; gh_user for sandbox)
-  "build_project": "career-ops",            // 2nd path level (default = repo basename; "sandbox" for sandbox)
-  "project_repo": "santifer/career-ops",    // OR null = sandbox build (plugins-only or empty)
-  "plugin_repos": ["postman/postman-mcp"],  // 0..N entries; each maps to analyzed_repos/<owner>/<repo>/
-  "ai_clis": ["claude", "gemini"],          // ordered list; index 0 = primary (L2 image variant); 1+ = L4 init-script installs
-  "tool_min_version": "1.0",
+  "schema_version": 3,                                  // integer const 3 (was string "1.0" in v1 draft)
+  "build_category": "santifer",                         // 1st path level (default = repo's GH owner; gh_user for sandbox)
+  "build_project": "career-ops",                        // 2nd path level (default = repo basename; "sandbox" for sandbox)
+  "project_repo": "santifer/career-ops",                // OR null = sandbox build (plugins-only or empty)
+  "use_recommended_l3": false,                          // v2+: pull recommended L3 image (claude-plugins-recommended) vs build off L2
+  "plugin_selections": [                                // v3: replaces v1's flat plugin_repos[] — captures marketplace/plugin pairs from selector
+    {"marketplace": "anthropics/claude-plugins-official", "plugin": "skill-creator"}
+  ],
+  "ai_clis": ["claude", "gemini"],                      // ordered list; index 0 = primary (L2 image variant); 1+ = L4 init-script installs
+  "overrides": {},                                      // v2+: optional per-cred / per-base-image override block
   "created": "2026-05-06T00:00:00Z",
   "last_modified": "2026-05-06T00:00:00Z"
 }
 ```
 
-**v1 MVP scope:** No `overrides` block (deferred to v2). All composition decisions (base_image, L4 features, credentials_delivery, firewall, etc.) made by tool from analysis facts. Users edit `build.json` by hand or rerun skill to change decisions.
+**Schema evolution:** v1 → v2 added `use_recommended_l3` + `plugin_selections` (commit `39a7f9f`); v2 → v3 dropped flat `plugin_repos[]` field (commit `811054c`). Tool refuses any schema_version != 3.
 
 JSON Schema lives at `tools/build-stack/build_stack/schema/build-input.schema.json`. Skill calls `build-stack validate <path>` before invoking compose; tool refuses unknown schema_version.
 
@@ -658,7 +661,7 @@ When a feature becomes ubiquitous:
 6. ✅ DONE — Sub-plan `build-stack-absorb-analyze.md` (UNBLOCKS step 7):
    - ✅ Phase 1 (shell-out wrapper): `analyze.py::analyze()` + `cmd_analyze()` shell out to skill.
    - ✅ Phase 1.5 (OUT_DIR migration, commit `e592e9f`): `builds/<owner>/<repo>/` → `analyzed_repos/<owner>/<repo>/`. Migrated 7 existing dirs via `git mv`.
-   - ✅ Phase 2 (Python port, commits `e52183f` → `cd1938e` → `572fca5`): ported 1629-line `analyze-repo.sh` → 7-module Python package under `tools/build-stack/build_stack/analyzers/`. Moved `tool-deps.json` to `tools/build-stack/build_stack/data/`. Parity test (semantic equivalence) at `tools/build-stack/tests/test_analyze_parity.py` — 10/10 corpus repos green.
+   - ✅ Phase 2 (Python port, commits `e52183f` → `cd1938e` → `572fca5`): ported 1629-line `analyze-repo.sh` → 7-module Python package under `tools/build-stack/build_stack/analyzers/`. Moved `tool-deps.json` to `tools/build-stack/build_stack/data/`. Parity test (semantic equivalence) at `tools/build-stack/tests/test_analyze_parity.py`. **Original "10/10 corpus repos green" claim revised 2026-05-07:** verification round revealed F7 — the parity test invokes `python -m build_stack analyze` whose `cmd_analyze` (cli.py:71-72) hardcodes output to `analyzed_repos/<owner>/<repo>/` with no opt-out. Running the test rewrites live cache for all 10 repos with degenerate output (empty languages, empty container.*, etc.). The "10/10 green" was empty-vs-empty parity passing trivially, with 2/10 (`anthropics/claude-code`, `santifer/career-ops`) actually breaking through the noise floor. Test now skipped by default (commit `454d667`). Real parity status: unknown until F7-A lands (add `--out-dir` flag to `cmd_analyze`).
    - ✅ Phase 3 (cutover, commit `404950e`): replaced `analyze-repo.sh` (1629 → 59 lines) with thin wrapper that execs `python -m build_stack analyze`. Moved docs to `tools/build-stack/docs/`.
 7. ✅ DONE (verified 2026-05-07 via smoke tests) — Tool subcommands implemented:
    - `build-stack list-ai-clis` — emits `claude\ngemini` (and `--json` form)
