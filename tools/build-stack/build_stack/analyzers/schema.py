@@ -130,3 +130,6 @@ class AnalysisResult:
     system_deps: dict[str, SystemDep] = field(default_factory=dict)
     schema_version: int = SCHEMA_VERSION
     suggested: Suggested = field(default_factory=Suggested)
+    is_marketplace: bool = False
+    marketplace_name: str = ""
+    marketplace_plugins: list[dict] = field(default_factory=list)

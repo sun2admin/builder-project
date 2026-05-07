@@ -68,10 +68,14 @@ def analyze(repo: str) -> dict:
             primary_language=primary_language,
         )
 
-        manifests.detect(repo_path, result, repo_description=description)
-        dockerfile.detect(repo_path, result)
-        source_scan.detect(repo_path, result)
-        apt_resolve.resolve(repo_path, result)
+        marketplace_path = repo_path / ".claude-plugin" / "marketplace.json"
+        if marketplace_path.is_file():
+            _populate_marketplace_summary(marketplace_path, result)
+        else:
+            manifests.detect(repo_path, result, repo_description=description)
+            dockerfile.detect(repo_path, result)
+            source_scan.detect(repo_path, result)
+            apt_resolve.resolve(repo_path, result)
     finally:
         cloner.cleanup(repo_path)
 
@@ -80,6 +84,32 @@ def analyze(repo: str) -> dict:
     # dataclass for future use; the field is filtered at serialization.
     data.pop("suggested", None)
     return data
+
+
+def _populate_marketplace_summary(marketplace_path: Path, result: AnalysisResult) -> None:
+    """Mark the result as a marketplace and extract its plugin registry.
+
+    Marketplace repos are skipped from normal detector flow (their deps
+    describe a registry, not application code). Per-plugin analysis runs
+    separately via `analyze_plugin()` for the plugins the user selects.
+    """
+    try:
+        data = json.loads(marketplace_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return
+    result.is_marketplace = True
+    result.marketplace_name = data.get("name") or ""
+    plugins = data.get("plugins") or []
+    result.marketplace_plugins = [
+        {
+            "name": p.get("name", ""),
+            "category": p.get("category"),
+            "description": p.get("description", ""),
+            "source": p.get("source"),
+        }
+        for p in plugins
+        if isinstance(p, dict) and p.get("name")
+    ]
 
 
 def write_outputs(data: dict, out_dir: Path) -> Path:
