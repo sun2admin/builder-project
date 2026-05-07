@@ -1,4 +1,6 @@
 .claude/settings.local.json
+.claude/.last-memory-sync
+.claude/.last-memory-sync.log
 
 # Python (build-stack tool)
 __pycache__/
