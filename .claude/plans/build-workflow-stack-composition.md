@@ -660,14 +660,14 @@ When a feature becomes ubiquitous:
    - ✅ Phase 1.5 (OUT_DIR migration, commit `e592e9f`): `builds/<owner>/<repo>/` → `analyzed_repos/<owner>/<repo>/`. Migrated 7 existing dirs via `git mv`.
    - ✅ Phase 2 (Python port, commits `e52183f` → `cd1938e` → `572fca5`): ported 1629-line `analyze-repo.sh` → 7-module Python package under `tools/build-stack/build_stack/analyzers/`. Moved `tool-deps.json` to `tools/build-stack/build_stack/data/`. Parity test (semantic equivalence) at `tools/build-stack/tests/test_analyze_parity.py` — 10/10 corpus repos green.
    - ✅ Phase 3 (cutover, commit `404950e`): replaced `analyze-repo.sh` (1629 → 59 lines) with thin wrapper that execs `python -m build_stack analyze`. Moved docs to `tools/build-stack/docs/`.
-7. 🚧 TODO — Implement tool subcommands for skill consumption:
-   - `build-stack list-ai-clis` — returns valid CLI choices for skill's AI CLI menu
-   - `build-stack compose <build.json>` — full Phase 4-6 pipeline:
-     - Phase 4 (aggregate): merge rules per §1
-     - Phase 5a (select): L1 capability cover per §2; L3 plugin pick per §4
-     - Phase 5b (compose): L4 features per §5; firewall per §7; init chain per §8
-     - Phase 6 (emit): aggregated.json, devcontainer.json, workspace.env writers; output alongside input file (skill controls placement via staging dir)
-8. 🚧 TODO — Implement `/build-stack` skill body per "Skill UX Design" section above.
+7. ✅ DONE (verified 2026-05-07 via smoke tests) — Tool subcommands implemented:
+   - `build-stack list-ai-clis` — emits `claude\ngemini` (and `--json` form)
+   - `build-stack compose <build.json>` — full Phase 4-6 pipeline runs end-to-end against cached `analyzed_repos/sun2admin/builder-project/`, emits `aggregated.json`, `devcontainer.json`, `workspace.env`
+   - **Caveats discovered in smoke tests** (must address before step 12 end-to-end validation):
+     - **F1 (silent-failure bug):** `build_stack/__main__.py:6` calls `main()` without `sys.exit()` — `python -m build_stack` always exits 0 even on validation/compose failure. Skill uses `-m` exclusively (4 call sites at `.claude/skills/build-stack/build-stack.sh:46,367,586,592`), so all tool errors are silently swallowed. Console-script entry (`build-stack ...`) is fine. One-line fix: `sys.exit(main())`.
+     - **F2 (schema drift vs plan):** Parent plan's JSON Contract §"Schema (v1.0)" example shows `"schema_version": "1.0"` (string); actual schema requires `integer const 3`. Update plan to match implementation.
+     - **F3 (output sparsity for builder-project run):** `compose` against the cached `builder-project` analysis emits a near-empty devcontainer.json (4 keys: `containerEnv`, `image`, `name`, `remoteUser`) — no `runArgs`, `mounts`, `forwardPorts`, `postStartCommand`, `extensions`. Root cause is upstream: cached `analysis.json` has empty `container.{capabilities,volumes,post_start_chain,init_scripts,extensions}[]` despite the project's real `.devcontainer/devcontainer.json` being rich. Either re-analyze with current detector or the detector is missing those fields. `emit.py` itself reads all of them correctly (see `emit.py:76,92-107,164-202`).
+8. ✅ DONE (verified 2026-05-07) — `/build-stack` skill body implemented per "Skill UX Design": 689 lines covering pre-flight, all 9 phase steps (`step1_project_repo` → `step8_plugin_selector` → `phase2_invoke` → `print_summary`) at `.claude/skills/build-stack/build-stack.sh`. `--dry-run` short-circuits per spec. Interactive validation (parent plan step 12) is the gate that turns "implementation present" into "behavior verified."
 9. ✅ DONE — `.gitignore` entry `builds/.staging/` present (atomic-write staging dir).
 10. ⏭️  SUPERSEDED — OCI source label backfill on the 8 standalone L3 plugin repos. Architecture pivoted to a single recommended L3 image + devcontainer features (parent plan amendment 2026-05-06; sub-plans `manage-rec-plugins.md` and `deploy-stack.md`). The 8 legacy plugin repos will be manually deleted; OCI label work now lives in `/deploy-stack` for the future `claude-plugins-recommended` image. The label requirement itself is still documented in `layer3-ai-plugins/CLAUDE.md`, but the 8-repo backfill list there is obsolete and can be cleaned up alongside the broader L3 doc refresh (out of scope for this step).
 11. ✅ DONE (2026-05-07) — Updated reference docs to reflect removed fields + skill+tool boundary:
