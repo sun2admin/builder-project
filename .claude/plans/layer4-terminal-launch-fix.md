@@ -1,8 +1,27 @@
 # Plan Note: Layer 4 Terminal Launch / Geometry Fix
 
-**Status:** Open. Stopgap reverted 2026-05-07 (made it worse). Permanent fix in `build-containers-with-claude` is now the priority; pick up next session.
-**Repo affected:** `build-containers-with-claude` (Layer 4 devcontainer), NOT builder-project.
+**Status:** Fix applied to `layer4-devcontainer/` template 2026-05-07. Awaits validation in test repo `sun2admin/build-stack-with-claude` (newly created — `build-containers-with-claude` deliberately untouched until validation passes).
+**Repo affected (template):** `builder-project/layer4-devcontainer/` — single source of truth.
+**Repo affected (test consumer):** `sun2admin/build-stack-with-claude` (private, created 2026-05-07 alongside this fix).
+**Repo affected (production consumer, deferred):** `build-containers-with-claude` — patch only after `build-stack-with-claude` confirms TTY behavior is correct.
 **Stopgap attempted (2026-05-07, REVERTED same day):** `"tui": "fullscreen"` in user `~/.claude/settings.json`. Outcome: worse than default — wrap/resize behavior degraded further. Removed.
+
+## Applied fix (2026-05-07)
+
+Implementation = Required #1 + tasks.json variant of Option 2c (auto-launch terminal, manual claude launch via alias).
+
+| Change | File | Notes |
+|---|---|---|
+| `containerEnv.TERM=xterm-256color`, `COLORTERM=truecolor` | `layer4-devcontainer/devcontainer.json` | Required #1 |
+| Removed `postAttachCommand` (auto-launched claude in raw PTY) | `layer4-devcontainer/devcontainer.json` | Option 2a action |
+| `terminal.integrated.profiles.linux.claude-bash` profile + set as default | `layer4-devcontainer/devcontainer.json` | Every Ctrl+\` terminal sources `claude-rc.sh` |
+| Auto-open shell on attach | `layer4-devcontainer/.vscode/tasks.json` | `runOn: folderOpen` task launches `bash --rcfile claude-rc.sh` |
+| `myclaude` alias = `cd $(cat ~/live-project) && claude --dangerously-skip-permissions` | `layer4-devcontainer/scripts/claude-rc.sh` (NEW) | One alias, single source. User types `myclaude` to launch. |
+| Updated CLAUDE.md docs | `layer4-devcontainer/CLAUDE.md` | Documents new mechanism, removes stale `bash --login` postAttachCommand reference |
+
+**Open follow-ups tracked in `build-workflow-stack-composition.md` "Open Questions — remaining":**
+- Long-term: move alias from L4 template into L2 image bake (AI CLI layer concern).
+- `myclaude` ↔ `load-projects.sh` coupling: fallback behavior for sandbox / no-project_repo builds.
 
 ## Symptom
 
@@ -56,7 +75,8 @@ Recommend **1 + 2a**.
 
 ## Resume conditions
 
-- Next session: focus is the permanent fix in `build-containers-with-claude/.devcontainer/devcontainer.json` (Required #1 + Option 2a above).
+- ~~Next session: permanent fix in `build-containers-with-claude/.devcontainer/devcontainer.json` (Required #1 + Option 2a)~~ — applied to L4 template instead 2026-05-07; testing via `build-stack-with-claude`.
+- After test repo validates fix: sync template → `build-containers-with-claude` (production L4 consumer). Owned by `/deploy-stack` once that skill exists; manual sync until then.
 
 ## Cross-references
 

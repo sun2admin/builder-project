@@ -21,6 +21,7 @@ Each layer has its own subdir with a `CLAUDE.md` containing layer-specific detai
 
 - **Shell**: bash only (not zsh)
 - **GHCR**: all images must always be private
+- **GitHub repos**: all new repositories default to private unless the user explicitly specifies otherwise. Use `gh repo create <owner>/<name> --private` for any new repo creation.
 - **Credentials**: write to `~/.profile` (chmod 600), never `/etc/environment`; use `bash --login` in `postAttachCommand`
 - **Container user**: `claude` (bash shell)
 - **Skill creation**: always use the `/skill-creator` plugin when creating or modifying skills

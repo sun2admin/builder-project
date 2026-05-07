@@ -10,7 +10,10 @@ This subdir is the reference template for standalone Layer 4 devcontainer repos 
 Key settings:
 - `runArgs`: `--cap-add=NET_ADMIN --cap-add=NET_RAW` — required for init-firewall.sh
 - `remoteUser`: `claude`
-- `postAttachCommand`: `bash --login` — ensures `~/.profile` is sourced (PAT available to Claude and MCP)
+- `containerEnv.TERM=xterm-256color`, `COLORTERM=truecolor` — gives integrated terminal full color/capability set; fixes claude TUI geometry
+- **No `postAttachCommand`** — claude is NOT auto-launched. Reason: `postAttachCommand` runs in a raw PTY managed by the remote-container daemon, with no VS Code shell-integration injection — column/resize/Ctrl-L behavior breaks. See `.claude/plans/layer4-terminal-launch-fix.md`.
+- Terminal auto-opens via `.vscode/tasks.json` `runOn: folderOpen` instead. Tasks run in the integrated terminal panel (full shell-integration). User types `myclaude` to launch claude.
+- `terminal.integrated.profiles.linux.claude-bash` uses `--rcfile /workspace/.devcontainer/scripts/claude-rc.sh` and is set as default profile — every `Ctrl+\`` terminal also gets the `myclaude` alias.
 
 **Named volumes**:
 - `claude-code-bashhistory-${devcontainerId}` → `/commandhistory`
@@ -42,6 +45,12 @@ Run via `postStartCommand` in order:
 **`init-github-mcp.sh`**: Detects arch (x86_64/aarch64), copies the appropriate binary from `scripts/opt/` to `/home/claude/.local/bin/github-mcp-server`.
 
 **`load-projects.sh`**: Clones project repos into `/workspace/claude/<repo-name>`. The `-live` flag designates the primary project — seeds memory from `.claude/memory/` into the named volume, writes path to `~/live-project`.
+
+**`claude-rc.sh`**: Custom rcfile sourced by the integrated terminal (both auto-open task and any `Ctrl+\`` shells). Sources `~/.bashrc` + `~/.profile`, then defines:
+```bash
+alias myclaude='cd $(cat ~/live-project 2>/dev/null || echo ~) && claude --dangerously-skip-permissions'
+```
+User types `myclaude` to launch claude pinned to the live project.
 
 ## MCP Binary
 

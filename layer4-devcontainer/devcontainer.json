@@ -16,7 +16,13 @@
         "claudeCode.useTerminal": true,
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "terminal.integrated.defaultProfile.linux": "bash"
+        "terminal.integrated.profiles.linux": {
+          "claude-bash": {
+            "path": "bash",
+            "args": ["--rcfile", "/workspace/.devcontainer/scripts/claude-rc.sh"]
+          }
+        },
+        "terminal.integrated.defaultProfile.linux": "claude-bash"
       }
     }
   },
@@ -31,12 +37,13 @@
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "CLAUDE_CONFIG_DIR": "/home/claude/.claude",
-    "SSH_AUTH_SOCK": "/home/claude/.ssh/agent.sock"
+    "SSH_AUTH_SOCK": "/home/claude/.ssh/agent.sock",
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
   "postStartCommand": "sudo /usr/local/bin/init-firewall.sh && /workspace/.devcontainer/scripts/init-ssh.sh && /workspace/.devcontainer/scripts/init-gh-token.sh && /workspace/.devcontainer/scripts/init-github-mcp.sh && /workspace/.devcontainer/scripts/load-projects.sh -live sun2admin/builder-project",
   "waitFor": "postStartCommand",
-  "postAttachCommand": "bash --login -c 'cd $(cat ~/live-project 2>/dev/null || echo ~) && claude --dangerously-skip-permissions'",
   "shutdownAction": "stopContainer"
 }
