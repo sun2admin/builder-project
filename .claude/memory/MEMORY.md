@@ -50,6 +50,7 @@
 - [feedback-check-mounts-first.md](feedback-check-mounts-first.md) — Check existing mounts before creating new directories
 - [feedback-credentials-shell-env.md](feedback-credentials-shell-env.md) — Use ~/.profile (chmod 600) for credential env vars, not /etc/environment
 - [feedback-ghcr-always-private.md](feedback-ghcr-always-private.md) — All GHCR images must always be private
+- [feedback-new-repos-private-by-default.md](feedback-new-repos-private-by-default.md) — All new GitHub repos default to private unless user explicitly specifies otherwise
 - [feedback-init-scripts-not-in-image.md](feedback-init-scripts-not-in-image.md) — init-ssh.sh and init-gh-token.sh must never be baked into the container image
 - [feedback-new-plugin-layer-output.md](feedback-new-plugin-layer-output.md) — Don't repeat menu options in explanatory text after displaying the menu
 - [feedback-new-plugin-layer-prebuilt-repo-verification.md](feedback-new-plugin-layer-prebuilt-repo-verification.md) — Verify GitHub repo/image exists before offering prebuilt
