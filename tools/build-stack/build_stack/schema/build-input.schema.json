@@ -16,7 +16,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 1
+      "enum": [1, 2]
     },
     "build_category": {
       "description": "Top-level builds/<category>/ namespace. Default: project_repo owner OR gh user (sandbox).",
@@ -40,13 +40,44 @@
       ]
     },
     "plugin_repos": {
-      "description": "0+ plugin repos to merge into the build.",
+      "description": "0+ free-form plugin repos to merge into the build (legacy; use plugin_selections for marketplace-resolved plugins).",
       "type": "array",
       "items": {
         "type": "string",
         "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
       },
       "uniqueItems": true
+    },
+    "use_recommended_l3": {
+      "description": "When true, base the stack on the recommended L3 image (recommended-plugins.json baked in). When false, base on L2 directly and install all chosen plugins via devcontainer features.",
+      "type": "boolean",
+      "default": false
+    },
+    "plugin_selections": {
+      "description": "Marketplace-resolved plugins selected via the shared selector flow. Each entry is analyzed individually via `analyze-plugin <marketplace> <plugin>` (sparse-checkout per Q3). When use_recommended_l3 is true, recommended plugins are excluded from this list (they ride the baked image instead).",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["marketplace", "plugin"],
+        "additionalProperties": false,
+        "properties": {
+          "marketplace": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+          },
+          "plugin": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          }
+        }
+      }
     },
     "ai_clis": {
       "description": "Ordered list of AI CLIs. ai_clis[0] is the primary (baked into L2 image); ai_clis[1+] install via L4 init scripts.",
