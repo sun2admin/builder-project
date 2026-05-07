@@ -1,7 +1,6 @@
 #!/bin/bash
-# Shared library for build-stack skill
-# Copied from build-workspace/lib.sh (which is slated for deletion).
-# build-stack must remain self-contained — do not source from build-workspace.
+# Shared library for build-stack skill (self-contained).
+# Adapted from the deleted build-workspace skill's lib.sh.
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

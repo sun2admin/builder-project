@@ -47,7 +47,7 @@ Prompts for repo if not provided.
 - `-v` / `--verbose` → emit markdown regardless of TTY
 - Default: emit when stdout is a terminal; suppress when piped/captured
 
-**Why:** when invoked by `build-workflow` (or any wrapper), markdown noise
+**Why:** when invoked by `/build-stack` (or any wrapper), markdown noise
 floods the wrapper's terminal. Default TTY-aware behavior keeps wrapper
 output clean while preserving direct-user UX.
 
@@ -73,11 +73,13 @@ output clean while preserving direct-user UX.
 - `analyzed_repos/<owner>/<repo>/analysis.md` — human-readable summary displayed to user
 - **stdout**: path to analysis.json (for skill-to-skill consumption)
 
-## Suggested Stack Logic
+## Composition Boundary
 
-- `base_image`: `playwright_with_chromium` if browser tools detected, else `latest`
-- `ai_install`: `claude` (default)
-- `plugin_layer`: empty — build-workspace queries GitHub dynamically at build time
+This skill is a **pure detector**. It does not emit `suggested.*`,
+`firewall_required`, or any other composed stack recommendation —
+those are the sole concern of `/build-stack`. See
+`tools/build-stack/docs/DETECTION_PRINCIPLES.md` "Composition Boundary"
+section.
 
 ## Integration with build-stack
 

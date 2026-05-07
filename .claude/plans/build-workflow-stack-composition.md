@@ -18,18 +18,11 @@
 > `claude-plugins-recommended` GitHub repo + image (currently a phantom referenced
 > by `select.py:171`) — no separate item on this parent plan.
 
-> **Reference skill — `build-workspace` (time-bounded):** The existing
-> `.claude/skills/build-workspace/` skill is **reference only** during build-stack
-> development. It must not be modified. **It will be deleted after build-stack
-> ships and validates** — along with its layer sub-skills (`build-layer1..4`).
->
-> When researching a task in this plan, **first check whether `build-workspace`
-> already solves it** (menu flow, `lib.sh` helpers, `builds/<name>/workspace.env`
-> registry, dry-run wrapper, TTY/piped input handling, build-name sanitization,
-> new/clone/modify entry flow). **Copy any pattern that applies into `build-stack/`**
-> — the two skills must share no files, since `build-workspace` is going away.
-> The redesign is about composition logic + skill+tool split, not about throwing
-> away the workflow scaffolding `build-workspace` already validates.
+> **Historical note:** `build-workspace` and its `build-layer1..4` sub-skills
+> were deleted in commit `b641ece` (parent plan step 13). Patterns worth
+> preserving (menu flow, `lib.sh` helpers, dry-run wrapper, TTY/piped input
+> handling, build-name sanitization, new/clone/modify entry flow) were
+> copied into `.claude/skills/build-stack/` before deletion.
 
 > **Architectural directive (2026-05-05):** `analyze-repo` is a pure
 > detector. It scans one repo and emits raw facts. **All stack composition
@@ -41,7 +34,7 @@
 
 > **REQUIRED READING before changes:**
 > - Stack architecture → `../../CLAUDE.md` (Architecture section)
-> - Reference skill → `.claude/skills/build-workspace/` (SKILL.md, build-workspace.sh, lib.sh) — time-bounded
+> - Active build skill → `.claude/skills/build-stack/` (SKILL.md, build-stack.sh, lib.sh)
 > - Layer 4 split → [`layer4-design.md`](./layer4-design.md)
 > - Analyze-project schema → [`../skills/analyze-repo/DATA_SCHEMA.md`](../skills/analyze-repo/DATA_SCHEMA.md)
 > - Detection principles (parallel separation rule applies) → [`../skills/analyze-repo/DETECTION_PRINCIPLES.md`](../skills/analyze-repo/DETECTION_PRINCIPLES.md)
@@ -530,7 +523,7 @@ else:
     return INVOKE_NEW_PLUGIN_LAYER_BUILD(needed_plugins)
 ```
 
-If no match: invoke `/new-plugin-layer` to build new image with the union. Prompt user before triggering new builds.
+If no match: per the recommended-L3 + features hybrid (parent plan amendment 2026-05-06; sub-plans `manage-rec-plugins.md` + `deploy-stack.md`), missing plugins are delivered via devcontainer features — no new per-build L3 image is created. Image creation is owned by `/deploy-stack` and triggered only when the recommended plugin set itself changes.
 
 ### 5. Layer 4 overlay composition
 

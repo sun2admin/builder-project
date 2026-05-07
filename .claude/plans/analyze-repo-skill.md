@@ -76,8 +76,8 @@ Wait for user decision. Reference wins by default.
 
 Scan any GitHub repo and produce a complete dependency + configuration map
 needed to stand up that project inside our 4-layer container stack. The output
-feeds directly into `build-workspace` as structured inputs for each layer skill,
-and is also human-readable for review.
+feeds directly into `/build-stack` (skill + tool) as structured inputs for the
+composition pipeline, and is also human-readable for review.
 
 ---
 
@@ -94,7 +94,7 @@ skill file) memoizes `apt-cache show` results so we don't re-query apt for the
 same tool on every run.
 
 ### Dual output: JSON (machine) + Markdown (human)
-- `analysis.json` — structured, consumed by `build-workspace` layer skills
+- `analysis.json` — structured, consumed by the `/build-stack` tool's compose pipeline
 - `analysis.md` — printed to stdout + saved, for human review
 - Both written atomically at end of scan via a single Python block
 - Schema is versioned implicitly by field presence; additive changes are safe
@@ -448,7 +448,7 @@ Set `firewall_required: true` if:
   if present, otherwise inferred from language + `runtime_versions`:
   `rust:1.88`, `golang:1.21`, `python:3.12`, `node:lts`
 - `ai_install`: always `claude` (default; could be parameterized)
-- `plugin_layer`: empty — resolved at build-workspace runtime by querying GHCR
+- `plugin_layer`: empty — resolved at `/build-stack` runtime (now superseded by the recommended-L3 + features hybrid; this field was removed from analyze-repo per boundary rule, see Migration Item 1 below)
 - `dockerfile_from` fallback: `node:lts`, `python:3`, `golang:latest`, `rust:latest` — never `python:latest`
   (`python:latest` is an anti-pattern; `python:3` pins to the Python 3 branch at minimum)
 
@@ -644,7 +644,7 @@ version pins, correctly skipped `pip install -r requirements.txt`,
 
 Per the architectural directive that `analyze-repo` is a pure detector,
 the following composition fields and logic must be **removed** from this
-skill and migrated to `build-workflow`:
+skill and migrated to `/build-stack`:
 
 ### Migration Item 1: Remove `suggested` block ✅ FIXED (2026-05-05)
 Currently emitted:
@@ -660,7 +660,7 @@ All four are stack-composition opinions, not analysis facts. Move logic to
 build-workflow per `build-workflow-stack-composition.md` §2-§4.
 
 **Action items:**
-- Search builder-project for downstream consumers of `suggested.*` (build-workspace.sh, layer scripts) — update in lockstep
+- Search builder-project for downstream consumers of `suggested.*` (now `/build-stack` tool modules) — update in lockstep
 - Drop the `suggested` JSON field from `analyze-repo.sh`
 - Drop the "Suggested Stack" markdown table at end of report
 - Update `DATA_SCHEMA.md` schema table — remove `suggested` rows
@@ -687,9 +687,9 @@ Add a new section to `DETECTION_PRINCIPLES.md` that codifies the doctrine:
 
 > **Detection ≠ provisioning.** This skill emits raw signals about what a
 > repo declares. It does NOT emit composed/derived/opinionated values about
-> how to provision a stack. Composition belongs to `build-workflow`. If a
+> how to provision a stack. Composition belongs to `/build-stack`. If a
 > proposed field would be computed by combining other fields with
-> opinion/preference, push back and route the change to build-workflow.
+> opinion/preference, push back and route the change to `build-workflow-stack-composition.md`.
 
 **Action items:**
 - Edit `DETECTION_PRINCIPLES.md` — add "Composition Boundary" section
@@ -708,7 +708,7 @@ fields are gone, not present.
 
 ### Migration Item 5: TTY-aware stdout — suppress markdown when piped ✅ FIXED (2026-05-05)
 **Problem:** skill currently prints full markdown report to stdout
-unconditionally. When invoked by `build-workflow` (or any wrapper), this
+unconditionally. When invoked by `/build-stack` (or any wrapper), this
 floods the wrapper's terminal with the per-repo report — noise during
 interactive prompts. Direct user invocation should still see the report.
 
@@ -814,30 +814,15 @@ Original `ts_imports`/`py_imports` arrays retained (raw input to dedup).
 
 ---
 
-## Integration with build-workspace
+## Integration with /build-stack
 
-When `analyze-repo` feeds `build-workspace`, the consumer mapping is:
-
-| analysis.json field | build-workspace layer | Usage |
-|---|---|---|
-| `suggested.base_image` | Layer 1 | Pre-select base image variant |
-| `suggested.dockerfile_from` | Layer 1 | Suggested FROM for custom Dockerfile |
-| `suggested.ai_install` | Layer 2 | Pre-select claude vs gemini |
-| `suggested.plugin_layer` | Layer 3 | Pre-select plugin layer (if known) |
-| `system_packages` + `inferred.tools_new` | Layer 1 Dockerfile | apt-get packages to add |
-| `system_deps` | Layer 1 Dockerfile | Resolved apt packages for inferred tools |
-| `external_services.domains` | Layer 1 init-firewall.sh | Allowlist domains |
-| `container.capabilities` | Layer 4 devcontainer.json `runArgs` | `--cap-add` flags |
-| `container.volumes` | Layer 4 devcontainer.json `mounts` | Named volumes + credential mounts |
-| `container.env` | Layer 4 devcontainer.json `containerEnv` | Env var passthroughs |
-| `container.post_start` | Layer 4 devcontainer.json | `postStartCommand` |
-| `container.extensions` | Layer 4 devcontainer.json | VS Code extensions |
-| `credentials_required` | Layer 4 init scripts | Determine which init-*.sh are needed |
-| `mcp_servers` | Layer 4 `.mcp.json` | MCP server config |
-| `firewall_required` | Layer 4 devcontainer.json | Include `--cap-add NET_ADMIN/NET_RAW` |
-| `ports.inbound` | Layer 4 devcontainer.json `forwardPorts` | Port forwarding |
-| `libraries.rust` | Layer 1 Dockerfile (rustup/cargo) | Rust crate deps for build cache |
-| `inferred.ci_tools` | Layer 1 Dockerfile | Additional tools revealed by CI config |
+This table was migrated to `tools/build-stack/docs/DATA_SCHEMA.md`'s
+"Consumer Contract" section as the single source of truth (rows now
+point at `/build-stack` tool with §-section refs into
+`build-workflow-stack-composition.md`). Removed `suggested.*` and
+`firewall_required` rows (those fields are no longer emitted by
+analyze-repo per the composition boundary). See DATA_SCHEMA.md for
+the current mapping.
 
 ---
 
@@ -871,23 +856,24 @@ Caller never sees the clone path; stdout gets only `analysis.json` path.
 
 ### No interactive input
 Skill takes `owner/repo` as `$1` or prompts once via `read_input`. Designed to
-be called non-interactively from `build-workspace`.
+be called non-interactively from `/build-stack`.
 
-### lib.sh dependency
-Sources `../build-workspace/lib.sh` for `read_input`, color vars (`$BLUE`, `$GREEN`,
-`$RED`, `$NC`). All display output goes to `>&2` so stdout carries only the
-JSON file path for capture: `result=$(bash analyze-repo.sh repo 2>/dev/tty)`.
+### lib.sh dependency (historical, pre-Phase-3)
+Originally sourced `../build-workspace/lib.sh` for `read_input` and color vars.
+Post-Phase-3 cutover (commit `404950e`), the skill is a 59-line wrapper that
+execs `python -m build_stack analyze` and no longer sources lib.sh.
 
-### Builds registry
-Results saved to `builds/<owner>/<repo>/analysis.json` inside the builder-project repo,
-mirroring the GitHub `owner/repo` hierarchy. This organizes builds by user/org at the
-top level — `builds/anthropics/`, `builds/sun2admin/`, etc.
+### Cache layout
+Results saved to `analyzed_repos/<owner>/<repo>/analysis.json` (post Phase 1.5
+migration, commit `e592e9f`), mirroring the GitHub `owner/repo` hierarchy.
+This organizes the cache by user/org at the top level — `analyzed_repos/anthropics/`,
+`analyzed_repos/sun2admin/`, etc.
 
-**Two-level navigation for build-workspace:**
+**Two-level navigation for `/build-stack`:**
 When a user asks to load or resume an existing analysis, the flow is:
-1. List unique owners: `ls builds/` → show as menu
-2. User picks an owner → list that owner's repos: `ls builds/<owner>/`
-3. User picks a repo → load `builds/<owner>/<repo>/analysis.json`
+1. List unique owners: `ls analyzed_repos/` → show as menu
+2. User picks an owner → list that owner's repos: `ls analyzed_repos/<owner>/`
+3. User picks a repo → load `analyzed_repos/<owner>/<repo>/analysis.json`
 
 This replaces the previous flat list of all repo names, which becomes hard to
 read when multiple owners have repos with similar names.

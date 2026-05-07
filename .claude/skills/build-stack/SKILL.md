@@ -54,15 +54,6 @@ Phase 3-6: Tool work (Python)
 Display summary to user
 ```
 
-## Reference: existing `build-workspace` skill
-
-The `build-workspace` skill (slated for deletion after build-stack ships) implements the workflow scaffolding patterns reused here:
-- Menu I/O via `lib.sh` (colors, `run_cmd`, `read_input`, `input_selection`) — copied verbatim
-- `builds/<name>/` registry directory pattern — extended with `build.json`
-- New/clone/modify entry flow — adapted to read/write `build.json` instead of `workspace.env`
-- Build-name prompt + sanitization — same logic
-- Dry-run wrapper — same `run_cmd` pattern
-
 ## Tool dependency
 
 The tool must be installed where this skill runs:

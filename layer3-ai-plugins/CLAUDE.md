@@ -36,7 +36,7 @@ Plugins cached at `/opt/claude-custom-plugins` inside the image.
 
 ## Managing Plugin Layers
 
-Use the `/new-plugin-layer` skill (`.claude/skills/new-plugin-layer/`) to create, search, and manage plugin layer configurations.
+Use the `/manage-rec-plugins` skill (`.claude/skills/manage-rec-plugins/`) to curate the recommended L3 image's plugin set, and `/manage-known-marketplaces` to manage marketplace sources. The legacy `/new-plugin-layer` skill (still present at `layer3-ai-plugins/.claude/skills/new-plugin-layer/`) built per-config L3 variants under the old architecture and will be removed once the recommended-L3 + features hybrid (per `.claude/plans/manage-rec-plugins.md`) ships.
 
 Plugin definitions are tracked in `standards.json` (built images) and `plugin-lists.json` (plugin selections).
 

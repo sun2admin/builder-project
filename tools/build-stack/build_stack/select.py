@@ -3,8 +3,10 @@
 L1: capability set algebra. Pick smallest L1 variant whose `provides` covers
 the aggregated `required_caps`. User override allowed only if it still covers.
 
-L3: match required `claude_plugins` against pre-discovered images, pick
-smallest superset; fall back to /new-plugin-layer build flow.
+L3: match required `claude_plugins` against the recommended L3 image when
+`use_recommended_l3` is set; otherwise return empty (plugins are delivered
+via devcontainer features per the hybrid plugin-delivery architecture in
+build-workflow-stack-composition.md amendment 2026-05-06).
 
 See `.claude/plans/build-workflow-stack-composition.md` §2 and §4.
 """
