@@ -390,3 +390,12 @@ Lean (a): pyyaml is universal, well-maintained. tomllib is stdlib in Python ≥ 
 ## Old Open Questions (resolved or absorbed)
 
 - ~~Tool entry mode for analyze~~ → resolved: `python -m build_stack analyze <repo>`
+
+---
+
+## Follow-up Sub-Plans (post-2026-05-06)
+
+This plan is complete (Phase 1.5 + 2 + 3 + aggregate/select/compose/emit + /build-stack skill body all shipped). Subsequent work split into focused sub-plans:
+
+- **`./manage-rec-plugins.md`** — `/manage-rec-plugins` + `/manage-known-marketplaces` skill pair, shared selector lib, hybrid plugin delivery model (recommended L3 image + devcontainer features), per-plugin sparse-checkout analyze. Locked SPQ1–12 + MKMQ1–6. MCP server handling deferred to MCPQ1–7 thread within.
+- **`./deploy-stack.md`** — *(not yet written)* `/deploy-stack` skill: image build/rebuild, GHCR push, devcontainer rebuild trigger. Bookmarked from /build-stack handoff (deploy y/N prompt).

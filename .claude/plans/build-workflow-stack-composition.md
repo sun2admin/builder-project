@@ -4,6 +4,18 @@
 **Tool path:** `tools/build-stack/` (new Python CLI — composition engine)
 **Status:** Active — `build-stack` is a complete redesign. UX as a skill (bash); composition logic as a separate Python tool. The skill collects intent and writes `build.json`; the tool reads `build.json` and performs all heavy lifting.
 
+> **Architectural amendment (2026-05-06) — Hybrid plugin delivery:** Plugin layer
+> shifted from per-build L3 variants to a **single recommended L3 image + devcontainer
+> features** for additional plugins. Build flow: `/build-stack` first asks "include
+> recommended plugins? y/N", then runs the plugin selector for additions. Recommended
+> plugins ride the baked L3 image; non-recommended plugins install via features at
+> container startup. Sub-plan: **`./manage-rec-plugins.md`** (also covers
+> `/manage-known-marketplaces`, shared selector lib, per-plugin sparse-checkout analyze,
+> MCP-server handling open questions MCPQ1–7).
+>
+> Image build / GHCR push / devcontainer rebuild deferred to **`./deploy-stack.md`**
+> (sub-plan stub — not yet written).
+
 > **Reference skill — `build-workspace` (time-bounded):** The existing
 > `.claude/skills/build-workspace/` skill is **reference only** during build-stack
 > development. It must not be modified. **It will be deleted after build-stack
