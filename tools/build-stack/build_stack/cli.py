@@ -75,6 +75,22 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_analyze_plugin(args: argparse.Namespace) -> int:
+    """Single-plugin detection (sparse-checkout from a marketplace).
+
+    Outputs analyzed_repos/plugins/<mkt_owner>/<mkt_repo>/<plugin>/analysis.json
+    and prints its path on stdout. The marketplace.json is fetched + cached
+    on first use under analyzed_repos/marketplaces/<owner>/<repo>/.
+    """
+    from build_stack.analyzers import plugin as plugin_mod
+
+    repo_root = Path(__file__).resolve().parents[3]
+    data = plugin_mod.analyze_plugin(args.marketplace, args.plugin, repo_root=repo_root)
+    json_path = plugin_mod.write_plugin_outputs(data, repo_root, args.marketplace, args.plugin)
+    print(json_path)
+    return 0
+
+
 def cmd_list_ai_clis(args: argparse.Namespace) -> int:
     """Return valid AI CLI choices for the skill's AI CLI menu.
 
@@ -121,6 +137,11 @@ def build_parser() -> argparse.ArgumentParser:
     g_analyze.add_argument("--human", "-v", action="store_true", help="Force markdown emit on stderr")
     g_analyze.add_argument("--quiet", "-q", action="store_true", help="Suppress markdown emit")
     p_analyze.set_defaults(func=cmd_analyze)
+
+    p_analyze_plugin = subs.add_parser("analyze-plugin", help="Sparse-checkout + analyze single plugin from a marketplace")
+    p_analyze_plugin.add_argument("marketplace", help="owner/repo of marketplace (must be in marketplaces.json)")
+    p_analyze_plugin.add_argument("plugin", help="plugin name (must exist in marketplace.json)")
+    p_analyze_plugin.set_defaults(func=cmd_analyze_plugin)
 
     p_list_ai = subs.add_parser("list-ai-clis", help="List valid AI CLI choices for /build-stack skill menu")
     p_list_ai.add_argument("--json", action="store_true", help="Emit JSON array on stdout")

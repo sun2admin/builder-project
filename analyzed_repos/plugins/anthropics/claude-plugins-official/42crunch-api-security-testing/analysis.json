@@ -1,0 +1,91 @@
+{
+  "repo": "anthropics/claude-plugins-official#42crunch-api-security-testing",
+  "project": "42crunch-api-security-testing",
+  "analyzed_at": "2026-05-07",
+  "purpose": "Automate API security directly in Claude Code with 42Crunch - audit OpenAPI specs, detect vulnerabilities aligned with OWASP API Security risks (including BOLA/BFLA), and apply AI-powered fixes.",
+  "primary_language": "",
+  "languages": [],
+  "runtime_extras": [],
+  "runtime_versions": {},
+  "dockerfile_base": "",
+  "system_packages": [],
+  "extra_binaries": [],
+  "global_js_packages": [],
+  "dockerfile_python_installs": [],
+  "dockerfile_go_installs": [],
+  "libraries": {
+    "node": [],
+    "python": [],
+    "go": [],
+    "rust": []
+  },
+  "ports": {
+    "inbound": []
+  },
+  "external_services": {
+    "domains": [
+      "42crunch.com",
+      "eu.42crunch.cloud",
+      "github.com",
+      "repo.42crunch.com",
+      "us.42crunch.cloud",
+      "your-org.42crunch.cloud"
+    ],
+    "source": "source_scan"
+  },
+  "env_vars": [],
+  "browser_tools": [],
+  "github_api_usage": false,
+  "container": {
+    "capabilities": [],
+    "volumes": [],
+    "env": {},
+    "remote_user": "",
+    "post_start": "",
+    "post_create": "",
+    "post_attach": "",
+    "post_start_chain": [],
+    "post_create_chain": [],
+    "init_scripts": [],
+    "extensions": [],
+    "vscode_settings": {},
+    "workspace_mount": "",
+    "workspace_folder": "",
+    "wait_for": "",
+    "shutdown_action": ""
+  },
+  "credentials_required": {
+    "api_keys": [],
+    "tokens": [],
+    "ssh": false,
+    "other": []
+  },
+  "mcp_servers": [],
+  "claude_plugins": [],
+  "inferred": {
+    "tools": [],
+    "tools_new": [],
+    "tools_confirmed": [],
+    "py_imports": [],
+    "py_imports_new": [],
+    "py_imports_confirmed": [],
+    "ts_imports": [],
+    "ts_imports_new": [],
+    "ts_imports_confirmed": [],
+    "ci_tools": []
+  },
+  "system_deps": {},
+  "schema_version": 2,
+  "is_marketplace": false,
+  "marketplace_name": "",
+  "marketplace_plugins": [],
+  "marketplace": "anthropics/claude-plugins-official",
+  "plugin": "42crunch-api-security-testing",
+  "plugin_source": {
+    "kind": "git-subdir",
+    "url": "https://github.com/42Crunch-AI/claude-plugins.git",
+    "path": "plugins/api-security-testing",
+    "ref": "v1.0.1",
+    "sha": "56273e0e20762d76640838300a7431c4260cad32"
+  }
+}
