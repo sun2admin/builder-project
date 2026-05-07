@@ -1,8 +1,8 @@
 # Plan Note: Layer 4 Terminal Launch / Geometry Fix
 
-**Status:** Open. Defer until current build-stack work is past.
+**Status:** Open. Stopgap reverted 2026-05-07 (made it worse). Permanent fix in `build-containers-with-claude` is now the priority; pick up next session.
 **Repo affected:** `build-containers-with-claude` (Layer 4 devcontainer), NOT builder-project.
-**Stopgap applied (2026-05-07):** `"tui": "fullscreen"` in user `~/.claude/settings.json` — alt-screen renderer handles resize cleaner than `default`.
+**Stopgap attempted (2026-05-07, REVERTED same day):** `"tui": "fullscreen"` in user `~/.claude/settings.json`. Outcome: worse than default — wrap/resize behavior degraded further. Removed.
 
 ## Symptom
 
@@ -50,14 +50,13 @@ Three structural issues:
 
 Recommend **1 + 2a**.
 
-## Stopgap already in place
+## Stopgap result
 
-- `~/.claude/settings.json` → `"tui": "fullscreen"` (this session). Personal display pref per CLAUDE.md exception. Renderer handles resize/reflow more robustly than `default`. May or may not fully resolve the wrap mismatch — verify after a fresh attach.
+- `~/.claude/settings.json` → `"tui": "fullscreen"` was tried, made the problem worse (resize/reflow degraded further), and has been removed. Do **not** re-apply. Default renderer is the current baseline.
 
 ## Resume conditions
 
-- After current build-stack tasks land (image revert ✓ done, plugin_selections install pending, BSQ3/BSQ9 deferred).
-- Or when fullscreen TUI proves insufficient and user wants a permanent fix.
+- Next session: focus is the permanent fix in `build-containers-with-claude/.devcontainer/devcontainer.json` (Required #1 + Option 2a above).
 
 ## Cross-references
 
