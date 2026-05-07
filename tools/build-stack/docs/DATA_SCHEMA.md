@@ -34,9 +34,11 @@ tools/build-stack/build_stack/data/
 ```
 
 The `tool-deps.json` cache lives with the build-stack tool (not the
-analyze-repo skill) because it is consumed by both the bash skill (during
-Phase 1/2 of the analyze-repo skill→tool absorption) and the Python port
-(once Phase 3 cutover lands). Single canonical location avoids drift.
+analyze-repo skill) because it is consumed by the Python implementation
+in `tools/build-stack/build_stack/analyzers/`. Post-Phase-3 cutover
+(commit `404950e`), the analyze-repo skill is a 59-line bash wrapper
+that execs `python -m build_stack analyze`, so the cache has a single
+canonical owner.
 
 ### Output directory (analyzed_repos cache)
 Output lives **outside** the skill at the repo root:
@@ -129,7 +131,7 @@ Checklist:
 3. Add markdown rendering section
 4. Update this schema table
 5. Update `analyze-repo-skill.md` JSON Schema example
-6. Tell `build-workspace` if it should consume the new field
+6. Tell `/build-stack` if it should consume the new field (and add a row to the Consumer Contract table below)
 
 ---
 
@@ -167,27 +169,26 @@ Initial state: `{}`. Grows incrementally; committed to version control.
 
 ## Consumer Contract
 
-Each `analysis.json` field maps to a specific layer skill output target:
+Each `analysis.json` field is consumed by the `/build-stack` tool. Section
+references point into [`build-workflow-stack-composition.md`](../../../.claude/plans/build-workflow-stack-composition.md)
+where the per-field merge rule and composition decision is specified.
+The plan is the durable contract; tool source modules (`select.py`,
+`compose.py`, `aggregate.py`, `emit.py`) implement it but may refactor.
 
 | `analysis.json` field | Consumer | How it's used |
 |---|---|---|
-| `system_packages` + `inferred.tools_new` | `build-layer1` Dockerfile | apt-get packages to add |
-| `system_deps` | `build-layer1` Dockerfile | Resolved apt packages for inferred tools |
-| `global_js_packages` | `build-layer1` Dockerfile | JS pkg-manager globals (npm/pnpm/yarn/bun) to add |
-| `external_services.domains` | `build-layer1` `init-firewall.sh` | Allowlist domains |
-| `libraries.rust` | `build-layer1` Dockerfile | Rust crate deps for build cache |
-| `inferred.ci_tools` | `build-layer1` Dockerfile | Additional tools revealed by CI config |
-| `container.capabilities` | `build-layer4` devcontainer.json `runArgs` | `--cap-add` flags |
-| `container.volumes` | `build-layer4` devcontainer.json `mounts` | Named volumes + credential mounts |
-| `container.env` | `build-layer4` devcontainer.json `containerEnv` | Env var passthroughs |
-| `container.post_start` | `build-layer4` devcontainer.json | `postStartCommand` (raw string, back-compat) |
-| `container.post_start_chain` | `build-layer4` | per-step init script enumeration; pick scripts to bundle into devcontainer |
-| `container.init_scripts` | `build-layer4` | list of in-repo scripts to include in workspace `.devcontainer/scripts/` |
-| `container.extensions` | `build-layer4` devcontainer.json | VS Code extensions |
-| `credentials_required` | `build-layer4` init scripts | Determine which init-*.sh are needed |
-| `mcp_servers` | `build-layer4` `.mcp.json` | MCP server config |
-| `ports.inbound` | `build-layer4` devcontainer.json `forwardPorts` | Port forwarding |
-| `claude_plugins` | `build-layer3` | Plugin layer selection signal |
+| `system_packages`, `inferred.tools_new`, `inferred.ci_tools`, `system_deps`, `global_js_packages` | `/build-stack` tool — §2 | L1 capability cover input; falls through to §5 L4 install when a needed capability is not bakeable into any L1 variant |
+| `libraries.rust` | `/build-stack` tool — §1 | Aggregated for cross-repo merge; informational signal in `aggregated.json` |
+| `external_services.domains` | `/build-stack` tool — §7 | Firewall extension diff vs L1 `init-firewall.sh` allowlist; emit `extra-domains.sh` when diff non-empty |
+| `claude_plugins` | `/build-stack` tool — §4 | L3 plugin layer pick (set-cover with monotone preference); falls through to recommended-L3 + features hybrid per parent plan amendment |
+| `mcp_servers` | `/build-stack` tool — §1 | Aggregation merge: union by `name`; conflict on duplicate name fails the build |
+| `credentials_required` | `/build-stack` tool — §6 | Credentials wiring: `containerEnv` passthrough (default) or `/run/credentials/<name>` mount per per-cred override |
+| `container.capabilities` | `/build-stack` tool — §7 | `runArgs --cap-add NET_ADMIN/NET_RAW` derivation when iptables-touching init scripts present |
+| `container.volumes` | `/build-stack` tool — §5 | Devcontainer `mounts` (deduped by `target` path during aggregation per §1) |
+| `container.env` | `/build-stack` tool — §5 | Devcontainer `containerEnv` |
+| `container.post_start`, `container.post_start_chain`, `container.init_scripts` | `/build-stack` tool — §8 | Init script chain assembly under partial order constraints (firewall first, `load-projects.sh` last); emits final `postStartCommand` |
+| `container.extensions` | `/build-stack` tool — §5 | Devcontainer VS Code extensions |
+| `ports.inbound` | `/build-stack` tool — §5 | Devcontainer `forwardPorts` |
 
 ## Schema Stability
 

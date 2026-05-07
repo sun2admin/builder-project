@@ -13,7 +13,7 @@ caught during prior development. Treat as a regression suite.
 | `anthropics/claude-code` | Node/bun, Dockerfile, firewall, plugins | System pkgs, domains, capabilities, plugin detection |
 | `sun2admin/build-containers-with-claude` | Shell-only, no Dockerfile, credential mounts | Inference path, SSH detection, volume parsing |
 | `sun2admin/builder-project` | Multi-layer, mixed shell+YAML | Cross-file inference, layer-aware paths |
-| `anthropics/connect-rust` | Rust, Cargo workspace, Taskfile, no Dockerfile | Rust libs (workspace `rglob`), CI tools, suggested FROM |
+| `anthropics/connect-rust` | Rust, Cargo workspace, Taskfile, no Dockerfile | Rust libs (workspace `rglob`), CI tools, language detection without Dockerfile |
 | `santifer/career-ops` | Node, Playwright, .env.example, data-file URLs | HTML purpose strip, credential dedup, `.nvmrc` |
 | `danielrosehill/claude-code-projects-index` | Astro static site, large `package-lock.json` | `node_modules` exclusion, lock-file URL noise filter |
 | `anthropics/claude-code-security-review` | GitHub Action, Python+bun, no root manifests | TS stdlib filter, language file-scan fallback |
@@ -24,7 +24,7 @@ caught during prior development. Treat as a regression suite.
 
 For each test repo:
 
-1. **Run cleanly:** `bash analyze-repo.sh <owner>/<repo>` — exit 0, no errors
+1. **Run cleanly:** `python -m build_stack analyze <owner>/<repo>` (or invoke the `/analyze-repo` skill, which is now a 59-line wrapper around the same command post-Phase-3 cutover) — exit 0, no errors
 2. **JSON parses:** `jq . analyzed_repos/<owner>/<repo>/analysis.json >/dev/null`
 3. **Known facts present:** every fact known by manual inspection appears
    in the right field (not lost, not in wrong category)

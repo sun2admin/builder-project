@@ -25,7 +25,7 @@ cases, and encode knowledge that belongs in the repo being analyzed.
 
 **Detection ≠ provisioning.** This skill emits raw signals about what a repo
 declares. It does NOT emit composed/derived/opinionated values about how to
-provision a stack. Composition belongs to `build-workflow`.
+provision a stack. Composition belongs to `/build-stack` (skill + tool).
 
 **Forbidden in this skill:**
 - Image-variant selection (`suggested.base_image`, `suggested.dockerfile_from`)
@@ -35,8 +35,8 @@ provision a stack. Composition belongs to `build-workflow`.
 - "What features should the project devcontainer install" decisions
 
 **If a proposed field would be computed by combining other fields with
-opinion/preference, it belongs in `build-workflow`.** Push back, route the
-change to the build-workflow plan instead.
+opinion/preference, it belongs in `/build-stack`.** Push back, route the
+change to [`build-workflow-stack-composition.md`](../../../.claude/plans/build-workflow-stack-composition.md) instead.
 
 **Test the boundary:** every analyze-repo test should pass without any
 compositional output. If a test would break without `suggested.*`, the test

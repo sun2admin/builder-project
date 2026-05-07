@@ -669,8 +669,11 @@ When a feature becomes ubiquitous:
      - Phase 6 (emit): aggregated.json, devcontainer.json, workspace.env writers; output alongside input file (skill controls placement via staging dir)
 8. 🚧 TODO — Implement `/build-stack` skill body per "Skill UX Design" section above.
 9. ✅ DONE — `.gitignore` entry `builds/.staging/` present (atomic-write staging dir).
-10. 🚧 TODO — Add OCI source label requirement to L3 build CI (per §1 plugin source-repo discovery).
-11. 🚧 TODO — Update reference docs (DATA_SCHEMA, DETECTION_PRINCIPLES, TESTING) to reflect removed fields + boundary rule (subsumed in sub-plan Phase 2-3).
+10. ⏭️  SUPERSEDED — OCI source label backfill on the 8 standalone L3 plugin repos. Architecture pivoted to a single recommended L3 image + devcontainer features (parent plan amendment 2026-05-06; sub-plans `manage-rec-plugins.md` and `deploy-stack.md`). The 8 legacy plugin repos will be manually deleted; OCI label work now lives in `/deploy-stack` for the future `claude-plugins-recommended` image. The label requirement itself is still documented in `layer3-ai-plugins/CLAUDE.md`, but the 8-repo backfill list there is obsolete and can be cleaned up alongside the broader L3 doc refresh (out of scope for this step).
+11. ✅ DONE (2026-05-07) — Updated reference docs to reflect removed fields + skill+tool boundary:
+   - `tools/build-stack/docs/DATA_SCHEMA.md` — Consumer Contract table re-pointed at `/build-stack` tool with §-section refs into this plan; "Adding a new field" checklist now points at `/build-stack`; tool-deps.json paragraph updated for post-Phase-3 cutover state.
+   - `tools/build-stack/docs/DETECTION_PRINCIPLES.md` — "Composition belongs to" and "route the change to" clauses updated from `build-workflow` to `/build-stack` + plan link. The `suggested.*`/`firewall_required` "Forbidden in this skill" list intentionally retained as boundary marker.
+   - `tools/build-stack/docs/TESTING.md` — connect-rust verifies-column drops "suggested FROM" (no longer emitted); verification-protocol command line updated to `python -m build_stack analyze` (Phase-3 wrapper still works as the skill).
 12. 🚧 TODO — Validate end-to-end: scaffold a stack from this builder-project repo using `/build-stack`, compare output to existing devcontainer.json.
 13. ✅ DONE — Deleted `build-workspace` skill + `build-layer1..4` sub-skills (commit `b641ece`).
 
