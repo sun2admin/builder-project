@@ -32,6 +32,7 @@
 - [project-plugin-lists.md](project-plugin-lists.md) — Finalized plugin lists: 11 base, 22 coding, 15 external
 - [reference-plugins-vs-skills.md](reference-plugins-vs-skills.md) — Plugins (internal to Claude) vs skills (user-invoked slash commands)
 - [project-claude-code-actions-placement.md](project-claude-code-actions-placement.md) — claude-code-action and security-review are GitHub Actions (CI only), not container config
+- [reference-mcp-loading-mechanisms.md](reference-mcp-loading-mechanisms.md) — 4 ways MCP servers reach a session (none default with Claude Code install): project .mcp.json, user .mcp.json, plugin-bundled, claude.ai integrations
 
 ## Current Focus
 - [project_current_focus.md](project_current_focus.md) — Active: analyzer skill only — do not start build-workspace mode/type changes yet
