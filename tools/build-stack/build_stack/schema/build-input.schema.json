@@ -9,14 +9,13 @@
     "build_category",
     "build_project",
     "project_repo",
-    "plugin_repos",
     "ai_clis"
   ],
   "additionalProperties": false,
   "properties": {
     "schema_version": {
       "type": "integer",
-      "enum": [1, 2]
+      "const": 3
     },
     "build_category": {
       "description": "Top-level builds/<category>/ namespace. Default: project_repo owner OR gh user (sandbox).",
@@ -38,15 +37,6 @@
         { "type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$" },
         { "type": "null" }
       ]
-    },
-    "plugin_repos": {
-      "description": "0+ free-form plugin repos to merge into the build (legacy; use plugin_selections for marketplace-resolved plugins).",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
-      },
-      "uniqueItems": true
     },
     "use_recommended_l3": {
       "description": "When true, base the stack on the recommended L3 image (recommended-plugins.json baked in). When false, base on L2 directly and install all chosen plugins via devcontainer features.",
