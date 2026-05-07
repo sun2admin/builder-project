@@ -59,7 +59,8 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     directly (the analyze-repo skill is now a thin bash wrapper around
     this same entry point).
 
-    stdout: path to analyzed_repos/<owner>/<repo>/analysis.json
+    stdout: path to analyzed_repos/<owner>/<repo>/analysis.json (default)
+            or to <out_dir>/analysis.json when --out-dir is given
     stderr: markdown report when emit enabled (TTY default; -v force; -q suppress)
     """
     from build_stack.analyzers import analyze as port_analyze, write_outputs
@@ -67,8 +68,11 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
     data = port_analyze(args.repo)
 
-    repo_root = Path(__file__).resolve().parents[3]
-    out_dir = repo_root / "analyzed_repos" / args.repo
+    if args.out_dir:
+        out_dir = Path(args.out_dir)
+    else:
+        repo_root = Path(__file__).resolve().parents[3]
+        out_dir = repo_root / "analyzed_repos" / args.repo
     json_path = write_outputs(data, out_dir)
 
     emit_md = args.human or (not args.quiet and sys.stdout.isatty())
@@ -137,6 +141,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_analyze = subs.add_parser("analyze", help="Standalone single-repo detection")
     p_analyze.add_argument("repo", help="owner/repo")
+    p_analyze.add_argument(
+        "--out-dir",
+        default=None,
+        help="Write analysis.json + analysis.md here instead of the default analyzed_repos/<owner>/<repo>/. Use this from tests, /build-stack staging dirs, or any caller that should not pollute the canonical cache.",
+    )
     g_analyze = p_analyze.add_mutually_exclusive_group()
     g_analyze.add_argument("--human", "-v", action="store_true", help="Force markdown emit on stderr")
     g_analyze.add_argument("--quiet", "-q", action="store_true", help="Suppress markdown emit")

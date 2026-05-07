@@ -14,17 +14,27 @@ output dicts are normalized (recursively sort all lists) and compared.
 Skips real-repo fixtures gracefully if `gh auth` is not configured.
 
 DISABLED BY DEFAULT (F7): the bash-side path invokes
-`python -m build_stack analyze`, whose `cmd_analyze` (cli.py:71-72)
-hardcodes its output to `analyzed_repos/<owner>/<repo>/analysis.json`
-with no opt-out flag. Running this test therefore rewrites live cache
-for every corpus repo as a side effect, with degenerate output that
-silently corrupts ground truth. Re-enable for intentional parity runs:
+`python -m build_stack analyze`. F7-A proper fix landed an `--out-dir`
+flag on cmd_analyze so tests can redirect output away from the canonical
+`analyzed_repos/<owner>/<repo>/analysis.json` cache. The bash skill
+wrapper does NOT yet forward `--out-dir` (it would need a wrapper-side
+flag), so the runner here either:
+  (a) calls `python -m build_stack analyze --out-dir <tmp>` directly,
+      bypassing the bash wrapper (current behavior below), or
+  (b) accepts that re-enabling via the bash wrapper still touches live
+      cache until the wrapper grows the flag.
+
+A separate flakiness issue remains (F7 mechanism note): bash-side and
+port-side run on different fresh `--depth=1` clones, so HEAD movement
+between clones can produce real divergence on high-traffic repos. That
+is a test design issue, not a detector bug — re-evaluate when refactoring
+the test to share a single clone across both sides.
+
+Re-enable for intentional parity runs:
 
     BUILD_STACK_PARITY_TEST=1 pytest tests/
 
 Tracked as F7 in plans/build-workflow-stack-composition.md step 7.
-Proper fix is option A: add --out-dir flag to cmd_analyze and
-write_outputs(), then redirect from this test. Until then, skipped.
 """
 
 from __future__ import annotations
@@ -109,22 +119,26 @@ def _normalize(data: dict) -> dict:
 
 # ─── runners ──────────────────────────────────────────────────────────────────
 
-def _run_bash_skill(repo: str) -> dict:
-    """Run the canonical bash skill; parse and return the analysis.json
-    that it writes to `analyzed_repos/<owner>/<repo>/analysis.json`.
+def _run_bash_skill(repo: str, out_dir: Path) -> dict:
+    """Run `python -m build_stack analyze --out-dir <tmp>` (the path the
+    bash skill wraps post-Phase-3) and return the parsed analysis.json.
+
+    Uses --out-dir to keep the canonical analyzed_repos/ cache intact
+    (F7-A). Bypasses the bash wrapper itself because the wrapper does
+    not yet forward --out-dir; calling the underlying tool directly is
+    semantically equivalent post-Phase-3 cutover.
     """
-    script = _bash_skill()
     r = subprocess.run(
-        [str(script), "-q", repo],
+        ["python", "-m", "build_stack", "analyze", "-q", "--out-dir", str(out_dir), repo],
         capture_output=True, text=True,
         cwd=str(_repo_root()),
         timeout=300,
     )
     if r.returncode != 0:
-        raise RuntimeError(f"bash skill failed for {repo}: {r.stderr.strip()[-500:]}")
+        raise RuntimeError(f"analyze failed for {repo}: {r.stderr.strip()[-500:]}")
     json_path = Path(r.stdout.strip())
     if not json_path.is_file():
-        raise RuntimeError(f"bash skill emitted path {json_path} but file missing")
+        raise RuntimeError(f"analyze emitted path {json_path} but file missing")
     return json.loads(json_path.read_text())
 
 
@@ -200,13 +214,13 @@ def cloned_repo(request, clone_dir, gh_authed):
 
 @pytest.mark.skipif(
     os.environ.get("BUILD_STACK_PARITY_TEST") != "1",
-    reason="F7: rewrites live analyzed_repos/ cache. Set BUILD_STACK_PARITY_TEST=1 to run intentionally.",
+    reason="F7: bash-vs-port clones can drift on high-traffic repos. Set BUILD_STACK_PARITY_TEST=1 to run intentionally.",
 )
 @pytest.mark.parametrize("cloned_repo", CORPUS, indirect=True)
-def test_parity(cloned_repo):
+def test_parity(cloned_repo, tmp_path):
     repo, clone_path = cloned_repo
 
-    bash_data = _run_bash_skill(repo)
+    bash_data = _run_bash_skill(repo, tmp_path / "bash-out")
     port_data = _run_port_on_clone(repo, clone_path)
 
     bash_norm = _normalize(bash_data)
