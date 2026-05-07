@@ -58,3 +58,4 @@
 - [feedback-plugins-first-approach.md](feedback-plugins-first-approach.md) — Always default to using available plugins first
 - [feedback-sync-always-push.md](feedback-sync-always-push.md) — sync-prj-repos-memory always pushes even if nothing new to commit
 - [feedback-use-skill-tool.md](feedback-use-skill-tool.md) — Always use the Skill tool to invoke skills with /skillname syntax
+- [feedback-questions-one-at-a-time.md](feedback-questions-one-at-a-time.md) — Always pose design/SPQ questions one at a time, never batched
