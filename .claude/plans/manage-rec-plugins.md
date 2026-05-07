@@ -247,6 +247,41 @@ Out of scope (bookmarked for `/deploy-stack` sub-plan):
 
 - **Initial recommended-plugins.json contents** — needs user to pick from anthropics/claude-plugins-official + caveman. Defer until task 2.
 - **`/deploy-stack` design** — separate sub-plan, not blocking this work.
+- **MCP server handling** — needs design pass before implementation. See next section.
+
+## MCP Servers — Pending Review
+
+Stock Claude Code installs **zero MCP servers**. Four loading mechanisms exist; each interacts with the build stack differently:
+
+| Mechanism | Source | Travels via | Stack handling |
+|---|---|---|---|
+| Project `.mcp.json` | `<project-repo>/.mcp.json` (committed) | git clone | Already handled — project repo provides at runtime |
+| User `.mcp.json` | `~/.claude/.mcp.json` | named volume / home dir | Currently unused; portability risk if introduced |
+| Plugin-bundled `.mcp.json` | `<plugin-dir>/.mcp.json` auto-loaded when plugin enabled | plugin install (baked or feature) | **Free with plugin** — e.g. baking `postman` plugin into L3 also enables postman MCP |
+| claude.ai integrations | claude.ai web account (remote OAuth) | user auth, not container | Container-agnostic; rides w/ user login |
+
+### Reference sample (this session)
+
+| MCP appearing | Mechanism | Default w/ Claude Code? |
+|---|---|---|
+| `github` | project `.mcp.json` (custom) | ❌ |
+| `plugin_postman_postman` | postman plugin bundled | ❌ (rides w/ postman plugin) |
+| `claude_ai_Gmail` | claude.ai integration | ❌ |
+| `claude_ai_Google_Drive` | claude.ai integration | ❌ |
+
+### Open Questions (MCPQ)
+
+| # | Question | Notes |
+|---|---|---|
+| MCPQ1 | Does recommended L3 ship with any MCP-bundling plugins? (postman, etc.) | Free MCPs ride along — surface to user during `/manage-rec-plugins` |
+| MCPQ2 | Should `/build-stack` show "MCPs enabled by your selection" preview? | Transparency; avoids surprise MCP exposure |
+| MCPQ3 | Should env-var requirements for plugin MCPs (e.g. `POSTMAN_API_KEY`) auto-merge into `credentials_required` during analyze? | Affects build-input + L4 emit |
+| MCPQ4 | Should we support adding non-plugin MCPs via `/build-stack`? | E.g. user-supplied custom MCP server URL → patches project `.mcp.json` |
+| MCPQ5 | Detection: does `analyze-plugin` parse `<plugin>/.mcp.json` and surface to user? | Likely yes for transparency + env-var capture |
+| MCPQ6 | Per-plugin MCP env requirements: store where? | Likely `analyzed_repos/plugins/<owner>/<repo>/<plugin>/analysis.json::mcp_servers[]` |
+| MCPQ7 | claude.ai integrations: in-scope at all, or strictly out-of-band? | Probably out — rides w/ auth, can't influence from container |
+
+Defer MCPQ resolution until after core selector + skills implemented. Plug into existing analyze pipeline at MCPQ5/MCPQ6 milestones.
 
 ## Decisions Lookup (for reference during implementation)
 
