@@ -24,6 +24,7 @@ Each layer has its own subdir with a `CLAUDE.md` containing layer-specific detai
 - **Credentials**: write to `~/.profile` (chmod 600), never `/etc/environment`; use `bash --login` in `postAttachCommand`
 - **Container user**: `claude` (bash shell)
 - **Skill creation**: always use the `/skill-creator` plugin when creating or modifying skills
+- **Settings/hooks placement**: every Claude Code customization (settings.json keys, hook scripts, statuslines, env, permissions) goes in the project `.claude/` (`/workspace/claude/builder-project/.claude/`), never in `~/.claude/` on the named volume. Reason: `~/.claude/` is container-local and lost on volume reset; project `.claude/` is git-versioned and reproducible. Personal-only prefs (theme, plugin enablement, OAuth state) are the only exception. See `.claude/plans/settings-placement-review.md` for the open question of whether stack-wide defaults should move further upstream into Layer 2/3 image baking.
 
 ## Working Across Layers
 
