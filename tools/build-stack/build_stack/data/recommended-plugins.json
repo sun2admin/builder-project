@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "_comment": "Initial seed: all plugins available in the session that defined the recommended set (2026-05-06). Edit via /manage-rec-plugins.",
+  "plugins": [
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "claude-code-setup", "category": "productivity", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "claude-md-management", "category": "productivity", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "code-review", "category": "productivity", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "code-simplifier", "category": "productivity", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "commit-commands", "category": "productivity", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "explanatory-output-style", "category": "learning", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "feature-dev", "category": "development", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "hookify", "category": "productivity", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "learning-output-style", "category": "learning", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "math-olympiad", "category": "math", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "playground", "category": "development", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "postman", "category": "development", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "pr-review-toolkit", "category": "productivity", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "ralph-loop", "category": "development", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "security-guidance", "category": "security", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "session-report", "category": "productivity", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/claude-plugins-official", "plugin": "skill-creator", "category": "development", "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "anthropics/skills", "plugin": "document-skills", "category": null, "added_at": "2026-05-06T00:00:00Z" },
+    { "marketplace": "JuliusBrussee/caveman", "plugin": "caveman", "category": "productivity", "added_at": "2026-05-06T00:00:00Z" }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "marketplaces": [
+    {
+      "owner": "anthropics",
+      "repo": "claude-plugins-official",
+      "marketplace_name": "claude-plugins-official",
+      "added_at": "2026-05-06T00:00:00Z",
+      "default": true
+    },
+    {
+      "owner": "anthropics",
+      "repo": "skills",
+      "marketplace_name": "anthropic-agent-skills",
+      "added_at": "2026-05-06T00:00:00Z"
+    },
+    {
+      "owner": "JuliusBrussee",
+      "repo": "caveman",
+      "marketplace_name": "caveman",
+      "added_at": "2026-05-06T00:00:00Z"
+    }
+  ]
+}
