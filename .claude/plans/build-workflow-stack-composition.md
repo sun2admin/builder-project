@@ -668,11 +668,11 @@ When a feature becomes ubiquitous:
      - Phase 5b (compose): L4 features per §5; firewall per §7; init chain per §8
      - Phase 6 (emit): aggregated.json, devcontainer.json, workspace.env writers; output alongside input file (skill controls placement via staging dir)
 8. 🚧 TODO — Implement `/build-stack` skill body per "Skill UX Design" section above.
-9. 🚧 TODO — Add `.gitignore` entry for `builds/.staging/` (atomic-write staging dir).
+9. ✅ DONE — `.gitignore` entry `builds/.staging/` present (atomic-write staging dir).
 10. 🚧 TODO — Add OCI source label requirement to L3 build CI (per §1 plugin source-repo discovery).
 11. 🚧 TODO — Update reference docs (DATA_SCHEMA, DETECTION_PRINCIPLES, TESTING) to reflect removed fields + boundary rule (subsumed in sub-plan Phase 2-3).
 12. 🚧 TODO — Validate end-to-end: scaffold a stack from this builder-project repo using `/build-stack`, compare output to existing devcontainer.json.
-13. 🚧 TODO — Delete `build-workspace` skill + `build-layer1..4` sub-skills (after build-stack validates).
+13. ✅ DONE — Deleted `build-workspace` skill + `build-layer1..4` sub-skills (commit `b641ece`).
 
 ---
 
