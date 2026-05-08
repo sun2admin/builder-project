@@ -17,29 +17,14 @@ WARN=${CONTEXT_WARN_THRESHOLD:-250000}
 HARD=${CONTEXT_HARD_THRESHOLD:-400000}
 WINDOW=${CONTEXT_WINDOW:-300000}
 
+# Token extraction shared with context-warn.sh — see lib/tokens.py.
+# Helper prints "cache_read cache_creation input_tokens"; statusline shows
+# the sum (most honest "cost of next turn" reading).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tokens=0
 if [ -n "$transcript" ] && [ -r "$transcript" ]; then
-  tokens=$(python3 - "$transcript" <<'PY' 2>/dev/null || echo 0
-import json, sys
-# Track MOST RECENT assistant usage entry, not max — see context-warn.sh
-# for the same fix. /compact's own summarization API call records the full
-# pre-compact context as one entry; a max-tracker would lock that as the
-# watermark and never recover after the conversation actually shrinks.
-last=0
-try:
-    with open(sys.argv[1]) as f:
-        for line in f:
-            try: d=json.loads(line)
-            except: continue
-            m=d.get("message")
-            if isinstance(m,dict):
-                u=m.get("usage")
-                if isinstance(u,dict):
-                    last=(u.get("cache_read_input_tokens",0) or 0)+(u.get("cache_creation_input_tokens",0) or 0)+(u.get("input_tokens",0) or 0)
-except FileNotFoundError: pass
-print(last)
-PY
-)
+  read -r cr cc it < <(python3 "$SCRIPT_DIR/lib/tokens.py" "$transcript" 2>/dev/null) || true
+  tokens=$(( ${cr:-0} + ${cc:-0} + ${it:-0} ))
 fi
 
 human() {

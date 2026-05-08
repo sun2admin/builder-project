@@ -16,33 +16,11 @@ transcript=$(printf '%s' "$input" | python3 -c 'import sys,json; print(json.load
 [ -z "$transcript" ] && exit 0
 [ ! -r "$transcript" ] && exit 0
 
-read -r tokens < <(python3 - "$transcript" <<'PY'
-import json, sys
-path = sys.argv[1]
-# Track the MOST RECENT assistant usage entry, not the max — after /compact
-# the actual context shrinks, so a max-tracker would stay stuck at the old
-# pre-compact watermark (the compact summarization API call itself reads
-# the full pre-compact context and locks that value in).
-last = 0
-try:
-    with open(path) as f:
-        for line in f:
-            try:
-                d = json.loads(line)
-            except Exception:
-                continue
-            msg = d.get("message")
-            if not isinstance(msg, dict):
-                continue
-            u = msg.get("usage")
-            if isinstance(u, dict):
-                last = u.get("cache_read_input_tokens", 0) or 0
-except FileNotFoundError:
-    pass
-print(last)
-PY
-) || tokens=0
-
+# Token extraction shared with statusline.sh — see lib/tokens.py.
+# Helper prints "cache_read cache_creation input_tokens"; this hook only
+# uses cache_read (the dominant cost for the next API call).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+read -r tokens _ _ < <(python3 "$SCRIPT_DIR/lib/tokens.py" "$transcript" 2>/dev/null) || tokens=0
 tokens=${tokens:-0}
 
 if [ "$tokens" -ge "$THRESHOLD_HARD" ]; then
