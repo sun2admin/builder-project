@@ -18,6 +18,7 @@ from pathlib import Path
 
 from build_stack.compose import (
     DEVCONTAINER_FEATURE_MAP,
+    INIT_SCRIPT_CREDENTIAL_MAP,
     L1_LATEST_RUNTIMES,
     NETWORK_CAPS,
     VERSION_FEATURE_MAP,
@@ -26,6 +27,7 @@ from build_stack.compose import (
     _compose_features,
     _compose_firewall,
     _compose_init_chain,
+    _detect_redundant_passthrough,
     _is_firewall_script,
     _major_prefix,
     _partial_order_rank,
@@ -587,3 +589,243 @@ def test_l1_latest_runtimes_baseline_set():
 def test_network_caps_constant():
     """The 'firewall-required' detector only checks these two caps."""
     assert NETWORK_CAPS == {"NET_ADMIN", "NET_RAW"}
+
+
+# ─── F8 v1: redundant-passthrough detection ──────────────────────────────────
+
+def test_init_script_credential_map_contains_gh_token():
+    """Pin the canonical entry: init-gh-token.sh handles the GitHub token family.
+    The three names cover what `gh`/`git`/octokit-style libs read at runtime."""
+    assert INIT_SCRIPT_CREDENTIAL_MAP["init-gh-token.sh"] == (
+        "GITHUB_TOKEN", "GH_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN",
+    )
+
+
+def test_init_script_credential_map_contains_ssh():
+    """init-ssh.sh sets up the internal-agent socket → handles SSH_AUTH_SOCK."""
+    assert INIT_SCRIPT_CREDENTIAL_MAP["init-ssh.sh"] == ("SSH_AUTH_SOCK",)
+
+
+def test_init_script_credential_map_size_pinned():
+    """Catalog starts at 2 entries. Bumping this number requires a corresponding
+    test for the new entry's contract — forces us to think about each addition."""
+    assert len(INIT_SCRIPT_CREDENTIAL_MAP) == 2
+
+
+def test_detect_redundant_empty_agg_empty_passthrough():
+    assert _detect_redundant_passthrough({}, []) == []
+
+
+def test_detect_redundant_empty_passthrough_no_overlap():
+    """Detection helper returns the *intersection* with env_passthrough.
+    No env_passthrough → no possible intersection."""
+    agg = {"container": {"post_start_chain": [
+        {"script": "/workspace/.devcontainer/scripts/init-gh-token.sh"},
+    ]}}
+    assert _detect_redundant_passthrough(agg, []) == []
+
+
+def test_detect_redundant_no_known_scripts_no_detection():
+    """Chain has scripts but none are in the catalog → nothing to detect."""
+    agg = {"container": {"post_start_chain": [
+        {"script": "user-custom.sh"},
+        {"script": "init-firewall.sh"},
+    ]}}
+    assert _detect_redundant_passthrough(agg, ["GITHUB_TOKEN"]) == []
+
+
+def test_detect_redundant_gh_token_in_chain_dict_form():
+    """Builder-project shape: post_start_chain entries are dicts with a
+    `script` key carrying the full path. Basename match against catalog
+    catches init-gh-token.sh → marks GITHUB_TOKEN as already-handled."""
+    agg = {"container": {"post_start_chain": [
+        {"script": "/workspace/.devcontainer/scripts/init-gh-token.sh"},
+    ]}}
+    assert _detect_redundant_passthrough(agg, ["GITHUB_TOKEN"]) == ["GITHUB_TOKEN"]
+
+
+def test_detect_redundant_ssh_in_chain_dict_form():
+    """init-ssh.sh in chain → SSH_AUTH_SOCK is already-handled."""
+    agg = {"container": {"post_start_chain": [
+        {"script": "/workspace/.devcontainer/scripts/init-ssh.sh"},
+    ]}}
+    assert _detect_redundant_passthrough(agg, ["SSH_AUTH_SOCK"]) == ["SSH_AUTH_SOCK"]
+
+
+def test_detect_redundant_only_returns_overlap_with_passthrough():
+    """A chain that handles GITHUB_TOKEN but env_passthrough only has FOO_API_KEY
+    → no overlap → empty result. The detection is intersection-based, not union."""
+    agg = {"container": {"post_start_chain": [
+        {"script": "init-gh-token.sh"},
+    ]}}
+    assert _detect_redundant_passthrough(agg, ["FOO_API_KEY"]) == []
+
+
+def test_detect_redundant_returns_sorted():
+    """Multiple overlapping names returned alphabetically — deterministic
+    ordering for warning output and for test assertions downstream."""
+    agg = {"container": {"post_start_chain": [
+        {"script": "init-ssh.sh"},
+        {"script": "init-gh-token.sh"},
+    ]}}
+    out = _detect_redundant_passthrough(
+        agg, ["SSH_AUTH_SOCK", "GITHUB_TOKEN"],
+    )
+    assert out == ["GITHUB_TOKEN", "SSH_AUTH_SOCK"]
+
+
+def test_detect_redundant_falls_back_to_post_start_text():
+    """When post_start_chain is missing/empty, split agg.container.post_start
+    on '&&' as a fallback. Some older analyses may have only the text form."""
+    agg = {"container": {"post_start": (
+        "sudo /usr/local/bin/init-firewall.sh && "
+        "/workspace/.devcontainer/scripts/init-gh-token.sh"
+    )}}
+    assert _detect_redundant_passthrough(agg, ["GITHUB_TOKEN"]) == ["GITHUB_TOKEN"]
+
+
+def test_detect_redundant_chain_empty_post_start_empty_returns_empty():
+    """Both signals absent → nothing to detect, even with env_passthrough set."""
+    agg = {"container": {}}
+    assert _detect_redundant_passthrough(agg, ["GITHUB_TOKEN"]) == []
+
+
+def test_detect_redundant_handles_args_after_script():
+    """Post_start text steps may carry arguments (e.g. `load-projects.sh -live X`).
+    The first whitespace-split token is the script; basename must still match."""
+    agg = {"container": {"post_start": (
+        "/workspace/.devcontainer/scripts/init-gh-token.sh --strict"
+    )}}
+    assert _detect_redundant_passthrough(agg, ["GITHUB_TOKEN"]) == ["GITHUB_TOKEN"]
+
+
+def test_detect_redundant_dedup_when_script_handles_multiple_creds():
+    """init-gh-token.sh handles 3 names. If env_passthrough has all 3,
+    all 3 are returned — and exactly once each (set-intersection semantics)."""
+    agg = {"container": {"post_start_chain": [
+        {"script": "init-gh-token.sh"},
+    ]}}
+    out = _detect_redundant_passthrough(
+        agg, ["GITHUB_TOKEN", "GH_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN"],
+    )
+    assert out == ["GH_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN", "GITHUB_TOKEN"]
+
+
+def test_detect_redundant_skips_non_dict_chain_entries():
+    """Chain may contain stray non-dict entries (parser glitches, future
+    schema changes) — must not crash. Only dict entries with 'script' are read."""
+    agg = {"container": {"post_start_chain": [
+        "not-a-dict",
+        {"script": "init-gh-token.sh"},
+        42,
+        {"no_script_key": True},
+    ]}}
+    assert _detect_redundant_passthrough(agg, ["GITHUB_TOKEN"]) == ["GITHUB_TOKEN"]
+
+
+# ─── F8 v1: warning emission inside _compose_credentials ─────────────────────
+
+_BUILDER_PROJECT_SHAPED_AGG = {
+    "credentials_required": {
+        "tokens": ["GITHUB_TOKEN"],
+        "ssh": True,
+    },
+    "container": {
+        "post_start_chain": [
+            {"script": "/usr/local/bin/init-firewall.sh"},
+            {"script": "/workspace/.devcontainer/scripts/init-ssh.sh"},
+            {"script": "/workspace/.devcontainer/scripts/init-gh-token.sh"},
+        ],
+    },
+}
+
+
+def test_compose_credentials_warns_on_overlap(capsys):
+    """The motivating case: builder-project shape produces stderr warnings
+    for GITHUB_TOKEN and SSH_AUTH_SOCK — both names appear in env_passthrough
+    AND are handled by init-scripts in the chain."""
+    _compose_credentials(_BUILDER_PROJECT_SHAPED_AGG, {})
+    err = capsys.readouterr().err
+    assert "GITHUB_TOKEN" in err
+    assert "SSH_AUTH_SOCK" in err
+
+
+def test_compose_credentials_warning_format_pinned(capsys):
+    """Warning message format is the contract — downstream tooling (CI output
+    parsers, future skill UX) may match on it. Pin the substrings."""
+    _compose_credentials(_BUILDER_PROJECT_SHAPED_AGG, {})
+    err = capsys.readouterr().err
+    assert "build-stack: warning:" in err
+    assert "already delivered by an init-script" in err
+    assert 'overrides.credentials_delivery.GITHUB_TOKEN="mount"' in err
+
+
+def test_compose_credentials_warning_one_line_per_overlap(capsys):
+    """Two overlaps (GITHUB_TOKEN, SSH_AUTH_SOCK) → two warning lines.
+    Lets users count and grep individually."""
+    _compose_credentials(_BUILDER_PROJECT_SHAPED_AGG, {})
+    err = capsys.readouterr().err
+    warning_lines = [ln for ln in err.splitlines() if "build-stack: warning:" in ln]
+    assert len(warning_lines) == 2
+
+
+def test_compose_credentials_no_warning_when_no_chain(capsys):
+    """No init-script chain → no detection signal → no warning, even when
+    env_passthrough has credentials."""
+    _compose_credentials(
+        {"credentials_required": {"tokens": ["GITHUB_TOKEN"], "ssh": True}}, {},
+    )
+    err = capsys.readouterr().err
+    assert "warning" not in err
+
+
+def test_compose_credentials_no_warning_when_chain_unrelated(capsys):
+    """Chain has scripts but none are in the catalog → no warning."""
+    _compose_credentials(
+        {
+            "credentials_required": {"tokens": ["GITHUB_TOKEN"]},
+            "container": {"post_start_chain": [
+                {"script": "init-firewall.sh"},
+                {"script": "user-custom.sh"},
+            ]},
+        }, {},
+    )
+    err = capsys.readouterr().err
+    assert "warning" not in err
+
+
+def test_compose_credentials_warning_does_not_alter_env_passthrough(capsys):
+    """v1 contract: warning is purely additive. The returned env_passthrough
+    must be byte-identical to what _compose_credentials would have returned
+    pre-F8 — no behavior change. Capture stderr too so the test isn't a
+    no-op assertion (i.e. we *did* generate output, but the data is the same)."""
+    out = _compose_credentials(_BUILDER_PROJECT_SHAPED_AGG, {})
+    err = capsys.readouterr().err
+    assert "GITHUB_TOKEN" in out["env_passthrough"]
+    assert "SSH_AUTH_SOCK" in out["env_passthrough"]
+    assert out["mounts"] == []  # no override → no mounts
+    assert "warning" in err  # but warnings did fire — sanity
+
+
+def test_compose_credentials_mount_override_suppresses_warning_for_that_cred(capsys):
+    """If user opts GITHUB_TOKEN into mount delivery via override, it leaves
+    env_passthrough → not in the intersection → no warning for it.
+    SSH_AUTH_SOCK still warns because no override exists for ssh handling."""
+    _compose_credentials(
+        _BUILDER_PROJECT_SHAPED_AGG,
+        {"overrides": {"credentials_delivery": {"GITHUB_TOKEN": "mount"}}},
+    )
+    err = capsys.readouterr().err
+    assert "GITHUB_TOKEN" not in err
+    assert "SSH_AUTH_SOCK" in err
+
+
+def test_compose_credentials_warning_alpha_sorted(capsys):
+    """Two warnings — ordering follows _detect_redundant_passthrough's
+    alphabetical sort. Pin so future refactors don't quietly reverse it."""
+    _compose_credentials(_BUILDER_PROJECT_SHAPED_AGG, {})
+    err = capsys.readouterr().err
+    gh_pos = err.find("GITHUB_TOKEN")
+    ssh_pos = err.find("SSH_AUTH_SOCK")
+    assert gh_pos != -1 and ssh_pos != -1
+    assert gh_pos < ssh_pos  # alphabetical: G < S

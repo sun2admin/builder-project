@@ -55,28 +55,36 @@ Rationale: an auto-detect default that suppresses passthrough when "wrong" silen
 
 ### v1 implementation tasks
 
-| Task | File | Detail |
+| Task | Status | Detail |
 |---|---|---|
-| Detection helper | `tools/build-stack/build_stack/compose.py` | Add `_detect_redundant_passthrough(agg, env_passthrough)` that scans `agg.container.volumes` for mount targets matching `/run/credentials/<name>` where `<name>` is in `env_passthrough`. Returns the overlapping names. |
-| Warning emission | `_compose_credentials` (same file) | When detection returns non-empty, emit one stderr line per credential: `compose: warning: <NAME> already mounted at /run/credentials/<NAME> by project; containerEnv passthrough may conflict (set overrides.credentials_delivery.<NAME>="mount" to use file delivery only).` |
-| Unit test | `tools/build-stack/tests/test_compose.py` (new file) | Pin: (a) detection returns expected names for builder-project-shaped agg; (b) detection returns empty when no overlap; (c) `_compose_credentials` still produces same `env_passthrough` list (warning only, no behavior change); (d) stderr contains expected warning text. |
-| Plan update | this file | Mark v1 tasks done; record commit hashes |
+| Detection helper | ✅ DONE | Added `_detect_redundant_passthrough(agg, env_passthrough)` to `compose.py`. Walks `agg.container.post_start_chain` (or splits `agg.container.post_start` on `&&` as fallback), basename-matches each script against `INIT_SCRIPT_CREDENTIAL_MAP`, returns sorted intersection of handled credential names with `env_passthrough`. |
+| Catalog | ✅ DONE | `INIT_SCRIPT_CREDENTIAL_MAP` constant in `compose.py`: `init-gh-token.sh` → `(GITHUB_TOKEN, GH_TOKEN, GITHUB_PERSONAL_ACCESS_TOKEN)`, `init-ssh.sh` → `(SSH_AUTH_SOCK,)`. Add an entry when L4 introduces a new init-script for a new credential family. |
+| Warning emission | ✅ DONE | `_compose_credentials` now calls the detection helper after building `env_passthrough` and emits one stderr line per overlap: `build-stack: warning: <NAME> already delivered by an init-script in post_start chain; containerEnv passthrough may conflict (set overrides.credentials_delivery.<NAME>="mount" to skip env passthrough).` |
+| Unit tests | ✅ DONE | 23 new tests in `tools/build-stack/tests/test_compose.py` — catalog stability (3 tests), detection helper purity (12 tests covering empty inputs, dict-form chain, post_start text fallback, args-after-script, dedup, sorting, non-dict skip), warning emission (8 tests covering format, line count, no-warning paths, override interaction, alpha-sort). All 95 tests in the file pass; full build_stack suite 546 passed / 10 skipped, no regressions. |
+| Smoke test | ✅ DONE | Real `python -m build_stack compose` run against builder-project's cached analysis emits exactly two warnings (`GITHUB_TOKEN`, `SSH_AUTH_SOCK`) — confirms detection fires on the motivating case. |
+| Plan update | ✅ DONE | This commit. |
+
+### Design pivot during implementation (2026-05-08)
+
+The v1 implementation tasks above describe what *actually* shipped. The original plan-text proposed strict basename matching of credential names against mount targets (e.g. `GITHUB_TOKEN` ↔ `/run/credentials/GITHUB_TOKEN`). Discovered during implementation: the project's mount-file naming follows source-file conventions (`gh_pat`, `gh_claude_ed25519`) rather than env-var names — strict match would not have fired for builder-project (or any project derived from the L4 template). Pivoted to **init-script-catalog detection (Option C from the F8 design space)**: detect by which scripts run in the `post_start` chain, since the *script* is what actually performs the credential delivery (mount + reads file + writes `~/.profile`). Catalog is L4-template-canonical, lives next to `_compose_credentials`, starts at 2 entries.
+
+Verified against both `sun2admin/builder-project` and `sun2admin/build-containers-with-claude` — identical credential structure across both repos confirms the L4 template owns the convention.
 
 ### v2 considerations (deferred)
 
 Out of v1 scope; revisit when v1's warning data shows whether the redundancy is universal or project-specific:
 
-- **Auto-detect** (Option A from F8 design space) — when redundancy detected, skip the env-passthrough entry (and the SSH_AUTH_SOCK addition for `ssh: true`). Risk: silent breakage if detection is wrong.
+- **Auto-detect** (Option A from F8 design space) — when redundancy detected, skip the env-passthrough entry (and the SSH_AUTH_SOCK addition for `ssh: true`). Risk: silent breakage if catalog is incomplete or a project deviates from L4 convention.
 - **Flip default** (Option D) — only emit env-passthrough when the user opts in via `overrides.credentials_delivery.<NAME>="env"` (new override value). More aggressive; affects all projects.
-- **Skill UX prompt** (Option C) — `/build-stack` adds a per-credential "delivery: env / mount / project handles it" prompt. Cost: another step in an already 8-step interactive flow.
-- **Detection rule refinement** — current proposal matches mount-target-suffix only. Could also match by inspecting the post_start chain for known init-script signatures (`init-gh-token.sh` → handles `GITHUB_TOKEN`-class). More robust, more brittle.
+- **Skill UX prompt** (Option C/UX) — `/build-stack` adds a per-credential "delivery: env / mount / project handles it" prompt. Cost: another step in an already 8-step interactive flow.
+- **Catalog refinement** — current 2 entries cover the L4 template today. If a project introduces an init-script outside the template (e.g. project-specific `init-stripe-key.sh`), the catalog needs an extension mechanism (per-project map in `build.json`?). Track when first encountered.
 
 ## Open external-credential tasks (cross-plan)
 
 Tasks that touch external-credential delivery, gathered from sibling plans and code:
 
 - [ ] **`claude-user-env.md` §5 (SSH agent) reopened by F8** — that plan currently marks SSH agent as "no open question." F8 surfaced the question of whether the compose-tool default `SSH_AUTH_SOCK: ${localEnv:SSH_AUTH_SOCK}` should silently override the internal-agent socket that `init-ssh.sh` sets up. Resolution: handled by F8 v1 (warning); if v2 chooses Option A (auto-detect), this question closes automatically.
-- [ ] **Test coverage for `overrides.credentials_delivery="mount"` path** — `compose.py:156-161` implements the file-mount branch but no unit test exercises it. Add to `tools/build-stack/tests/test_compose.py` alongside the F8 v1 tests.
+- [x] **Test coverage for `overrides.credentials_delivery="mount"` path** — covered by `test_compose_credentials_override_routes_to_mount` (pre-existing) plus F8 v1's `test_compose_credentials_mount_override_suppresses_warning_for_that_cred` which pins the override+detection interaction.
 - [ ] **CLAUDE.md cross-cutting rule audit** — the rule says "credentials write to `~/.profile` (chmod 600), never `/etc/environment`." `init-gh-token.sh` follows this. Audit: is any credential currently written elsewhere? Is the rule still applied if a project adopts `overrides.credentials_delivery="mount"` only (no init-script)?
 - [ ] **Inventory completeness** — when a project introduces a new credential (e.g. first project needing `DATABASE_URL`), add a row to the inventory table *before* writing init-script logic. Forces the delivery decision into the open instead of inferring from code.
 - [ ] **Skill UX integration** — even with v1's warning, the `/build-stack` skill still has no way for the user to set `overrides.credentials_delivery`. The override mechanism is dead code unless we expose it. Resolution depends on F8 v2 outcome.

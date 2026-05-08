@@ -13,6 +13,7 @@ See `.claude/plans/build-workflow-stack-composition.md` §5–§8.
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 
@@ -140,6 +141,52 @@ def _compose_firewall(agg: dict, repo_root: Path) -> dict:
     return {"cap_add": cap_add, "extra_domains": extra_domains}
 
 
+# L4-template init-script catalog: maps a script basename to the credential
+# env vars it sets up via the file-mount + ~/.profile pattern (pattern 3 in
+# .claude/plans/credentials-delivery.md). When a script in this map appears
+# in agg.container.post_start_chain, every env var in its tuple is
+# considered "already delivered by the project" — compose's containerEnv
+# passthrough default (F8) overlaps and produces a warning.
+#
+# Add an entry here when L4 introduces a new init-script. The catalog is
+# stack-canonical: it tracks what the layer4-devcontainer template installs,
+# not per-project conventions.
+INIT_SCRIPT_CREDENTIAL_MAP: dict[str, tuple[str, ...]] = {
+    "init-gh-token.sh": ("GITHUB_TOKEN", "GH_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN"),
+    "init-ssh.sh":      ("SSH_AUTH_SOCK",),
+}
+
+
+def _detect_redundant_passthrough(agg: dict, env_passthrough: list[str]) -> list[str]:
+    """Return entries of env_passthrough whose delivery is already handled
+    by an init-script in agg.container.post_start_chain.
+
+    Walks the chain (or splits agg.container.post_start on '&&' as a
+    fallback for analyses without structured chain), basename-matches each
+    script against INIT_SCRIPT_CREDENTIAL_MAP, and intersects the union of
+    handled credential names with env_passthrough. Returns a sorted list.
+    """
+    container = agg.get("container") or {}
+
+    chain = container.get("post_start_chain") or []
+    chain_scripts: list[str] = [
+        step.get("script", "") for step in chain if isinstance(step, dict)
+    ]
+    if not chain_scripts:
+        post_start = container.get("post_start") or ""
+        chain_scripts = [s.strip() for s in post_start.split("&&") if s.strip()]
+
+    handled: set[str] = set()
+    for step in chain_scripts:
+        first_token = step.split()[0] if step else ""
+        base = _basename(first_token)
+        creds = INIT_SCRIPT_CREDENTIAL_MAP.get(base)
+        if creds:
+            handled.update(creds)
+
+    return sorted(set(env_passthrough) & handled)
+
+
 def _compose_credentials(agg: dict, build_json: dict) -> dict:
     creds = agg.get("credentials_required") or {}
     overrides = (build_json.get("overrides") or {}).get("credentials_delivery") or {}
@@ -165,6 +212,15 @@ def _compose_credentials(agg: dict, build_json: dict) -> dict:
     if creds.get("ssh"):
         if "SSH_AUTH_SOCK" not in env_passthrough:
             env_passthrough.append("SSH_AUTH_SOCK")
+
+    for name in _detect_redundant_passthrough(agg, env_passthrough):
+        print(
+            f"build-stack: warning: {name} already delivered by an init-script in "
+            f"post_start chain; containerEnv passthrough may conflict "
+            f'(set overrides.credentials_delivery.{name}="mount" '
+            f"to skip env passthrough).",
+            file=sys.stderr,
+        )
 
     return {"env_passthrough": env_passthrough, "mounts": mounts}
 
