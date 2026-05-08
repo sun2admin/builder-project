@@ -385,7 +385,7 @@ _PY_IMPORT_RE = re.compile(
     re.MULTILINE,
 )
 _TS_IMPORT_RE = re.compile(
-    r"""(?:import|require)\s*(?:\(['"]|from\s+['"])([@a-zA-Z][^'"]+)['"]"""
+    r"""(?:import|require)\s*(?:\(['"]|[^'"\n]*?from\s+['"]|['"])([@a-zA-Z][^'"]+)['"]"""
 )
 
 

@@ -198,15 +198,100 @@ def test_scan_ts_imports_excludes_relative_paths(tmp_path, monkeypatch):
     assert "real-pkg" in out
 
 
-def test_scan_ts_imports_es6_named_import_form_NOT_matched(tmp_path, monkeypatch):
-    """KNOWN COVERAGE GAP: the current `_TS_IMPORT_RE` only matches
-    `require("x")` and `import("x")` forms. ES6 `import { z } from "zod"` does
-    NOT match because the regex's `import\\s*` can't consume `{ z }` between
-    `import` and `from`. Pinning this as a contract — if a future PR fixes
-    the regex, this test will fail and the dev can update it."""
+def test_scan_ts_imports_es6_named_import_form(tmp_path, monkeypatch):
+    """ES6 named import: `import { z } from "zod"`. The regex's middle branch
+    (`[^'"\\n]*?from\\s+['"]`) consumes ` { z } ` between `import` and `from`."""
     monkeypatch.setenv("AR_NODE_BUILTINS", "[]")
     monkeypatch.setattr(ss, "_NODE_BUILTINS_CACHE", None)
     (tmp_path / "app.ts").write_text('import { z } from "zod";\n')
+    out = ss._scan_ts_imports(tmp_path)
+    assert "zod" in out
+
+
+def test_scan_ts_imports_es6_default_import_form(tmp_path, monkeypatch):
+    """ES6 default import: `import zod from "zod"`. Same middle branch
+    consumes the bare identifier between `import` and `from`."""
+    monkeypatch.setenv("AR_NODE_BUILTINS", "[]")
+    monkeypatch.setattr(ss, "_NODE_BUILTINS_CACHE", None)
+    (tmp_path / "app.ts").write_text('import zod from "zod";\n')
+    out = ss._scan_ts_imports(tmp_path)
+    assert "zod" in out
+
+
+def test_scan_ts_imports_es6_default_plus_named_form(tmp_path, monkeypatch):
+    """`import React, { useState } from "react"` — combined default+named."""
+    monkeypatch.setenv("AR_NODE_BUILTINS", "[]")
+    monkeypatch.setattr(ss, "_NODE_BUILTINS_CACHE", None)
+    (tmp_path / "app.ts").write_text(
+        'import React, { useState } from "react";\n'
+    )
+    out = ss._scan_ts_imports(tmp_path)
+    assert "react" in out
+
+
+def test_scan_ts_imports_es6_namespace_import_form(tmp_path, monkeypatch):
+    """`import * as z from "zod"` — namespace import (whole module as object)."""
+    monkeypatch.setenv("AR_NODE_BUILTINS", "[]")
+    monkeypatch.setattr(ss, "_NODE_BUILTINS_CACHE", None)
+    (tmp_path / "app.ts").write_text('import * as z from "zod";\n')
+    out = ss._scan_ts_imports(tmp_path)
+    assert "zod" in out
+
+
+def test_scan_ts_imports_typescript_type_only_import(tmp_path, monkeypatch):
+    """`import type { z } from "zod"` — TS type-only import. The `type` keyword
+    sits between `import` and `from`; middle branch handles it identically to
+    other identifiers/braces."""
+    monkeypatch.setenv("AR_NODE_BUILTINS", "[]")
+    monkeypatch.setattr(ss, "_NODE_BUILTINS_CACHE", None)
+    (tmp_path / "app.ts").write_text('import type { z } from "zod";\n')
+    out = ss._scan_ts_imports(tmp_path)
+    assert "zod" in out
+
+
+def test_scan_ts_imports_side_effect_only_import(tmp_path, monkeypatch):
+    """`import "polyfills"` — side-effect-only import (no binding). Matches
+    via the regex's third branch `['"]` after `import\\s*`."""
+    monkeypatch.setenv("AR_NODE_BUILTINS", "[]")
+    monkeypatch.setattr(ss, "_NODE_BUILTINS_CACHE", None)
+    (tmp_path / "app.ts").write_text('import "polyfills";\n')
+    out = ss._scan_ts_imports(tmp_path)
+    assert "polyfills" in out
+
+
+def test_scan_ts_imports_multiline_import_NOT_matched(tmp_path, monkeypatch):
+    """KNOWN COVERAGE GAP: multi-line import statements where the brace block
+    crosses a newline are NOT matched. The middle branch's character class
+    `[^'"\\n]*?` excludes newlines deliberately — extending it to span lines
+    would require tracking matched braces or risk over-eager capture across
+    unrelated `from` strings. Pinning this as a contract — if a future PR
+    fixes the multi-line case, this test will fail and the dev can decide
+    whether to flip it (positive assertion) or keep tracking the gap.
+
+    Mitigations available today: `prettier --print-width 200` collapses most
+    multi-line imports into one line; npm projects with consistent formatting
+    rarely emit truly multi-line imports outside very wide named-import lists."""
+    monkeypatch.setenv("AR_NODE_BUILTINS", "[]")
+    monkeypatch.setattr(ss, "_NODE_BUILTINS_CACHE", None)
+    (tmp_path / "app.ts").write_text(
+        "import {\n"
+        "  z,\n"
+        "  ZodSchema,\n"
+        '} from "zod";\n'
+    )
+    out = ss._scan_ts_imports(tmp_path)
+    assert "zod" not in out
+
+
+def test_scan_ts_imports_export_from_NOT_matched(tmp_path, monkeypatch):
+    """KNOWN COVERAGE GAP: `export { z } from "zod"` (re-export) is NOT
+    matched — the regex requires `import` or `require` as anchor. Re-exports
+    are semantically also imports (the module IS loaded), but in practice
+    they're used as relays and the actual user import lives elsewhere in the
+    project, so the missing detection rarely loses signal. Pinned for tracking."""
+    monkeypatch.setenv("AR_NODE_BUILTINS", "[]")
+    monkeypatch.setattr(ss, "_NODE_BUILTINS_CACHE", None)
+    (tmp_path / "app.ts").write_text('export { z } from "zod";\n')
     out = ss._scan_ts_imports(tmp_path)
     assert "zod" not in out
 
