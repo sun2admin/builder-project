@@ -14,21 +14,18 @@ output dicts are normalized (recursively sort all lists) and compared.
 Skips real-repo fixtures gracefully if `gh auth` is not configured.
 
 DISABLED BY DEFAULT (F7): the bash-side path invokes
-`python -m build_stack analyze`. F7-A proper fix landed an `--out-dir`
-flag on cmd_analyze so tests can redirect output away from the canonical
-`analyzed_repos/<owner>/<repo>/analysis.json` cache. The bash skill
-wrapper does NOT yet forward `--out-dir` (it would need a wrapper-side
-flag), so the runner here either:
-  (a) calls `python -m build_stack analyze --out-dir <tmp>` directly,
-      bypassing the bash wrapper (current behavior below), or
-  (b) accepts that re-enabling via the bash wrapper still touches live
-      cache until the wrapper grows the flag.
+`python -m build_stack analyze`. F7-A landed an `--out-dir` flag on
+cmd_analyze; the bash skill wrapper now forwards `--out-dir` too (so
+either invocation path can redirect output away from the canonical
+`analyzed_repos/<owner>/<repo>/analysis.json` cache). The runner below
+still calls `python -m build_stack analyze` directly rather than the
+bash wrapper — that's a separate concern (clone-sharing, see below).
 
-A separate flakiness issue remains (F7 mechanism note): bash-side and
-port-side run on different fresh `--depth=1` clones, so HEAD movement
-between clones can produce real divergence on high-traffic repos. That
-is a test design issue, not a detector bug — re-evaluate when refactoring
-the test to share a single clone across both sides.
+The remaining flakiness issue is a test-design problem, not a detector
+bug: bash-side and port-side run on different fresh `--depth=1` clones,
+so HEAD movement between clones can produce real divergence on
+high-traffic repos. Re-enable the test once the runner is refactored
+to share a single clone across both sides.
 
 Re-enable for intentional parity runs:
 

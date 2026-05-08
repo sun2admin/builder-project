@@ -23,20 +23,30 @@ REPO_ROOT="$(cd "${SKILL_DIR}/../../.." && pwd)"
 
 QUIET=0
 VERBOSE=0
+OUT_DIR=""
 REPO=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -q|--quiet)   QUIET=1; shift ;;
     -v|--verbose) VERBOSE=1; shift ;;
+    --out-dir)
+      if [[ $# -lt 2 ]]; then
+        echo -e "${RED}✘ --out-dir requires a path argument${NC}" >&2
+        exit 1
+      fi
+      OUT_DIR="$2"; shift 2 ;;
+    --out-dir=*)  OUT_DIR="${1#--out-dir=}"; shift ;;
     -h|--help)
       cat >&2 <<EOF
-Usage: analyze-repo.sh [-q|--quiet] [-v|--verbose] [owner/repo]
+Usage: analyze-repo.sh [-q|--quiet] [-v|--verbose] [--out-dir <dir>] [owner/repo]
 
-  -q  Suppress markdown report on stderr (still saves analysis.md file).
-  -v  Always emit markdown report regardless of TTY detection.
+  -q          Suppress markdown report on stderr (still saves analysis.md file).
+  -v          Always emit markdown report regardless of TTY detection.
+  --out-dir   Write analysis.json + analysis.md to <dir> instead of the canonical
+              analyzed_repos/<owner>/<repo>/. Use from tests or staging dirs.
   Default: emit markdown to stderr only when stdout is a TTY.
 
-stdout: path to analyzed_repos/<owner>/<repo>/analysis.json (single line)
+stdout: path to analysis.json (single line)
 stderr: progress traces, plus markdown report when emitted
 
 Phase 3 cutover: this skill is now a thin wrapper for
@@ -60,6 +70,7 @@ fi
 FLAGS=()
 [[ "$QUIET" == "1" ]] && FLAGS+=("-q")
 [[ "$VERBOSE" == "1" ]] && FLAGS+=("-v")
+[[ -n "$OUT_DIR" ]] && FLAGS+=("--out-dir" "$OUT_DIR")
 
 cd "$REPO_ROOT"
 exec python -m build_stack analyze "${FLAGS[@]}" "$REPO"

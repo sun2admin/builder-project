@@ -14,7 +14,11 @@ Populates these schema fields:
 
 Source files scanned (per analyze-repo.sh lines 199-466 + 469-599 +
 677-694 + 813-922 + 980-1006):
-    .devcontainer/devcontainer.json (jsonc)
+    devcontainer.json (jsonc) — discovered via _find_devcontainer_path,
+        priority: .devcontainer/devcontainer.json, .devcontainer.json,
+        .devcontainer/<name>/devcontainer.json (spec named configs),
+        <name>-devcontainer/devcontainer.json (project convention,
+        e.g. builder-project's layer4-devcontainer/)
     .vscode/extensions.json (jsonc)
     Dockerfile / Dockerfile.* / *.dockerfile
     docker-compose*.yml / .yaml
@@ -45,6 +49,50 @@ def _parse_jsonc(text: str) -> dict:
 
 
 # ─── devcontainer.json ────────────────────────────────────────────────────────
+
+def _find_devcontainer_path(repo_path: Path) -> Path | None:
+    """Locate devcontainer.json by priority order. Returns first match or None.
+
+    Priority:
+        1. ``.devcontainer/devcontainer.json``                — Dev Containers spec canonical
+        2. ``.devcontainer.json``                             — Dev Containers spec root alt
+        3. ``.devcontainer/<name>/devcontainer.json``         — spec named configs (alpha-first)
+        4. ``<name>-devcontainer/devcontainer.json``          — project convention
+           (e.g. builder-project's ``layer4-devcontainer/``); alpha-first
+
+    Capped to depth 2 from repo root so vendored copies (node_modules, vendor,
+    submodules) don't pollute results. Only one match is returned — the
+    detector currently emits a single config dict; aggregation across multiple
+    devcontainer.json files would be a separate design decision.
+    """
+    canonical = repo_path / ".devcontainer" / "devcontainer.json"
+    if canonical.is_file():
+        return canonical
+
+    root_alt = repo_path / ".devcontainer.json"
+    if root_alt.is_file():
+        return root_alt
+
+    named_dir = repo_path / ".devcontainer"
+    if named_dir.is_dir():
+        for sub in sorted(named_dir.iterdir(), key=lambda p: p.name):
+            if sub.is_dir():
+                cand = sub / "devcontainer.json"
+                if cand.is_file():
+                    return cand
+
+    try:
+        entries = sorted(repo_path.iterdir(), key=lambda p: p.name)
+    except (OSError, PermissionError):
+        return None
+    for entry in entries:
+        if entry.is_dir() and entry.name.endswith("-devcontainer"):
+            cand = entry / "devcontainer.json"
+            if cand.is_file():
+                return cand
+
+    return None
+
 
 def _parse_mount_string(s: str) -> dict:
     """`source=X,target=Y,type=Z[,readonly][,consistency=W]` → dict.
@@ -101,8 +149,8 @@ def _parse_devcontainer(repo_path: Path) -> dict:
         "wait_for": "",
         "shutdown_action": "",
     }
-    f = repo_path / ".devcontainer" / "devcontainer.json"
-    if not f.is_file():
+    f = _find_devcontainer_path(repo_path)
+    if f is None:
         return empty
     try:
         d = _parse_jsonc(f.read_text(errors="ignore"))
