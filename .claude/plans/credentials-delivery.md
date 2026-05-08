@@ -120,7 +120,7 @@ For any new credential the stack must deliver, capture in the inventory table an
 
 ## Resume conditions
 
-- **F8 v1 work** — implementable now; queue tasks via TaskCreate when ready to start. The warning is purely additive (no behavior change) so it can ship independently of any v2 decision.
-- **F8 v2 (auto-detect / flip default / skill UX)** — wait until v1 has run on at least 2 corpus projects (builder-project + one sandbox build, or builder-project + a non-trivial second project). The data point is "does redundancy fire universally or only for projects with init-scripts?"
+- **F8 v1 work** — ✅ shipped (commit `c5c2a3d`). Detection helper + warning emission live in `compose.py`; verified to fire on `sun2admin/builder-project` for both `GITHUB_TOKEN` and `SSH_AUTH_SOCK`.
+- **F8 v2 (auto-detect / flip default / skill UX)** — wait until v1 has run on at least 2 corpus projects. Use the curated list at `tools/build-stack/tests/_corpus.py` as the candidate pool; both `sun2admin/builder-project` and `sun2admin/build-containers-with-claude` are on it and known to share the L4 template's credential-delivery convention. The data point is "does redundancy fire universally or only for projects with init-scripts?"
 - **New credential added to a project** — inventory table updated *before* implementation; delivery pattern decided per "Decision rules" section above.
 - **Skill UX expansion** — defer until F8 v2 outcome (option C explicitly adds a prompt step; options A/D may obviate the need).
