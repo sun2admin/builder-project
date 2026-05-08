@@ -21,6 +21,10 @@ tokens=0
 if [ -n "$transcript" ] && [ -r "$transcript" ]; then
   tokens=$(python3 - "$transcript" <<'PY' 2>/dev/null || echo 0
 import json, sys
+# Track MOST RECENT assistant usage entry, not max — see context-warn.sh
+# for the same fix. /compact's own summarization API call records the full
+# pre-compact context as one entry; a max-tracker would lock that as the
+# watermark and never recover after the conversation actually shrinks.
 last=0
 try:
     with open(sys.argv[1]) as f:
@@ -31,8 +35,7 @@ try:
             if isinstance(m,dict):
                 u=m.get("usage")
                 if isinstance(u,dict):
-                    t=(u.get("cache_read_input_tokens",0) or 0)+(u.get("cache_creation_input_tokens",0) or 0)+(u.get("input_tokens",0) or 0)
-                    if t>last: last=t
+                    last=(u.get("cache_read_input_tokens",0) or 0)+(u.get("cache_creation_input_tokens",0) or 0)+(u.get("input_tokens",0) or 0)
 except FileNotFoundError: pass
 print(last)
 PY
