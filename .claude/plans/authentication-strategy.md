@@ -5,6 +5,8 @@ description: Claude Code authentication in devcontainers — why first login is 
 
 # Claude Code Authentication Strategy
 
+> **See also: `credentials-delivery.md`** — sibling sub-plan covering credential / auth delivery for **non-Claude tools** (git/gh, ssh, future DB / 3rd-party API keys). The credentials are different but the delivery toolbox (host env passthrough, bind-mounted file, init-script reads-file-then-writes-`~/.profile`) is shared. The recommended-here `init-claude-config.sh` (Option A) is the same pattern 3 (mount + init-script) used for `gh_pat` over there. Cross-check before reinventing.
+
 ## Why Login Is Required on First Start
 
 When a devcontainer is created for the first time, the named volume is brand new and empty. There is no `~/.claude/.credentials.json` and no `~/.claude/.claude.json`. Claude Code has no stored auth state, so it initiates a browser-based OAuth flow.
