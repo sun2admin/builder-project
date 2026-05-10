@@ -9,7 +9,7 @@ originSessionId: 3f6f6192-aa5b-4f57-be58-35aa8808c6e4
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Layer 4: Devcontainer Repos                             │
-│ (e.g. build-containers-with-claude)                     │
+│ (e.g. build-stack-with-claude)                     │
 │ devcontainer.json + init scripts + load-projects.sh     │
 └─────────────────────────────────────────────────────────┘
  ↓
@@ -105,7 +105,7 @@ originSessionId: 3f6f6192-aa5b-4f57-be58-35aa8808c6e4
 
 **Purpose**: Sets up the container environment, runs init scripts, loads AI project repos.
 **Source in builder-project**: `layer4-devcontainer/` (reference template)
-**Example standalone repo**: `sun2admin/build-containers-with-claude`
+**Example standalone repo**: `sun2admin/build-stack-with-claude`
 
 Devcontainer repos contain: devcontainer.json, init scripts, `load-projects.sh`.
 They reference a Layer 3 plugin image and load project repos (like `builder-project`) at startup.
@@ -136,4 +136,4 @@ When layer1-ai-depends is updated:
 ✅ **Layer 1**: layer1-ai-depends — 5/6 variants published (:playwright_with_all excluded)
 ✅ **Layer 2**: layer2-ai-install — :claude and :gemini published
 ✅ **Layer 3**: All 8 plugin repos building successfully on layer2-ai-install:claude
-✅ **Layer 4**: build-containers-with-claude loads builder-project as live project
+✅ **Layer 4**: build-stack-with-claude loads builder-project as live project

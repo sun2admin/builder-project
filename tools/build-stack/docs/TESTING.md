@@ -11,7 +11,7 @@ caught during prior development. Treat as a regression suite.
 | Repo | Profile | What it verifies |
 |---|---|---|
 | `anthropics/claude-code` | Node/bun, Dockerfile, firewall, plugins | System pkgs, domains, capabilities, plugin detection |
-| `sun2admin/build-containers-with-claude` | Shell-only, no Dockerfile, credential mounts | Inference path, SSH detection, volume parsing |
+| `sun2admin/build-stack-with-claude` | Shell-only, no Dockerfile, credential mounts | Inference path, SSH detection, volume parsing |
 | `sun2admin/builder-project` | Multi-layer, mixed shell+YAML | Cross-file inference, layer-aware paths |
 | `anthropics/connect-rust` | Rust, Cargo workspace, Taskfile, no Dockerfile | Rust libs (workspace `rglob`), CI tools, language detection without Dockerfile |
 | `santifer/career-ops` | Node, Playwright, .env.example, data-file URLs | HTML purpose strip, credential dedup, `.nvmrc` |

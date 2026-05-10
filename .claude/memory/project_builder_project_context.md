@@ -21,7 +21,7 @@ originSessionId: 3f6f6192-aa5b-4f57-be58-35aa8808c6e4
 | Layer 1 | `layer1-ai-depends/` | `sun2admin/layer1-ai-depends` | `ghcr.io/sun2admin/layer1-ai-depends` |
 | Layer 2 | `layer2-ai-install/` | `sun2admin/layer2-ai-install` | `ghcr.io/sun2admin/layer2-ai-install:claude\|gemini` |
 | Layer 3 | `layer3-ai-plugins/` (docs only) | 8 standalone plugin repos | `ghcr.io/sun2admin/claude-plugins-*` |
-| Layer 4 | `layer4-devcontainer/` | e.g. `sun2admin/build-containers-with-claude` | (devcontainer config, no image) |
+| Layer 4 | `layer4-devcontainer/` | e.g. `sun2admin/build-stack-with-claude` | (devcontainer config, no image) |
 
 **Dependency cascade**: Layer 1 → Layer 2 → Layer 3 → Layer 4 inherits automatically on rebuild.
 
@@ -36,7 +36,7 @@ Claude makes changes to a layer subdir in builder-project, then pushes those fil
 Project repos contain only Claude/AI project files (CLAUDE.md, .claude/, memory, skills, .mcp.json). They are loaded into the container at start by `load-projects.sh` in the Layer 4 devcontainer.
 
 - `builder-project` — reference example project repo
-- `build-containers-with-claude` — reference example Layer 4 devcontainer repo
+- `build-stack-with-claude` — reference example Layer 4 devcontainer repo
 
 ## Key Repos
 

@@ -13,7 +13,7 @@ Selection rationale (carried forward from the original parity test):
 - 7 community / personal repos exhibiting varied stack characteristics
   (multi-language, large dep trees, devcontainer present/absent, etc.)
 - Both sun2admin/builder-project (this repo) and
-  sun2admin/build-containers-with-claude (the L4-template-derived
+  sun2admin/build-stack-with-claude (the L4-template-derived
   reference Layer 4 stack), which together demonstrate the "convention
   is owned by L4 template" finding from F8.
 
@@ -31,6 +31,6 @@ CORPUS: list[str] = [
     "hesreallyhim/awesome-claude-code",
     "peterkrueck/claude-code-development-kit",
     "santifer/career-ops",
-    "sun2admin/build-containers-with-claude",
+    "sun2admin/build-stack-with-claude",
     "sun2admin/builder-project",
 ]

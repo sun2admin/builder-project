@@ -68,7 +68,7 @@ Rationale: an auto-detect default that suppresses passthrough when "wrong" silen
 
 The v1 implementation tasks above describe what *actually* shipped. The original plan-text proposed strict basename matching of credential names against mount targets (e.g. `GITHUB_TOKEN` ↔ `/run/credentials/GITHUB_TOKEN`). Discovered during implementation: the project's mount-file naming follows source-file conventions (`gh_pat`, `gh_claude_ed25519`) rather than env-var names — strict match would not have fired for builder-project (or any project derived from the L4 template). Pivoted to **init-script-catalog detection (Option C from the F8 design space)**: detect by which scripts run in the `post_start` chain, since the *script* is what actually performs the credential delivery (mount + reads file + writes `~/.profile`). Catalog is L4-template-canonical, lives next to `_compose_credentials`, starts at 2 entries.
 
-Verified against both `sun2admin/builder-project` and `sun2admin/build-containers-with-claude` — identical credential structure across both repos confirms the L4 template owns the convention.
+Verified against both `sun2admin/builder-project` and `sun2admin/build-stack-with-claude` — identical credential structure across both repos confirms the L4 template owns the convention.
 
 ### v2 considerations (deferred)
 
@@ -121,6 +121,6 @@ For any new credential the stack must deliver, capture in the inventory table an
 ## Resume conditions
 
 - **F8 v1 work** — ✅ shipped (commit `c5c2a3d`). Detection helper + warning emission live in `compose.py`; verified to fire on `sun2admin/builder-project` for both `GITHUB_TOKEN` and `SSH_AUTH_SOCK`.
-- **F8 v2 (auto-detect / flip default / skill UX)** — wait until v1 has run on at least 2 corpus projects. Use the curated list at `tools/build-stack/tests/_corpus.py` as the candidate pool; both `sun2admin/builder-project` and `sun2admin/build-containers-with-claude` are on it and known to share the L4 template's credential-delivery convention. The data point is "does redundancy fire universally or only for projects with init-scripts?"
+- **F8 v2 (auto-detect / flip default / skill UX)** — wait until v1 has run on at least 2 corpus projects. Use the curated list at `tools/build-stack/tests/_corpus.py` as the candidate pool; both `sun2admin/builder-project` and `sun2admin/build-stack-with-claude` are on it and known to share the L4 template's credential-delivery convention. The data point is "does redundancy fire universally or only for projects with init-scripts?"
 - **New credential added to a project** — inventory table updated *before* implementation; delivery pattern decided per "Decision rules" section above.
 - **Skill UX expansion** — defer until F8 v2 outcome (option C explicitly adds a prompt step; options A/D may obviate the need).

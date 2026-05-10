@@ -17,7 +17,7 @@
 4. **Plugin source-repo creation** for plugins picked via free entry that lack an existing GHCR image.
 5. **Devcontainer rebuild trigger** — VS Code "Rebuild Container" hint or CLI equivalent after image refresh.
 6. **OCI source-label backfill** — verify `org.opencontainers.image.source` on every pushed image; warn + offer one-line CI patch when missing (per L3 CLAUDE.md backfill list).
-7. **L4 template → standalone-repo sync (added 2026-05-07).** `layer4-devcontainer/` (in-repo template) must propagate to standalone Layer 4 repos (e.g. `build-containers-with-claude`, `build-stack-with-claude`). Mapping:
+7. **L4 template → standalone-repo sync (added 2026-05-07).** `layer4-devcontainer/` (in-repo template) must propagate to standalone Layer 4 repos (e.g. `build-stack-with-claude`). Mapping:
    - `layer4-devcontainer/devcontainer.json` → `<repo>/.devcontainer/devcontainer.json`
    - `layer4-devcontainer/scripts/*` → `<repo>/.devcontainer/scripts/*`
    - `layer4-devcontainer/.vscode/*` → `<repo>/.vscode/*`

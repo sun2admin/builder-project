@@ -1,9 +1,9 @@
 # Plan Note: Layer 4 Terminal Launch / Geometry Fix
 
-**Status:** Fix applied to `layer4-devcontainer/` template 2026-05-07. Awaits validation in test repo `sun2admin/build-stack-with-claude` (newly created — `build-containers-with-claude` deliberately untouched until validation passes).
+**Status:** Fix applied to `layer4-devcontainer/` template 2026-05-07. Awaits validation in test repo `sun2admin/build-stack-with-claude` (newly created — `build-stack-with-claude` deliberately untouched until validation passes).
 **Repo affected (template):** `builder-project/layer4-devcontainer/` — single source of truth.
 **Repo affected (test consumer):** `sun2admin/build-stack-with-claude` (private, created 2026-05-07 alongside this fix).
-**Repo affected (production consumer, deferred):** `build-containers-with-claude` — patch only after `build-stack-with-claude` confirms TTY behavior is correct.
+**Repo affected (production consumer, deferred):** `build-stack-with-claude` — patch only after `build-stack-with-claude` confirms TTY behavior is correct.
 **Stopgap attempted (2026-05-07, REVERTED same day):** `"tui": "fullscreen"` in user `~/.claude/settings.json`. Outcome: worse than default — wrap/resize behavior degraded further. Removed.
 
 ## Applied fix (2026-05-07)
@@ -48,7 +48,7 @@ Three structural issues:
 2. **`bash --login -c '...'` is non-interactive.** `.bashrc` line 23's `shopt -s checkwinsize` only fires on prompt return in *interactive* shells. Never runs here, so PTY size is never re-queried after VS Code window resize.
 3. **No `containerEnv`/`remoteEnv` overrides for TERM/COLORTERM.** Container processes inherit minimal terminal capabilities.
 
-## Fix plan (apply in `build-containers-with-claude/.devcontainer/devcontainer.json`)
+## Fix plan (apply in `build-stack-with-claude/.devcontainer/devcontainer.json`)
 
 ### Required
 
@@ -76,8 +76,8 @@ Recommend **1 + 2a**.
 
 ## Resume conditions
 
-- ~~Next session: permanent fix in `build-containers-with-claude/.devcontainer/devcontainer.json` (Required #1 + Option 2a)~~ — applied to L4 template instead 2026-05-07; testing via `build-stack-with-claude`.
-- After test repo validates fix: sync template → `build-containers-with-claude` (production L4 consumer). Owned by `/deploy-stack` once that skill exists; manual sync until then.
+- ~~Next session: permanent fix in `build-stack-with-claude/.devcontainer/devcontainer.json` (Required #1 + Option 2a)~~ — applied to L4 template instead 2026-05-07; testing via `build-stack-with-claude`.
+- After test repo validates fix: sync template → `build-stack-with-claude` (production L4 consumer). Owned by `/deploy-stack` once that skill exists; manual sync until then.
 
 ## Cross-references
 

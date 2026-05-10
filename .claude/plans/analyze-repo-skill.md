@@ -833,7 +833,7 @@ Test against repos representing diverse profiles:
 | Repo | Profile | Tests |
 |---|---|---|
 | `anthropics/claude-code` | Node/bun, Dockerfile, firewall, plugins | System pkgs, domains, caps, plugins |
-| `sun2admin/build-containers-with-claude` | Shell-only, no Dockerfile, credential mounts | Inference, SSH, volumes |
+| `sun2admin/build-stack-with-claude` | Shell-only, no Dockerfile, credential mounts | Inference, SSH, volumes |
 | `sun2admin/builder-project` | Multi-layer, mixed shell+YAML | Cross-file inference |
 | `anthropics/connect-rust` | Rust, Cargo workspace, Taskfile, no Dockerfile | Rust libs, CI tools, suggested FROM |
 | `santifer/career-ops` | Node, Playwright, .env.example, data-file URLs | HTML purpose, cred dedup, nvmrc |
