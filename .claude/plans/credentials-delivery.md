@@ -70,6 +70,28 @@ The v1 implementation tasks above describe what *actually* shipped. The original
 
 Verified against both `sun2admin/builder-project` and `sun2admin/build-stack-with-claude` — identical credential structure across both repos confirms the L4 template owns the convention.
 
+### v2 evidence run — 2026-05-10
+
+Two-sample corpus run to satisfy the v2 gate ("v1 has run on at least 2 corpus projects"):
+
+| Sample | `credentials_required.tokens` | `credentials_required.ssh` | `init-gh-token.sh` in chain | `init-ssh.sh` in chain | F8 v1 warnings emitted |
+|---|---|---|---|---|---|
+| `sun2admin/builder-project` (smoke test, 2026-05-08) | `["GITHUB_TOKEN"]` | `true` | yes | yes | `GITHUB_TOKEN` + `SSH_AUTH_SOCK` (2) |
+| `sun2admin/build-stack-with-claude` (this run, 2026-05-10) | `[]` | `true` | yes | yes | `SSH_AUTH_SOCK` only (1) |
+
+**Method:** minimal `build.json` (`{project_repo, build_project, ai_clis: ["claude"], use_recommended_l3: false, plugin_selections: []}`) at `/tmp/f8-test/bswc/build.json`; `python -m build_stack compose <build.json> 2>stderr.log`. Analysis cache populated via `python -m build_stack analyze sun2admin/build-stack-with-claude`.
+
+**Catalog verification (intact):** both samples' `post_start_chain` contains `init-ssh.sh` and `init-gh-token.sh` (basename match against `INIT_SCRIPT_CREDENTIAL_MAP`). No drift between the v1 catalog and the current L4 template.
+
+**Source of asymmetry:** analyzer's `credentials_required.tokens` is sourced from in-repo env-var scans (`source_scan._route_source_env`, `_TOKEN$` regex) and GHA-secret scans (`_route_gha_secrets`, literal `GITHUB_TOKEN`). `build-stack-with-claude` is the L4-template mirror — devcontainer.json + init-scripts + vscode configs only, no application source or GHA workflows referencing `GITHUB_TOKEN` — so `tokens: []`. Compose then doesn't add the env-passthrough, so there's no redundancy for v1 to flag. **This is correct analyzer + compose behavior, not a v1 false-negative.**
+
+**Structural observation (informs but does not decide v2):** the two redundancy modes v1 detects are not equivalent —
+
+- **`SSH_AUTH_SOCK` redundancy** is a *behavior conflict*. `init-ssh.sh` sets up an internal ssh-agent at `/home/claude/.ssh/agent.sock` and writes that path to `SSH_AUTH_SOCK`. Compose's default env-passthrough adds `SSH_AUTH_SOCK: ${localEnv:SSH_AUTH_SOCK}` to `containerEnv`, which **overrides** the internal-agent socket with the host's socket. Wrong outcome guaranteed every container start where `init-ssh.sh` runs.
+- **`GITHUB_TOKEN` (and other token) redundancy** is *parallel delivery*. `init-gh-token.sh` writes `export GH_TOKEN=...` to `~/.profile`; env-passthrough adds `GITHUB_TOKEN` to `containerEnv`. Both delivery paths succeed independently. A real conflict only arises if the host env-var value and the file-mount value differ.
+
+This suggests a v2 design *could* treat the two cases asymmetrically (e.g. `SSH_AUTH_SOCK` → auto-suppress; tokens → keep warn-only). **No decision taken.** Token-redundancy needs at least one corpus sample where a project intentionally relies on both delivery mechanisms before the asymmetric remedy is on firm empirical ground.
+
 ### v2 considerations (deferred)
 
 Out of v1 scope; revisit when v1's warning data shows whether the redundancy is universal or project-specific:
@@ -77,6 +99,7 @@ Out of v1 scope; revisit when v1's warning data shows whether the redundancy is 
 - **Auto-detect** (Option A from F8 design space) — when redundancy detected, skip the env-passthrough entry (and the SSH_AUTH_SOCK addition for `ssh: true`). Risk: silent breakage if catalog is incomplete or a project deviates from L4 convention.
 - **Flip default** (Option D) — only emit env-passthrough when the user opts in via `overrides.credentials_delivery.<NAME>="env"` (new override value). More aggressive; affects all projects.
 - **Skill UX prompt** (Option C/UX) — `/build-stack` adds a per-credential "delivery: env / mount / project handles it" prompt. Cost: another step in an already 8-step interactive flow.
+- **Asymmetric remedy** (emergent option, surfaced by 2026-05-10 evidence run) — apply Option A only to `SSH_AUTH_SOCK` (the behavior-conflict case); keep warn-only for token-class credentials (the parallel-delivery case) until there's a corpus sample where token redundancy actually breaks something. Rationale captured in "v2 evidence run" subsection above.
 - **Catalog refinement** — current 2 entries cover the L4 template today. If a project introduces an init-script outside the template (e.g. project-specific `init-stripe-key.sh`), the catalog needs an extension mechanism (per-project map in `build.json`?). Track when first encountered.
 
 ## Open external-credential tasks (cross-plan)
@@ -121,6 +144,7 @@ For any new credential the stack must deliver, capture in the inventory table an
 ## Resume conditions
 
 - **F8 v1 work** — ✅ shipped (commit `c5c2a3d`). Detection helper + warning emission live in `compose.py`; verified to fire on `sun2admin/builder-project` for both `GITHUB_TOKEN` and `SSH_AUTH_SOCK`.
-- **F8 v2 (auto-detect / flip default / skill UX)** — wait until v1 has run on at least 2 corpus projects. Use the curated list at `tools/build-stack/tests/_corpus.py` as the candidate pool; both `sun2admin/builder-project` and `sun2admin/build-stack-with-claude` are on it and known to share the L4 template's credential-delivery convention. The data point is "does redundancy fire universally or only for projects with init-scripts?"
+- **F8 v2 evidence-gathering** — ✅ done 2026-05-10. Two corpus samples (`builder-project`, `build-stack-with-claude`) confirm catalog intact. See "v2 evidence run" subsection above for full table + analysis.
+- **F8 v2 design decision (auto-detect / flip default / skill UX / asymmetric)** — open. Evidence run surfaced an asymmetric option (SSH auto-suppress + tokens warn-only) that wasn't in the original design space; held pending direction. Token-redundancy case still has no corpus sample where the parallel delivery actually breaks something — that data point would firm up whether the asymmetric split is justified or whether tokens should also auto-suppress.
 - **New credential added to a project** — inventory table updated *before* implementation; delivery pattern decided per "Decision rules" section above.
 - **Skill UX expansion** — defer until F8 v2 outcome (option C explicitly adds a prompt step; options A/D may obviate the need).
