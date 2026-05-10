@@ -1,8 +1,8 @@
-# Dependency Analysis: build-containers-with-claude
+# Dependency Analysis: build-stack-with-claude
 
-**Repo:** sun2admin/build-containers-with-claude
-**Analyzed:** 2026-05-06
-**Purpose:** Layer 4 Part 1 devcontainer config for building containers with Claude Code
+**Repo:** sun2admin/build-stack-with-claude
+**Analyzed:** 2026-05-10
+**Purpose:** Layer 4 devcontainer test stack. Mirror of sun2admin/builder-project → layer4-devcontainer/ template. Created 2026-05-07 to validate the TTY / geometry fix without touching the production build-containers-with-claude
 
 ---
 
@@ -31,10 +31,10 @@ none detected
 - Inbound: 8888
 
 ## External Services *(source: source_scan)*
-github.com
+none detected
 
 ## Environment Variables
-CLAUDE_CONFIG_DIR, NODE_OPTIONS, SSH_AUTH_SOCK
+CLAUDE_CONFIG_DIR, COLORTERM, NODE_OPTIONS, SSH_AUTH_SOCK, TERM
 
 ## Container Requirements
   - Docker caps: NET_ADMIN, NET_RAW
@@ -48,6 +48,8 @@ CLAUDE_CONFIG_DIR, NODE_OPTIONS, SSH_AUTH_SOCK
   - ENV: `NODE_OPTIONS`
   - ENV: `CLAUDE_CONFIG_DIR`
   - ENV: `SSH_AUTH_SOCK`
+  - ENV: `TERM`
+  - ENV: `COLORTERM`
 
 ## Init Script Chain *(decomposed `postStartCommand` / `postCreateCommand`)*
   - **post_start_chain**:
@@ -61,7 +63,6 @@ CLAUDE_CONFIG_DIR, NODE_OPTIONS, SSH_AUTH_SOCK
 
 
 ## Credentials Required
-  - Tokens: GITHUB_TOKEN
   - SSH key required
 
 ## MCP Servers
@@ -77,8 +78,7 @@ none detected
 No
 
 ## Inferred from Source *(tools/commands found in repo files)*
-  - **Tools/binaries (not in Dockerfile)**: aarch64, basename, canonical_id, canonicalize_path, cat, chmod, clone_repo, cp, cut, dirname, git, live_count, live_name, live_path, live_repo, mkdir, non-fatal, other_repos, parse_args, pre-installed, repo_name, rm, sed, seed_memory, ssh-agent, ssh-keyscan, target, target_memory, touch, uname, x86_64
-  - **CI toolchain (GitHub Actions)**: cat, checkout, env, gh, git
+  - **Tools/binaries (not in Dockerfile)**: aarch64, basename, canonical_id, canonicalize_path, cat, chmod, claude, clone_repo, cp, cut, dirname, git, live_count, live_name, live_path, live_repo, mkdir, non-fatal, other_repos, parse_args, pre-installed, repo_name, rm, sed, seed_memory, ssh-agent, ssh-keyscan, target, target_memory, touch, uname, x86_64
 
 ## System Dependencies *(tools → apt packages, via tool-deps.json cache)*
   - `basename` → `coreutils`
@@ -87,8 +87,6 @@ No
   - `cp` → `coreutils`
   - `cut` → `coreutils`
   - `dirname` → `coreutils`
-  - `env` → `coreutils`
-  - `gh` → `gh` (needs: libc6)
   - `git` → `git` (needs: libc6, libcurl3-gnutls, libexpat1, libpcre2-8-0, zlib1g)
   - `mkdir` → `coreutils`
   - `rm` → `coreutils`

@@ -1,8 +1,8 @@
 {
-  "repo": "sun2admin/build-containers-with-claude",
-  "project": "build-containers-with-claude",
-  "analyzed_at": "2026-05-06",
-  "purpose": "Layer 4 Part 1 devcontainer config for building containers with Claude Code",
+  "repo": "sun2admin/build-stack-with-claude",
+  "project": "build-stack-with-claude",
+  "analyzed_at": "2026-05-10",
+  "purpose": "Layer 4 devcontainer test stack. Mirror of sun2admin/builder-project \u2192 layer4-devcontainer/ template. Created 2026-05-07 to validate the TTY / geometry fix without touching the production build-containers-with-claude",
   "primary_language": "Shell",
   "languages": [
     "shell"
@@ -27,15 +27,15 @@
     ]
   },
   "external_services": {
-    "domains": [
-      "github.com"
-    ],
+    "domains": [],
     "source": "source_scan"
   },
   "env_vars": [
     "CLAUDE_CONFIG_DIR",
+    "COLORTERM",
     "NODE_OPTIONS",
-    "SSH_AUTH_SOCK"
+    "SSH_AUTH_SOCK",
+    "TERM"
   ],
   "browser_tools": [],
   "github_api_usage": false,
@@ -77,12 +77,14 @@
     "env": {
       "NODE_OPTIONS": "--max-old-space-size=4096",
       "CLAUDE_CONFIG_DIR": "/home/claude/.claude",
-      "SSH_AUTH_SOCK": "/home/claude/.ssh/agent.sock"
+      "SSH_AUTH_SOCK": "/home/claude/.ssh/agent.sock",
+      "TERM": "xterm-256color",
+      "COLORTERM": "truecolor"
     },
     "remote_user": "claude",
     "post_start": "sudo /usr/local/bin/init-firewall.sh && /workspace/.devcontainer/scripts/init-ssh.sh && /workspace/.devcontainer/scripts/init-gh-token.sh && /workspace/.devcontainer/scripts/init-github-mcp.sh && /workspace/.devcontainer/scripts/load-projects.sh -live sun2admin/builder-project",
     "post_create": "",
-    "post_attach": "bash --login -c 'cd $(cat ~/live-project 2>/dev/null || echo ~) && claude --dangerously-skip-permissions'",
+    "post_attach": "",
     "post_start_chain": [
       {
         "raw": "sudo /usr/local/bin/init-firewall.sh",
@@ -138,7 +140,16 @@
       "claudeCode.useTerminal": true,
       "editor.formatOnSave": true,
       "editor.defaultFormatter": "esbenp.prettier-vscode",
-      "terminal.integrated.defaultProfile.linux": "bash"
+      "terminal.integrated.profiles.linux": {
+        "claude-bash": {
+          "path": "bash",
+          "args": [
+            "--rcfile",
+            "/workspace/.devcontainer/scripts/claude-rc.sh"
+          ]
+        }
+      },
+      "terminal.integrated.defaultProfile.linux": "claude-bash"
     },
     "workspace_mount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
     "workspace_folder": "/workspace",
@@ -147,9 +158,7 @@
   },
   "credentials_required": {
     "api_keys": [],
-    "tokens": [
-      "GITHUB_TOKEN"
-    ],
+    "tokens": [],
     "ssh": true,
     "other": []
   },
@@ -163,6 +172,7 @@
       "canonicalize_path",
       "cat",
       "chmod",
+      "claude",
       "clone_repo",
       "cp",
       "cut",
@@ -196,6 +206,7 @@
       "canonicalize_path",
       "cat",
       "chmod",
+      "claude",
       "clone_repo",
       "cp",
       "cut",
@@ -229,13 +240,7 @@
     "ts_imports": [],
     "ts_imports_new": [],
     "ts_imports_confirmed": [],
-    "ci_tools": [
-      "cat",
-      "checkout",
-      "env",
-      "gh",
-      "git"
-    ]
+    "ci_tools": []
   },
   "system_deps": {
     "basename": {
@@ -261,16 +266,6 @@
     "dirname": {
       "apt_package": "coreutils",
       "apt_depends": []
-    },
-    "env": {
-      "apt_package": "coreutils",
-      "apt_depends": []
-    },
-    "gh": {
-      "apt_package": "gh",
-      "apt_depends": [
-        "libc6"
-      ]
     },
     "git": {
       "apt_package": "git",
@@ -319,5 +314,8 @@
       "apt_depends": []
     }
   },
-  "schema_version": 2
+  "schema_version": 2,
+  "is_marketplace": false,
+  "marketplace_name": "",
+  "marketplace_plugins": []
 }
