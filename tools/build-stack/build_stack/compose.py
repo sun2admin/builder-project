@@ -213,7 +213,20 @@ def _compose_credentials(agg: dict, build_json: dict) -> dict:
         if "SSH_AUTH_SOCK" not in env_passthrough:
             env_passthrough.append("SSH_AUTH_SOCK")
 
+    # F8 v2 (2026-05-10): asymmetric remedy.
+    # SSH_AUTH_SOCK is auto-suppressed when init-ssh.sh appears in the chain —
+    # init-ssh.sh sets up an internal ssh-agent socket and writes that path to
+    # SSH_AUTH_SOCK; passing through the host SSH_AUTH_SOCK *overrides* that
+    # setup with the host socket, defeating the internal agent. Behaviour
+    # conflict — suppression is a fix, not a behaviour gamble.
+    # Token-class credentials keep warn-only behaviour: init-gh-token.sh writes
+    # to ~/.profile and containerEnv passthrough writes to the env table —
+    # both deliveries succeed in parallel and only diverge if the values
+    # disagree. See .claude/plans/credentials-delivery.md "v2 ship" subsection.
     for name in _detect_redundant_passthrough(agg, env_passthrough):
+        if name == "SSH_AUTH_SOCK":
+            env_passthrough.remove(name)
+            continue
         print(
             f"build-stack: warning: {name} already delivered by an init-script in "
             f"post_start chain; containerEnv passthrough may conflict "

@@ -740,14 +740,14 @@ _BUILDER_PROJECT_SHAPED_AGG = {
 }
 
 
-def test_compose_credentials_warns_on_overlap(capsys):
-    """The motivating case: builder-project shape produces stderr warnings
-    for GITHUB_TOKEN and SSH_AUTH_SOCK — both names appear in env_passthrough
-    AND are handled by init-scripts in the chain."""
+def test_compose_credentials_warns_on_token_overlap(capsys):
+    """v2 (2026-05-10): builder-project shape produces a token-class warning
+    for GITHUB_TOKEN. SSH_AUTH_SOCK is auto-suppressed silently — see the
+    asymmetric-remedy block in `_compose_credentials`."""
     _compose_credentials(_BUILDER_PROJECT_SHAPED_AGG, {})
     err = capsys.readouterr().err
     assert "GITHUB_TOKEN" in err
-    assert "SSH_AUTH_SOCK" in err
+    assert "SSH_AUTH_SOCK" not in err
 
 
 def test_compose_credentials_warning_format_pinned(capsys):
@@ -760,13 +760,13 @@ def test_compose_credentials_warning_format_pinned(capsys):
     assert 'overrides.credentials_delivery.GITHUB_TOKEN="mount"' in err
 
 
-def test_compose_credentials_warning_one_line_per_overlap(capsys):
-    """Two overlaps (GITHUB_TOKEN, SSH_AUTH_SOCK) → two warning lines.
-    Lets users count and grep individually."""
+def test_compose_credentials_warning_one_line_for_token_overlap(capsys):
+    """v2: only the token-class overlap (GITHUB_TOKEN) warns; SSH suppressed
+    silently. Exactly one warning line lets users count and grep."""
     _compose_credentials(_BUILDER_PROJECT_SHAPED_AGG, {})
     err = capsys.readouterr().err
     warning_lines = [ln for ln in err.splitlines() if "build-stack: warning:" in ln]
-    assert len(warning_lines) == 2
+    assert len(warning_lines) == 1
 
 
 def test_compose_credentials_no_warning_when_no_chain(capsys):
@@ -794,38 +794,73 @@ def test_compose_credentials_no_warning_when_chain_unrelated(capsys):
     assert "warning" not in err
 
 
-def test_compose_credentials_warning_does_not_alter_env_passthrough(capsys):
-    """v1 contract: warning is purely additive. The returned env_passthrough
-    must be byte-identical to what _compose_credentials would have returned
-    pre-F8 — no behavior change. Capture stderr too so the test isn't a
-    no-op assertion (i.e. we *did* generate output, but the data is the same)."""
+def test_compose_credentials_v2_token_kept_in_env_passthrough_when_warned(capsys):
+    """v2 parallel-delivery semantics: when a token-class credential warns,
+    it STAYS in env_passthrough. The warning surfaces the duplicate delivery;
+    it does not act on it. (Contrast with the SSH case below.)"""
     out = _compose_credentials(_BUILDER_PROJECT_SHAPED_AGG, {})
     err = capsys.readouterr().err
     assert "GITHUB_TOKEN" in out["env_passthrough"]
+    assert "warning" in err  # token warning fired — sanity
+
+
+def test_compose_credentials_v2_ssh_auto_suppressed_from_env_passthrough(capsys):
+    """v2 behaviour-conflict semantics: SSH_AUTH_SOCK is REMOVED from
+    env_passthrough when init-ssh.sh appears in the chain. No warning emitted
+    (asymmetric vs token-class). Pins the headline v2 behaviour change."""
+    out = _compose_credentials(_BUILDER_PROJECT_SHAPED_AGG, {})
+    err = capsys.readouterr().err
+    assert "SSH_AUTH_SOCK" not in out["env_passthrough"]
+    assert "SSH_AUTH_SOCK" not in err
+
+
+def test_compose_credentials_v2_ssh_kept_when_init_ssh_not_in_chain():
+    """Negative case: ssh=True but no init-ssh.sh in chain → no v2 suppression
+    triggers → SSH_AUTH_SOCK still appears in env_passthrough as the v1
+    default. Pins that suppression is gated on init-script detection, not on
+    ssh=True alone."""
+    out = _compose_credentials(
+        {
+            "credentials_required": {"ssh": True},
+            "container": {"post_start_chain": [
+                {"script": "init-firewall.sh"},
+            ]},
+        }, {},
+    )
     assert "SSH_AUTH_SOCK" in out["env_passthrough"]
-    assert out["mounts"] == []  # no override → no mounts
-    assert "warning" in err  # but warnings did fire — sanity
+
+
+def test_compose_credentials_v2_ssh_suppressed_no_other_creds(capsys):
+    """Minimal SSH-only fixture: ssh=True + init-ssh.sh in chain, no tokens.
+    Expected: env_passthrough is empty (SSH suppressed), no warnings, no
+    mounts. Isolates the v2 SSH behaviour from the token interaction."""
+    out = _compose_credentials(
+        {
+            "credentials_required": {"ssh": True},
+            "container": {"post_start_chain": [
+                {"script": "/workspace/.devcontainer/scripts/init-ssh.sh"},
+            ]},
+        }, {},
+    )
+    err = capsys.readouterr().err
+    assert out["env_passthrough"] == []
+    assert out["mounts"] == []
+    assert "warning" not in err
 
 
 def test_compose_credentials_mount_override_suppresses_warning_for_that_cred(capsys):
-    """If user opts GITHUB_TOKEN into mount delivery via override, it leaves
-    env_passthrough → not in the intersection → no warning for it.
-    SSH_AUTH_SOCK still warns because no override exists for ssh handling."""
-    _compose_credentials(
+    """v2: with a mount override on GITHUB_TOKEN, it routes to mount instead
+    of env_passthrough → not in the redundancy intersection → no token
+    warning. SSH_AUTH_SOCK is already auto-suppressed by v2's asymmetric
+    rule, so neither name appears in stderr. Demonstrates that the mount
+    override and v2 SSH suppression compose cleanly."""
+    out = _compose_credentials(
         _BUILDER_PROJECT_SHAPED_AGG,
         {"overrides": {"credentials_delivery": {"GITHUB_TOKEN": "mount"}}},
     )
     err = capsys.readouterr().err
     assert "GITHUB_TOKEN" not in err
-    assert "SSH_AUTH_SOCK" in err
-
-
-def test_compose_credentials_warning_alpha_sorted(capsys):
-    """Two warnings — ordering follows _detect_redundant_passthrough's
-    alphabetical sort. Pin so future refactors don't quietly reverse it."""
-    _compose_credentials(_BUILDER_PROJECT_SHAPED_AGG, {})
-    err = capsys.readouterr().err
-    gh_pos = err.find("GITHUB_TOKEN")
-    ssh_pos = err.find("SSH_AUTH_SOCK")
-    assert gh_pos != -1 and ssh_pos != -1
-    assert gh_pos < ssh_pos  # alphabetical: G < S
+    assert "SSH_AUTH_SOCK" not in err
+    assert "GITHUB_TOKEN" not in out["env_passthrough"]
+    assert "SSH_AUTH_SOCK" not in out["env_passthrough"]
+    assert any(m["target"] == "/run/credentials/GITHUB_TOKEN" for m in out["mounts"])

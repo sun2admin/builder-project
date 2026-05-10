@@ -92,21 +92,39 @@ Two-sample corpus run to satisfy the v2 gate ("v1 has run on at least 2 corpus p
 
 This suggests a v2 design *could* treat the two cases asymmetrically (e.g. `SSH_AUTH_SOCK` → auto-suppress; tokens → keep warn-only). **No decision taken.** Token-redundancy needs at least one corpus sample where a project intentionally relies on both delivery mechanisms before the asymmetric remedy is on firm empirical ground.
 
-### v2 considerations (deferred)
+### v2 ship — 2026-05-10 (asymmetric remedy)
 
-Out of v1 scope; revisit when v1's warning data shows whether the redundancy is universal or project-specific:
+**Decision:** apply Option A (auto-suppress) only to `SSH_AUTH_SOCK`; keep token-class credentials on warn-only. Picked from the design space surfaced by the evidence run because the two redundancy modes are structurally different (behavior conflict vs parallel delivery — see "v2 evidence run" above).
 
-- **Auto-detect** (Option A from F8 design space) — when redundancy detected, skip the env-passthrough entry (and the SSH_AUTH_SOCK addition for `ssh: true`). Risk: silent breakage if catalog is incomplete or a project deviates from L4 convention.
-- **Flip default** (Option D) — only emit env-passthrough when the user opts in via `overrides.credentials_delivery.<NAME>="env"` (new override value). More aggressive; affects all projects.
-- **Skill UX prompt** (Option C/UX) — `/build-stack` adds a per-credential "delivery: env / mount / project handles it" prompt. Cost: another step in an already 8-step interactive flow.
-- **Asymmetric remedy** (emergent option, surfaced by 2026-05-10 evidence run) — apply Option A only to `SSH_AUTH_SOCK` (the behavior-conflict case); keep warn-only for token-class credentials (the parallel-delivery case) until there's a corpus sample where token redundancy actually breaks something. Rationale captured in "v2 evidence run" subsection above.
+**Code change:** `_compose_credentials` (`compose.py`), single asymmetric branch inside the redundancy loop. When `_detect_redundant_passthrough` returns `SSH_AUTH_SOCK`, it's removed from `env_passthrough` and no warning is emitted. For every other returned name, the v1 warning fires unchanged.
+
+**Mechanism downstream:** `_compose_container_env` (`emit.py:82–89`) fills `containerEnv` from `env_passthrough` first (each name → `${localEnv:NAME}`), then layers `agg.container.env` entries only for unset keys. Removing `SSH_AUTH_SOCK` from `env_passthrough` lets the project's own `agg.container.env["SSH_AUTH_SOCK"]` (`/home/claude/.ssh/agent.sock`) surface instead of being shadowed. No emit-layer change required.
+
+**End-to-end verification (2026-05-10):**
+
+| Sample | Pre-v2 emitted `SSH_AUTH_SOCK` | Post-v2 emitted `SSH_AUTH_SOCK` | Stderr warnings |
+|---|---|---|---|
+| `sun2admin/builder-project` | `${localEnv:SSH_AUTH_SOCK}` (host socket; overrides `init-ssh.sh` setup) | `/home/claude/.ssh/agent.sock` (internal agent; matches `init-ssh.sh`) | 1 (token: `GITHUB_TOKEN`) |
+| `sun2admin/build-stack-with-claude` | `${localEnv:SSH_AUTH_SOCK}` | `/home/claude/.ssh/agent.sock` | 0 (no tokens, SSH suppressed silently) |
+
+**Tests:** 4 added, 1 removed (alpha-sort test was a 2-warning ordering pin; v2 emits 1 warning so the property is moot). Renamed 2 tests to drop the implicit "two-warning" framing of v1: `_warns_on_overlap` → `_warns_on_token_overlap`, `_warning_one_line_per_overlap` → `_warning_one_line_for_token_overlap`. New tests pin: SSH suppressed-from-env_passthrough behaviour, SSH kept when `init-ssh.sh` not in chain (negative case), SSH-only minimal fixture (no token interaction), token kept in env_passthrough when warned (parallel-delivery contract). Suite: 555 passed (was 553; net +2).
+
+### Out of v2 scope (deferred)
+
+Held for later — not blocked, just not justified by current evidence:
+
+- **Token auto-suppress** (Option A applied to tokens too) — needs a corpus sample where the parallel delivery actually breaks (host env value disagrees with the file-mount value). Until then, warn-only is the right cost/risk tradeoff.
+- **`="env"` override** (opt back into env-passthrough for SSH) — no project needs it today. Add when a project legitimately wants host SSH agent forwarded *despite* running `init-ssh.sh`.
+- **Informational log on suppression** — useful for debuggability ("build-stack: info: suppressed SSH_AUTH_SOCK passthrough; init-ssh.sh handles delivery"); deferred to keep v2 ship minimal.
+- **Flip default for env-passthrough generally** (Option D from original design space) — much more aggressive; affects every credential. Not on the table given asymmetric ship resolved the actual bug.
+- **Skill UX prompt** (Option C/UX from original design space) — would add a step to the already 8-step interactive flow. Not justified when the auto-suppress + warn split handles every observed case.
 - **Catalog refinement** — current 2 entries cover the L4 template today. If a project introduces an init-script outside the template (e.g. project-specific `init-stripe-key.sh`), the catalog needs an extension mechanism (per-project map in `build.json`?). Track when first encountered.
 
 ## Open external-credential tasks (cross-plan)
 
 Tasks that touch external-credential delivery, gathered from sibling plans and code:
 
-- [ ] **`claude-user-env.md` §5 (SSH agent) reopened by F8** — that plan currently marks SSH agent as "no open question." F8 surfaced the question of whether the compose-tool default `SSH_AUTH_SOCK: ${localEnv:SSH_AUTH_SOCK}` should silently override the internal-agent socket that `init-ssh.sh` sets up. Resolution: handled by F8 v1 (warning); if v2 chooses Option A (auto-detect), this question closes automatically.
+- [x] **`claude-user-env.md` §5 (SSH agent) reopened by F8** — F8 surfaced the question of whether the compose-tool default `SSH_AUTH_SOCK: ${localEnv:SSH_AUTH_SOCK}` should silently override the internal-agent socket that `init-ssh.sh` sets up. Closed 2026-05-10 by F8 v2: SSH_AUTH_SOCK is now auto-suppressed from env-passthrough when `init-ssh.sh` is detected, letting the project's internal-agent path surface in `containerEnv` instead.
 - [x] **Test coverage for `overrides.credentials_delivery="mount"` path** — covered by `test_compose_credentials_override_routes_to_mount` (pre-existing) plus F8 v1's `test_compose_credentials_mount_override_suppresses_warning_for_that_cred` which pins the override+detection interaction.
 - [ ] **CLAUDE.md cross-cutting rule audit** — the rule says "credentials write to `~/.profile` (chmod 600), never `/etc/environment`." `init-gh-token.sh` follows this. Audit: is any credential currently written elsewhere? Is the rule still applied if a project adopts `overrides.credentials_delivery="mount"` only (no init-script)?
 - [ ] **Inventory completeness** — when a project introduces a new credential (e.g. first project needing `DATABASE_URL`), add a row to the inventory table *before* writing init-script logic. Forces the delivery decision into the open instead of inferring from code.
@@ -145,6 +163,7 @@ For any new credential the stack must deliver, capture in the inventory table an
 
 - **F8 v1 work** — ✅ shipped (commit `c5c2a3d`). Detection helper + warning emission live in `compose.py`; verified to fire on `sun2admin/builder-project` for both `GITHUB_TOKEN` and `SSH_AUTH_SOCK`.
 - **F8 v2 evidence-gathering** — ✅ done 2026-05-10. Two corpus samples (`builder-project`, `build-stack-with-claude`) confirm catalog intact. See "v2 evidence run" subsection above for full table + analysis.
-- **F8 v2 design decision (auto-detect / flip default / skill UX / asymmetric)** — open. Evidence run surfaced an asymmetric option (SSH auto-suppress + tokens warn-only) that wasn't in the original design space; held pending direction. Token-redundancy case still has no corpus sample where the parallel delivery actually breaks something — that data point would firm up whether the asymmetric split is justified or whether tokens should also auto-suppress.
+- **F8 v2 design + ship** — ✅ done 2026-05-10 (asymmetric remedy). SSH_AUTH_SOCK auto-suppressed when `init-ssh.sh` in chain; tokens unchanged from v1. End-to-end smoke test confirms emitted `containerEnv.SSH_AUTH_SOCK` flips from host-passthrough to internal-agent path on both samples. See "v2 ship" subsection above.
+- **F8 v3 (token auto-suppress)** — open. Resume when a corpus project surfaces that token redundancy actually breaks (host env value vs init-script value diverge). Until then, warn-only is the right tradeoff.
 - **New credential added to a project** — inventory table updated *before* implementation; delivery pattern decided per "Decision rules" section above.
 - **Skill UX expansion** — defer until F8 v2 outcome (option C explicitly adds a prompt step; options A/D may obviate the need).
